@@ -1,0 +1,16 @@
+---
+repos:
+- repo: https://github.com/rhysd/actionlint
+  rev: v1.6.27
+  hooks:
+  - id: actionlint
+- repo: https://github.com/trufflesecurity/trufflehog
+  rev: v3.88.32
+  hooks:
+  - id: trufflehog
+- repo: local
+  hooks:
+  - id: code_quality
+    name: code_quality
+    entry: make code-quality-modified-projects
+    language: system

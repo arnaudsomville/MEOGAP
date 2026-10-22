@@ -1,0 +1,61 @@
+.git
+.gitignore
+.github
+.gitattributes
+
+# Python caches and local environments
+**/__pycache__/
+**/*.py[cod]
+**/.mypy_cache/
+**/.pytest_cache/
+**/.ruff_cache/
+**/.coverage
+**/.hypothesis/
+**/.ipynb_checkpoints/
+**/.venv/
+**/venv/
+
+# Frontend and generic dependency caches
+**/node_modules/
+**/.npm/
+**/.pnpm-store/
+**/.yarn/
+
+# Build and test outputs
+**/dist/
+**/build/
+**/htmlcov/
+**/.tox/
+**/.nox/
+**/*.egg-info/
+
+# Tests and notebooks are not needed in runtime images
+**/tests/
+**/notebook/
+
+# Documentation is not needed in runtime images
+doc/
+docs/
+documentation/
+
+# Editor and OS files
+**/.DS_Store
+**/.idea/
+**/.vscode/
+
+# Local runtime artifacts
+**/*.log
+**/*.sqlite
+**/*.db
+**/docker-compose*.yml
+
+# Agents instructions not needed in images
+agents/
+AGENTS.md
+AGENT_NOTES.md
+CLAUDE.md
+README.md
+security.md
+
+# Build secrets (decrypted) not pushed
+build_secrets_decrypted/

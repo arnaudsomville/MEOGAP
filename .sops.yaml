@@ -1,0 +1,6 @@
+---
+creation_rules:
+- path_regex: build_secrets/*
+  mac_only_encrypted: true
+  # Public age key is for encryption only, private decryption key is looked for in $HOME/.config/sops/age/keys.txt file !
+  age: age1gkn3azssxr8e8j7wtd65nu20vzu8g9hknjvqqxdmu29ts5d5rdqqrzd2mf
