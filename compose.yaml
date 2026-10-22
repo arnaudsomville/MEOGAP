@@ -1,0 +1,24 @@
+services:
+  api:
+    image: meogap_api_local:${TAG_VERSION:-latest}
+    init: true
+    environment:
+      MEOGAP_CORS_ORIGINS: http://localhost:5173,http://localhost:8080
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  worker:
+    image: meogap_worker_local:${TAG_VERSION:-latest}
+    init: true
+    environment:
+      MEOGAP_WORKER_LOG_LEVEL: INFO
+    restart: unless-stopped
+
+  ui:
+    image: meogap_ui_local:${TAG_VERSION:-latest}
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    restart: unless-stopped

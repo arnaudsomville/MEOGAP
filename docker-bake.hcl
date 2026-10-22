@@ -12,8 +12,9 @@ variable "SOPS_KEY" {
 
 group "default" {
   targets = [
-    "dummy_project",
-    "dummy_project_with_local_dependancy",
+    "meogap_api",
+    "meogap_worker",
+    "meogap_ui",
   ]
 }
 
@@ -42,14 +43,14 @@ target "_python_builder" {
   ]
 }
 
-target "python_builder_dummy_project" {
+target "python_builder_meogap_api" {
   inherits = ["_python_builder"]
-  args = { PROJECT_NAME = "dummy_project" }
+  args = { PROJECT_NAME = "meogap_api" }
 }
 
-target "python_builder_dummy_project_with_local_dependancy" {
+target "python_builder_meogap_worker" {
   inherits = ["_python_builder"]
-  args = { PROJECT_NAME = "dummy_project_with_local_dependancy" }
+  args = { PROJECT_NAME = "meogap_worker" }
 }
 
 # ---------------------------------------------------------------------------
@@ -66,20 +67,27 @@ target "_image" {
   output = ["type=docker"]
 }
 
-target "dummy_project" {
+target "meogap_api" {
   inherits = ["_image"]
-  dockerfile = "projects/dummy_project/Dockerfile"
+  dockerfile = "projects/meogap_api/Dockerfile"
   contexts = {
-    python_builder = "target:python_builder_dummy_project"
+    python_builder = "target:python_builder_meogap_api"
   }
-  tags = ["dummy_project_local:${TAG_VERSION}"]
+  tags = ["meogap_api_local:${TAG_VERSION}"]
 }
 
-target "dummy_project_with_local_dependancy" {
+target "meogap_worker" {
   inherits = ["_image"]
-  dockerfile = "projects/dummy_project_with_local_dependancy/Dockerfile"
+  dockerfile = "projects/meogap_worker/Dockerfile"
   contexts = {
-    python_builder = "target:python_builder_dummy_project_with_local_dependancy"
+    python_builder = "target:python_builder_meogap_worker"
   }
-  tags = ["dummy_project_with_local_dependancy_local:${TAG_VERSION}"]
+  tags = ["meogap_worker_local:${TAG_VERSION}"]
+}
+
+target "meogap_ui" {
+  context = "projects/meogap_ui"
+  dockerfile = "Dockerfile"
+  output = ["type=docker"]
+  tags = ["meogap_ui_local:${TAG_VERSION}"]
 }

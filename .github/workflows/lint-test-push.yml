@@ -16,6 +16,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: projects/meogap_ui/package-lock.json
       - name: Install tooling and projects
         run: make install-dev-tooling && make install-modified-projects
       - name: Quality checks
