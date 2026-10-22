@@ -7,13 +7,13 @@ ENV GROUPNAME=app
 SHELL ["/bin/bash", "--login", "-o", "pipefail", "-c"]
 RUN apt-get update && \
     apt-get install -y build-essential=12.10ubuntu1 --no-install-recommends && \
-    apt-get install -y ca-certificates=20240203 --no-install-recommends && \
-    apt-get install -y wget=1.21.4-1ubuntu4.1 --no-install-recommends && \
-    apt-get install -y curl=8.5.0-2ubuntu10.8 --no-install-recommends && \
-    apt-get install -y git=1:2.43.0-1ubuntu7.3 --no-install-recommends && \
-    apt-get install -y openssh-client=1:9.6p1-3ubuntu13.15 --no-install-recommends && \
-    apt-get install -y linux-libc-dev=6.8.0-106.106 --no-install-recommends --allow-downgrades && \
-    apt-get install -y --only-upgrade gpgv=2.4.4-2ubuntu17.4  --no-install-recommends && \
+    apt-get install -y ca-certificates=20260816ubuntu0.24.04.1 --no-install-recommends && \
+    apt-get install -y wget=1.21.4-1ubuntu4.5 --no-install-recommends && \
+    apt-get install -y curl=8.5.0-2ubuntu10.16 --no-install-recommends && \
+    apt-get install -y git=1:2.43.0-1ubuntu7.4 --no-install-recommends && \
+    apt-get install -y openssh-client=1:9.6p1-3ubuntu13.20 --no-install-recommends && \
+    apt-get install -y linux-libc-dev=6.8.0-147.147 --no-install-recommends --allow-downgrades && \
+    apt-get install -y --only-upgrade gpgv=2.4.4-2ubuntu17.6  --no-install-recommends && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

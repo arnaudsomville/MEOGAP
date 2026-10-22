@@ -39,25 +39,29 @@ TARGET_BASE_BRANCH ?= origin/main
 
 # Projects
 PROJECTS := $(shell ls -1 projects 2>/dev/null)
+PYTHON_PROJECTS := $(shell for p in $(PROJECTS); do [ -f "projects/$$p/pyproject.toml" ] && echo "$$p"; done)
+NODE_PROJECTS := $(shell for p in $(PROJECTS); do [ -f "projects/$$p/package.json" ] && echo "$$p"; done)
 PROJECT ?= $(word 2,$(MAKECMDGOALS))
 PROJECT_NAME := $(PROJECT)
 PROJECT_TAG := $(shell echo $(PROJECT_NAME) | tr A-Z a-z)
 
-.PHONY: help install install-modified-projects install-tooling install-dev-tooling sync tests tests-all test-modified-projects code-quality code-quality-format code-quality-lint code-quality-type code-quality-dockerfile code-quality-test-files code-quality-modified-projects code-quality-all build build_and_analyse_cve build-all-images build-all build-and-push build-and-push-all docker-builder-create docker-builder-rm docker-clean docker-clean-ci clean clean-all clean-python-artifacts shell docker-push sops-encrypt-all sops-decrypt-all list-projects list-modified-projects ensure-target-base-branch ssh-command install-project ensure-project run-post-install
+.PHONY: help install install-python install-python-project install-js install-js-project install-modified-projects install-tooling install-dev-tooling ensure-node sync tests tests-all test-modified-projects code-quality code-quality-format code-quality-lint code-quality-type code-quality-dockerfile code-quality-test-files code-quality-modified-projects code-quality-all build build_and_analyse_cve build-all-images build-all build-and-push build-and-push-all docker-builder-create docker-builder-rm docker-clean docker-clean-ci clean clean-all clean-python-artifacts clean-node-artifacts shell docker-push sops-encrypt-all sops-decrypt-all run-meogap stop-meogap free-ports kill-meogap list-projects list-modified-projects ensure-target-base-branch ssh-command install-project ensure-project run-post-install
 
 help:
 	@echo "Usage:"
-	@echo "  make install                       Install all projects"
+	@echo "  make install                       Install tooling, all Python and JS projects"
 	@echo "  make install <proj>                Install one project"
+	@echo "  make install-python                Install all Python projects"
+	@echo "  make install-js                    Install all Node/React projects"
 	@echo "  make install-modified-projects     Install only modified projects"
-	@echo "  make sync <proj>                   Sync pyproject.toml and uv.lock"
+	@echo "  make sync <proj>                   Sync project lock (uv or npm)"
 	@echo "  make tests <proj>                  Run tests for project"
 	@echo "  make tests-all                     Run tests for all projects"
 	@echo "  make test-modified-projects        Run tests only for modified projects"
 	@echo "  make code-quality <proj>           Run code quality hooks for project"
-	@echo "  make code-quality-format <proj>    Run ruff format for project"
-	@echo "  make code-quality-lint <proj>      Run ruff check for project"
-	@echo "  make code-quality-type <proj>      Run pyrefly for project"
+	@echo "  make code-quality-format <proj>    Run formatter (ruff or prettier)"
+	@echo "  make code-quality-lint <proj>      Run linter (ruff or eslint)"
+	@echo "  make code-quality-type <proj>      Run mypy (Python) or tsc (Node) for project"
 	@echo "  make code-quality-dockerfile <proj> Run hadolint for project"
 	@echo "  make code-quality-test-files <proj> Check test file parity for project"
 	@echo "  make code-quality-modified-projects Run code quality on modified projects"
@@ -72,9 +76,13 @@ help:
 	@echo "       Uses build_secrets_decrypted/env_variables for Harbor auth"
 	@echo "  make build-all-images              Build Docker images for all projects"
 	@echo "  make build-all                     Build Docker images for all projects"
+	@echo "  make run-meogap                    Build all images and start the MEOGAP stack"
+	@echo "  make stop-meogap                   Stop and remove the MEOGAP stack"
+	@echo "  make free-ports                    Free MEOGAP ports (8000, 8080, 5173)"
+	@echo "  make kill-meogap                   Stop stack, remove images/build cache, free ports"
 	@echo "  make docker-clean                  Clean locally-built images (keeps BuildKit cache)"
 	@echo "  make docker-clean-ci               CI full cleanup (images, BuildKit cache)"
-	@echo "  make clean <proj>                  Remove Python environments and caches for project"
+	@echo "  make clean <proj>                  Remove project environments and caches"
 	@echo "  make clean-all                     Remove shared Python runtime and clean all projects"
 	@echo "  make list-modified-projects        List projects changed vs base branch"
 	@echo "  make shell <proj>                  Open a shell with project venv"
@@ -94,9 +102,19 @@ install:
 	@if [ -n "$(PROJECT_NAME)" ]; then \
 		$(MAKE) install-project PROJECT=$(PROJECT_NAME); \
 	else \
-		set -e; \
-		for p in $(PROJECTS); do $(MAKE) install-project PROJECT=$$p || exit $$?; done; \
+		$(MAKE) install-tooling && \
+		$(MAKE) install-python && \
+		$(MAKE) install-js; \
 	fi
+
+# Install every Python project (uv)
+install-python:
+	@set -e; for p in $(PYTHON_PROJECTS); do $(MAKE) install-python-project PROJECT=$$p || exit $$?; done
+
+# Install every Node/React project (npm)
+install-js:
+	@$(MAKE) ensure-node
+	@set -e; for p in $(NODE_PROJECTS); do $(MAKE) install-js-project PROJECT=$$p || exit $$?; done
 
 # Install projects that have been modified compared to target branch
 install-modified-projects:
@@ -150,7 +168,7 @@ sops-decrypt-all:
 	@for f in build_secrets/*; do \
 		[ -f "$$f" ] || continue; \
 		echo "Decrypt file $$f"; \
-		sops --decrypt "$$f" > "build_secrets_decrypted/$$(basename "$$f")"; \
+		SOPS_AGE_KEY_FILE="$(SOPS_KEY)" sops --decrypt "$$f" > "build_secrets_decrypted/$$(basename "$$f")"; \
 		chmod --reference="$$f" "build_secrets_decrypted/$$(basename "$$f")"; \
 	done
 	@find build_secrets_decrypted/ -type f -exec chmod 600 {} \;
@@ -246,40 +264,75 @@ docker-clean:
 
 # CI cleanup — remove images + destroy dedicated builder (no system prune)
 docker-clean-ci:
+	@$(MAKE) stop-meogap 2>/dev/null || true
 	@$(MAKE) docker-clean
 	@$(MAKE) docker-builder-rm
 
 # ---------------------------- Project Specific Commands ----------------------------
 
-# uv sync for the project
+# Sync the project lock (uv for Python, npm for Node)
 sync:
 	@$(MAKE) ensure-project PROJECT=$(PROJECT_NAME)
-	@cd "projects/$(PROJECT_NAME)" && \
-		UV_PYTHON_INSTALL_DIR="$(UV_PYTHON_INSTALL_DIR)" uv python pin $(PYTHON_VERSION) && \
-		$(GIT_SSH_CMD) UV_PYTHON_INSTALL_DIR="$(UV_PYTHON_INSTALL_DIR)" uv lock
+	@if [ -f "projects/$(PROJECT_NAME)/pyproject.toml" ]; then \
+		cd "projects/$(PROJECT_NAME)" && \
+			UV_PYTHON_INSTALL_DIR="$(UV_PYTHON_INSTALL_DIR)" uv python pin $(PYTHON_VERSION) && \
+			$(GIT_SSH_CMD) UV_PYTHON_INSTALL_DIR="$(UV_PYTHON_INSTALL_DIR)" uv lock; \
+	elif [ -f "projects/$(PROJECT_NAME)/package.json" ]; then \
+		cd "projects/$(PROJECT_NAME)" && npm install --package-lock-only; \
+	else \
+		echo "No supported manifest found in projects/$(PROJECT_NAME)."; \
+		exit 1; \
+	fi
 
 # Run project's tests
 tests:
 	@$(MAKE) ensure-project PROJECT=$(PROJECT_NAME)
-	@cd "projects/$(PROJECT_NAME)" && \
-		uv run pytest tests -v --durations=1 --cov=src --cov-report=xml --cov-fail-under $(MIN_TEST_COVERAGE)
+	@if [ -f "projects/$(PROJECT_NAME)/pyproject.toml" ]; then \
+		cd "projects/$(PROJECT_NAME)" && \
+			uv run pytest tests -v --durations=1 --cov=src --cov-report=xml --cov-fail-under $(MIN_TEST_COVERAGE); \
+	elif [ -f "projects/$(PROJECT_NAME)/package.json" ]; then \
+		cd "projects/$(PROJECT_NAME)" && npm run test; \
+	else \
+		echo "No supported manifest found in projects/$(PROJECT_NAME)."; \
+		exit 1; \
+	fi
 
 # ---------------------------- Code Quality ----------------------------
 
 code-quality-format:
 	@$(MAKE) ensure-project PROJECT=$(PROJECT_NAME)
-	@cd "projects/$(PROJECT_NAME)" && \
-		uv run bash -lc 'ruff format --check --diff . || { rc=$$?; ruff format .; exit $$rc; }'
+	@if [ -f "projects/$(PROJECT_NAME)/pyproject.toml" ]; then \
+		cd "projects/$(PROJECT_NAME)" && \
+			uv run bash -lc 'ruff format --check --diff . || { rc=$$?; ruff format .; exit $$rc; }'; \
+	elif [ -f "projects/$(PROJECT_NAME)/package.json" ]; then \
+		cd "projects/$(PROJECT_NAME)" && npm run format:check; \
+	else \
+		echo "No supported manifest found in projects/$(PROJECT_NAME)."; \
+		exit 1; \
+	fi
 
 code-quality-lint:
 	@$(MAKE) ensure-project PROJECT=$(PROJECT_NAME)
-	@cd "projects/$(PROJECT_NAME)" && \
-		uv run bash -lc 'ruff check --fix --diff . || { rc=$$?; ruff check --fix .; exit $$rc; }'
+	@if [ -f "projects/$(PROJECT_NAME)/pyproject.toml" ]; then \
+		cd "projects/$(PROJECT_NAME)" && \
+			uv run bash -lc 'ruff check --fix --diff . || { rc=$$?; ruff check --fix .; exit $$rc; }'; \
+	elif [ -f "projects/$(PROJECT_NAME)/package.json" ]; then \
+		cd "projects/$(PROJECT_NAME)" && npm run lint; \
+	else \
+		echo "No supported manifest found in projects/$(PROJECT_NAME)."; \
+		exit 1; \
+	fi
 
 code-quality-type:
 	@$(MAKE) ensure-project PROJECT=$(PROJECT_NAME)
-	@cd "projects/$(PROJECT_NAME)" && \
-		uv run pyrefly check
+	@if [ -f "projects/$(PROJECT_NAME)/pyproject.toml" ]; then \
+		cd "projects/$(PROJECT_NAME)" && uv run mypy src; \
+	elif [ -f "projects/$(PROJECT_NAME)/package.json" ]; then \
+		cd "projects/$(PROJECT_NAME)" && npm run typecheck; \
+	else \
+		echo "No supported manifest found in projects/$(PROJECT_NAME)."; \
+		exit 1; \
+	fi
 
 code-quality-dockerfile:
 	@$(MAKE) ensure-project PROJECT=$(PROJECT_NAME)
@@ -291,7 +344,11 @@ code-quality-dockerfile:
 
 code-quality-test-files:
 	@$(MAKE) ensure-project PROJECT=$(PROJECT_NAME)
-	@cd "projects/$(PROJECT_NAME)" && bash -lc 'set -euo pipefail; missing=0; while IFS= read -r file; do base="$$(basename "$$file")"; if ! find ./tests -type f -name "test_$$base" -print -quit | grep -q .; then printf "Warning: tests/**/test_%s not found. Is %s module tested?\n" "$$base" "$$base"; missing=1; fi; done < <(find ./src -type f -name "*.py" ! -name "__init__.py"); if (( missing )); then printf "\nWarning: some test files are missing (non-blocking).\n"; else printf "Test parity OK.\n"; fi'
+	@if [ -f "projects/$(PROJECT_NAME)/package.json" ] && [ ! -f "projects/$(PROJECT_NAME)/pyproject.toml" ]; then \
+		echo "No Python source files; skipping test parity."; \
+	else \
+		cd "projects/$(PROJECT_NAME)" && bash -lc 'set -euo pipefail; missing=0; while IFS= read -r file; do base="$$(basename "$$file")"; if ! find ./tests -type f -name "test_$$base" -print -quit | grep -q .; then printf "Warning: tests/**/test_%s not found. Is %s module tested?\n" "$$base" "$$base"; missing=1; fi; done < <(find ./src -type f -name "*.py" ! -name "__init__.py"); if (( missing )); then printf "\nWarning: some test files are missing (non-blocking).\n"; else printf "Test parity OK.\n"; fi'; \
+	fi
 
 code-quality:
 	@$(MAKE) ensure-project PROJECT=$(PROJECT_NAME)
@@ -359,6 +416,46 @@ build-all-images:
 build-all:
 	@$(MAKE) build-all-images
 
+# ---------------------------- Full stack ----------------------------
+
+run-meogap: sops-decrypt-all
+	@echo "Building all MEOGAP images..."
+	@$(MAKE) build-all-images
+	@echo "Starting the MEOGAP stack..."
+	@TAG_VERSION="$(TAG_VERSION)" docker compose up -d --remove-orphans
+	@echo ""
+	@echo "MEOGAP stack is up. Services:"
+	@echo "  API:               http://localhost:8000"
+	@echo "  API documentation: http://localhost:8000/docs"
+	@echo "  API health:        http://localhost:8000/api/v1/health"
+	@echo "  UI:                http://localhost:8080"
+	@echo "  UI health:         http://localhost:8080/healthz"
+	@echo "  Worker logs:       docker compose logs -f worker"
+	@echo ""
+	@echo "Stack status: docker compose ps"
+
+stop-meogap:
+	@echo "Stopping the MEOGAP stack..."
+	@TAG_VERSION="$(TAG_VERSION)" docker compose down -v --remove-orphans
+
+# Free the host ports used by the stack and the Vite dev server.
+free-ports:
+	@echo "Freeing MEOGAP ports..."
+	@for port in 8000 8080 5173; do \
+		echo "  Port $$port"; \
+		fuser -k $$port/tcp 2>/dev/null || true; \
+	done
+	@echo "Done."
+
+# Kill the stack, local images, build cache and any remaining port listeners.
+kill-meogap:
+	@echo "Killing MEOGAP stack, images, build cache and ports..."
+	@$(MAKE) stop-meogap 2>/dev/null || true
+	@$(MAKE) docker-clean
+	@docker buildx rm -f $(BUILDX_BUILDER) 2>/dev/null || true
+	@$(MAKE) free-ports
+	@echo "MEOGAP build and stack cleaned."
+
 # Build and push all docker images
 build-and-push-all:
 	@if [ "$(TAG_VERSION)" = 'latest' ] || [ -z "$(TAG_VERSION)" ]; then \
@@ -376,8 +473,23 @@ clean-python-artifacts:
 	@find "$(REPO_ROOT)/projects/$(PROJECT_NAME)" -type d \( -name ".venv" -o -name ".mypy_cache" -o -name ".pyrefly_cache" -o -name ".pytest_cache" -o -name ".ruff_cache" -o -name "__pycache__" \) -prune -exec rm -rf {} +
 	@find "$(REPO_ROOT)/projects/$(PROJECT_NAME)" -type f \( -name ".coverage" -o -name "coverage.xml" -o -name ".python-version" \) -delete
 
+clean-node-artifacts:
+	@$(MAKE) ensure-project PROJECT=$(PROJECT_NAME)
+	@rm -rf "$(REPO_ROOT)/projects/$(PROJECT_NAME)/node_modules" \
+		"$(REPO_ROOT)/projects/$(PROJECT_NAME)/dist" \
+		"$(REPO_ROOT)/projects/$(PROJECT_NAME)/coverage" \
+		"$(REPO_ROOT)/projects/$(PROJECT_NAME)/.vite"
+	@find "$(REPO_ROOT)/projects/$(PROJECT_NAME)" -type f -name "*.tsbuildinfo" -delete
+
 clean:
-	@$(MAKE) clean-python-artifacts PROJECT=$(PROJECT_NAME)
+	@if [ -f "projects/$(PROJECT_NAME)/pyproject.toml" ]; then \
+		$(MAKE) clean-python-artifacts PROJECT=$(PROJECT_NAME); \
+	elif [ -f "projects/$(PROJECT_NAME)/package.json" ]; then \
+		$(MAKE) clean-node-artifacts PROJECT=$(PROJECT_NAME); \
+	else \
+		echo "No supported manifest found in projects/$(PROJECT_NAME)."; \
+		exit 1; \
+	fi
 
 clean-all:
 	@rm -rf "$(REPO_ROOT)/.python" "$(REPO_ROOT)/.venv"
@@ -394,15 +506,36 @@ ssh-command:
 
 install-project:
 	@$(MAKE) ensure-project PROJECT=$(PROJECT_NAME)
+	@if [ -f "projects/$(PROJECT_NAME)/pyproject.toml" ]; then \
+		$(MAKE) install-python-project PROJECT=$(PROJECT_NAME); \
+	elif [ -f "projects/$(PROJECT_NAME)/package.json" ]; then \
+		$(MAKE) install-js-project PROJECT=$(PROJECT_NAME); \
+	else \
+		echo "No supported manifest found in projects/$(PROJECT_NAME)."; \
+		exit 1; \
+	fi
+
+install-python-project:
+	@$(MAKE) ensure-project PROJECT=$(PROJECT_NAME)
 	@$(MAKE) sync $(PROJECT_NAME)
 	@if [ "$(DOCKER_BUILD)" = "1" ]; then \
 		cd "projects/$(PROJECT_NAME)" && \
-			$(GIT_SSH_CMD) UV_PYTHON_INSTALL_DIR="$(UV_PYTHON_INSTALL_DIR)" uv sync --frozen --all-extras; \
+			$(GIT_SSH_CMD) UV_PYTHON_INSTALL_DIR="$(UV_PYTHON_INSTALL_DIR)" uv sync --frozen --all-extras --no-editable; \
 	else \
 		cd "projects/$(PROJECT_NAME)" && \
 			$(GIT_SSH_CMD) UV_PYTHON_INSTALL_DIR="$(UV_PYTHON_INSTALL_DIR)" uv sync --all-extras --group dev; \
 	fi
 	@$(MAKE) run-post-install PROJECT=$(PROJECT_NAME)
+
+install-js-project:
+	@$(MAKE) ensure-project PROJECT=$(PROJECT_NAME)
+	@$(MAKE) ensure-node
+	@cd "projects/$(PROJECT_NAME)" && \
+		if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+ensure-node:
+	@command -v node >/dev/null 2>&1 || { echo "Node.js is required (>= 20). Install it before running make install-js."; exit 1; }
+	@command -v npm >/dev/null 2>&1 || { echo "npm is required. Install Node.js (>= 20)."; exit 1; }
 
 run-post-install:
 	@$(MAKE) ensure-project PROJECT=$(PROJECT_NAME)
