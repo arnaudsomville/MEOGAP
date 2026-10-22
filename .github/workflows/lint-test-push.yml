@@ -1,0 +1,24 @@
+---
+name: Test Lint Push
+on:
+  push:
+    branches: [ '**' ] # Trigger on all push
+    tags: [ '**' ] # Trigger on all tags
+permissions:
+  contents: read
+jobs:
+  test-lint-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install tooling and projects
+        run: make install-dev-tooling && make install-modified-projects
+      - name: Quality checks
+        run: make code-quality-modified-projects
+      - name: Tests
+        run: make test-modified-projects

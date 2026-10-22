@@ -1,0 +1,9 @@
+# Ray related CVE: not fixed in last version as of 06-03-2026
+GHSA-72hv-8253-57qq
+
+# quinn-proto, a rust binary included in uv because of home/app/app_source/.venv/bin/uv
+# Problem for future me
+CVE-2026-31812
+
+# Issue with pygments, no fix as of 26/03/2026
+CVE-2026-4539

@@ -1,0 +1,16 @@
+{
+	"data": "ENC[AES256_GCM,data:LGfydA5U8dyXemhSj7NNE65MD+mgW5DLwIKB6fntinFrKasfzX0n1+xEHzB7MJviGejmAq8q3cHzb6S4MrzVNPAFzwLOceW3n4MnTgLIa9LoZ2hQj0KmzxJNcPXgQdQAJYE6rqPb6vZVydx6/Pr4fuIC4f7pwE65FBdGgEr35WCE0ZtlEmt5hjZS1XjaSlKbsg6pzIGqfQ/TImvhqBCYVsCBfmHHqL5AjqHb3kHNfnYclsZ+Excurlrtwk/yPDzNMRsrb6VISuBf+7dl97omronpXP6l5orJJKKMJrXBzl+abq/Abr+zA8dSAWbBdeqSzO6ZawwVG5eMcMjmF/o/co0PBEQwmCuuhFrBOtl0lnvQlzDqw6CBhecHRsUpGfuZnyOUfv8uYi8vrt0cvTVXsk0jL3ukFw65bm7tvwMOcxDOwUcPectW7Y9LV1PCDoc6sew9MeaBNFzRF8fw+xi6idxd+uTImM9xLkceuaMHol+d4ZcsvYVOgp5p/f1ywxVbDBLCA82OloAg21+iObDAVaOkmBiN9NmX9zTU/wtMUrMTAYgzrfNfmd6jmM5UoWHiNMSx2m5tu7FPf+0tg5jKrjcm2MF9H2PFcz/gaJ1gr5wk85IfL4VQPPfUj6rDb98p+q2xMatlAP204x3HAE/wI8ppdWASnkeMaEOyWLtWkQaKqmy5y2nsOLMbCE6wbCoSAfBQixJILis9iunmQ8DWU/ZovBGlaxuJljpOtzPfqL2Ivfr1WNVcyWUdD5CuFycDP/6bAAn4RtA8UpEaAik4wkTfPp4Wih0Rz8nrbl6nr3GZDU+AsPeDPLir3x+XCy4afzJi4/YdB9yXM8TESr4zKzNUjfUfBFoaUuXa5nx+GBJyYNHRVX9Bk0jjDOkLgrkqB9PeYyt1Ydfmv9tC6j0IM1Ctx/vg/q2b90WTKJv6jnL9DyKlGgSwEbzZmrlhy0zoDO0zipoL7mzoeIr5xVWGJat0fGXr1r8pZGm2n2r4tXAvkMgpNV20xe4S1pQc2lzNPLyNXJkchB3YFduG/J7hjOj3pW+muYoldv1Eq9Oyp7LtRWr2VteuOxne1QnirLDp6HAeEdL2SBHcVnOuvtXcFEB6dy/AEkeb7LH4v+nf+mjcjYckRixWl0XXryqFwB7EK8289QJUVIq9qbh9hsndahK8SyrpGhaiZ7IyXMQ1YAYH1EdAKDV2h3zApRdYUtQoH6dzt4mpEYymGxoq0PMlchafTUyOnUNriBMDqyqsuydlnVxoaq+z4vMnJQgfnKbBaayDxojxU1xaDB5av10IcZ8=,iv:VQ6fNk04dQPyk92NbpTJjahMXLVhI5flCreEJLAYP2I=,tag:M0Lbw/pdJKPIrOiyH8eMbQ==,type:str]",
+	"sops": {
+		"age": [
+			{
+				"recipient": "age1gkn3azssxr8e8j7wtd65nu20vzu8g9hknjvqqxdmu29ts5d5rdqqrzd2mf",
+				"enc": "-----BEGIN AGE ENCRYPTED FILE-----\nYWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA0SXJHRnVUOWg5UHBoSWtk\nWGdJNVV4NE02c0lrZkRXTnI5S1ljM0RMZ21VCjJ6TElYZ2lxUGZrLzdtdDRPellN\ndXlFSDZ1K1RaSElaR0V4a3F6dDhSaWcKLS0tIDYzOWJQcXdFL2NWSzY0OXdRRGZx\nK3g2V3VKZXoySDdMZGxVMUFLd2grMWsKxzffSFLo77T5dELG5KKdCP3UoPxNBYYe\nm8o7ssEUVx5rSBG7nwUpqaId48OgZDQVF2FiKrm0bByuSNYroEAyCQ==\n-----END AGE ENCRYPTED FILE-----\n"
+			}
+		],
+		"lastmodified": "2026-04-07T19:44:02Z",
+		"mac": "ENC[AES256_GCM,data:cuNnh2rGVVFKh4t3Oqj9AaE4Y9/TRw+TvgeKzlKHEMSvOb8ft0ZHz+r+xv3zc5ce1DuAdhWkm36rsJGTLliBkGrsgoNaNr9qYrDDVzP/2Tn2L9TfDezQpJmbMkBYvj+8AQomO8O9CWQnLigIaHUw8ZNDH/M85nrVstbEIplsV10=,iv:hcA9Pddb8Y12UJEAq6gM8nztD7xnHnyXh+fk7uIu4mM=,tag:HjZoDfD6ybwn8xEv2Q3QZg==,type:str]",
+		"unencrypted_suffix": "_unencrypted",
+		"mac_only_encrypted": true,
+		"version": "3.10.2"
+	}
+}
