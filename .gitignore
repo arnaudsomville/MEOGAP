@@ -153,3 +153,6 @@ build_secrets_decrypted
 
 # PDM environment marker
 .pdm-python
+
+# Local working plan (not versioned)
+PLAN.md
