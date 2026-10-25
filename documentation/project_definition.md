@@ -1,6 +1,6 @@
 # MEOGAP — Modular Earth Observation & Geospatial Analytics Platform
 
-**Project Definition — v0.12 (Concept and Requirements)**
+**Project Definition — v0.13 (Concept and Requirements)**
 
 **Status:** Living draft · **Date:** 25 October 2026
 
@@ -213,7 +213,7 @@ Requirements are described at three levels:
 
 ### 5.2 Frontend Requirements
 
-**Alignment note:** The `FE`, `BE`, `CORE`, and `ENG` requirements are aligned with the v0.12 system requirements. The component passes are complete.
+**Alignment note:** The `FE`, `BE`, `CORE`, and `ENG` requirements remain aligned with the system requirements. This revision updates the development roadmap to introduce backend architecture, mock-backed core engines, and an MVP UI earlier in M0, and to sequence the first real product and analysis baseline before the reusable Product Engine and the first configurable Proxy Engine.
 
 | ID | Priority | Requirement | Linked system requirements |
 |---|---|---|---|
@@ -370,11 +370,14 @@ The roadmap describes **learning-enabled capabilities**, not mandated scientific
 | Stage | Main objective | Tangible deliverable |
 |---|---|---|
 | **0 — Scientific feasibility** | Demonstrate access to one EO dataset and calculation or extraction of one meaningful value. | Small reproducible scientific experiment. |
-| **1 — First end-to-end exploration (M0)** | Connect product selection, an AOI, POI, or LOI spatial input, a multi-resolution satellite basemap, request submission with cost visibility, automatic request-status updates, final and intermediate downloads, a Requests tab, **Display on map** for successful requests, a basic SAU/AOI time series with missing-data handling, multi-account-capable authentication, a real credit ledger, and a minimal proxy placeholder. | A usable authenticated spatial-input-driven, single-product exploration flow with automatic status updates, credit accounting, downloadable provenance, and a minimal proxy placeholder. |
-| **2 — Reusable Product Engine** | Introduce a small catalogue, reusable scientific products, explicit dependencies and repeatable results. Replace the proxy placeholder with a first configurable proxy engine. | A second product can be introduced with limited impact on the rest of the platform; a first proxy can be configured and evaluated. |
-| **3 — Richer spatial and temporal analysis** | Improve spatial aggregation, temporal comparison and compatibility with an additional EO source or product family. | A demonstrated multi-source or multi-product analytical capability. |
-| **4 — Advanced Proxy Engine** | Extend proxy rules, temporal conditions and monitoring outputs. | One or more understandable proxies using already developed products. |
-| **5 — Optional advanced capabilities** | Add sophisticated scientific methods or execution features as interest and needs justify. | Individually documented experiments or platform improvements. |
+| **1 — First end-to-end exploration (M0)** | Establish the backend architecture, versioned shared contracts, mock-backed Data Retrieval and Resampling/Rescaling engines, and an MVP UI; then connect product selection, an AOI, POI, or LOI spatial input, a multi-resolution satellite basemap, request submission with cost visibility, automatic request-status updates, final and intermediate downloads, a Requests tab, **Display on map**, a basic SAU/AOI time series with missing-data handling, multi-account-capable authentication, a real credit ledger, and a minimal proxy placeholder. | A usable authenticated spatial-input-driven, single-product exploration flow built on stable interfaces, with automatic status updates, credit accounting, downloadable provenance, an early UI foundation, and a minimal proxy placeholder. |
+| **2 — First real scientific product and analysis baseline (M1)** | Replace the technical probe with one real EO product, real source access, real resampling, a first validation record, and basic spatial and temporal analysis. | One real product is computed, analysed spatially and temporally, documented, and compared with a reference or an explicitly justified alternative. |
+| **3 — Reusable Product Engine and richer analysis (M2)** | Introduce a reusable product registry, explicit dependencies and repeatable results, a second product, and richer spatial, temporal, multi-source, and quality analysis. | A second product can be introduced with limited impact; dependencies, intermediates, comparisons, and quality are addressed coherently. |
+| **4 — First configurable Proxy Engine (M3)** | Replace the proxy placeholder with a first configurable proxy engine built on mature products. | A first proxy can be configured and evaluated from existing products. |
+| **5 — Advanced Proxy Engine (M4)** | Extend proxy rules, temporal conditions, monitoring outputs, and optional alerts. | One or more understandable proxies using already developed products, with monitoring and notification support where justified. |
+| **6 — Optional advanced capabilities (M5)** | Add sophisticated scientific methods, export/interoperability, external API/MCP access, performance work, or automation as interest and needs justify. | Individually documented experiments or platform improvements that do not redefine the Product Engine foundations. |
+
+Detailed epics are maintained in `ROADMAP.md`; ticket breakdowns are added as each milestone is refined. This table defines the capability order, and the roadmap document defines milestone and epic sequencing.
 
 Advanced scientific products, including LST, **can be explored at any suitable point once their prerequisites exist**. They are not contingent on completing the Proxy Engine, and no specific one is required to finish the roadmap.
 
@@ -431,4 +434,4 @@ An agent reading the proposal should distinguish **required capabilities**, **la
 
 ---
 
-**End of proposal — v0.12.**
+**End of proposal — v0.13.**
