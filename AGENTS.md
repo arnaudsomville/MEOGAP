@@ -4,7 +4,7 @@
 
 This file routes coding agents to the appropriate role and authoritative project documentation. **It is a dispatcher, not a reference manual.** Keep detailed rules, design decisions, and validation procedures in the referenced documents rather than duplicating them here.
 
-**MEOGAP** (Modular Earth Observation & Geospatial Analytics Platform) is a personal project primarily intended to **learn Earth observation and remote sensing through scientific experimentation**. The **Product Engine** is its central capability: it progressively transforms Earth observation inputs into reusable scientific products (internal levels L0–LN). A configurable **Proxy Engine** is a planned extension, not a prerequisite for computing products. Use cases are illustrative and may change.
+**MEOGAP** (Modular Earth Observation & Geospatial Analytics Platform) is a personal project primarily intended to **learn Earth observation and remote sensing through scientific experimentation**. The **Product Engine** is its central capability: it progressively transforms Earth observation inputs into reusable scientific products (internal levels L0–LN). A configurable **Indicator Engine** is a planned extension, not a prerequisite for computing products. Use cases are illustrative and may change.
 
 Do not treat proposed features as implemented features, or exploratory scientific ideas as mandatory deliverables.
 
@@ -34,7 +34,7 @@ When project assumptions conflict with the authoritative documentation, **follow
 | **Scientific Validation Agent** | Verifying physical meaning, comparing reference products, evaluating bias/uncertainty, and documenting scientific limitations. | `agents/SOFTWARE_VALIDATION_PLAN.md`; `documentation/project_definition.md` |
 | **Backend & API Engineer** | REST capabilities, analysis requests, statuses, result discovery, orchestration, and external integrations. | `documentation/project_definition.md`; `agents/CODING_STANDARDS.md` |
 | **Frontend & Visualization Engineer** | Maps, AOIs, request-status views, results on maps, plots, and spatial/temporal exploration. | `documentation/project_definition.md`; `agents/CODING_STANDARDS.md` |
-| **Proxy & Monitoring Engineer** | Configurable indicators, product combinations, monitoring rules, and potential alerts. | `documentation/project_definition.md`; `agents/CODING_STANDARDS.md` |
+| **Indicator & Monitoring Engineer** | Configurable monitoring indicators, product combinations, monitoring rules, and potential alerts. | `documentation/project_definition.md`; `agents/CODING_STANDARDS.md` |
 | **Execution & Infrastructure Engineer** | Background processing, execution reliability, resource usage, deployment, and optional event notifications. | `README.md`; `documentation/project_definition.md`; `agents/CODING_STANDARDS.md` |
 | **Design Engineer** | Feature design, module boundaries, architectural consistency, performance, and maintainability. | `documentation/project_definition.md`; `agents/CODING_STANDARDS.md` |
 | **Software Validation Agent** | Unit/integration test strategy, regressions, acceptance checks, and consistency defects. | `agents/UNIT_TEST_GUIDE.md`; `agents/SOFTWARE_VALIDATION_PLAN.md` |
@@ -49,7 +49,7 @@ When project assumptions conflict with the authoritative documentation, **follow
 Consult `documentation/project_definition.md` for the full rationale and requirements. In particular:
 
 - **Scientific learning comes first.** Prefer understanding, documenting, and validating a method over adding features for their own sake.
-- **The Product Engine comes first.** Products may be useful independently of monitoring proxies. Do not introduce the Proxy Engine as a dependency of scientific computation.
+- **The Product Engine comes first.** Products may be useful independently of monitoring indicators. Do not introduce the Indicator Engine as a dependency of scientific computation.
 - **Internal L0–LN levels are not provider processing levels.** Respect distinctions between native measurements, derived products, and analytical aggregations.
 - **Spatial representation is not fixed.** H3 is a candidate analytical grid, not a mandatory processing or storage format. Preserve distinctions between native resolution and spatial analysis units.
 - **Quality matters.** Do not silently treat cloudy, missing, invalid, or unobserved data as measured zero. Record assumptions, provenance, and limits of scientific results.
