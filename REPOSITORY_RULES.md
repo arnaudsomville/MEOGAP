@@ -1,0 +1,96 @@
+# Repository Rules
+
+## Purpose
+
+This document defines repository-wide rules for language, planning hierarchy and GitHub issue authoring. It complements, and does not replace, `AGENTS.md` (agent roles and routing), `documentation/project_definition.md` (intended behavior), `ROADMAP.md` (milestone, epic and ticket direction), `agents/CODING_STANDARDS.md` (code conventions), `agents/UNIT_TEST_GUIDE.md` (unit tests) and `agents/SOFTWARE_VALIDATION_PLAN.md` (validation).
+
+When rules conflict, report the conflict rather than silently inventing a policy.
+
+## Language
+
+All repository artifacts are written in English:
+
+- GitHub milestones, epics and tickets, including titles and bodies;
+- pull requests, commit messages and code-facing documentation;
+- this document and agent-facing rules.
+
+This consolidates the convention already stated in `ROADMAP.md` section 3.4. Scientific references and quoted source titles retain their original language.
+
+## Planning hierarchy
+
+**Milestone** — A major scientific or technical capability to achieve, with demonstrable exit criteria. Milestones have no fixed deadlines. Epic and ticket counts are indicative, not commitments.
+
+**Rolling backlog** — An open-ended container for secondary ideas. It is not a delivery milestone, has no exit criteria or due date, and carries no delivery commitment. Items may be promoted to a milestone, deferred, merged or dropped. M6 is the current instance (Minfinite).
+
+**Epic** — A coherent workstream contributing to a milestone, grouping related development objectives. Each epic has a stable ID and title, a milestone, an objective, scope and out-of-scope boundaries, and either acceptance/exit signals (detailed epics) or non-binding candidate directions (outline epics). Epics are not implementation instructions.
+
+**Ticket** — A bounded research, design, implementation or validation step. Tickets are indicative guidelines, not mandatory implementation instructions. Each ticket has a stable ID, a parent epic, a milestone and a planning state.
+
+Identifiers are stable planning keys. Preserve existing milestone, epic and ticket identifiers and native GitHub relationships (milestone, parent/sub-issue, dependencies). Never renumber silently; retire removed identifiers instead.
+
+## Ticket philosophy
+
+Tickets guide the maintainer's personal research and supervised development. They describe what must be achieved, investigated and verified without prematurely prescribing how to implement it.
+
+The maintainer conducts research, evaluates alternatives and makes architectural decisions together with the agent before agreeing on an implementation and testing plan.
+
+Creating or selecting a ticket never authorizes autonomous implementation. Tickets can evolve, be split, merged, reordered or removed as the project progresses.
+
+## Ticket format
+
+New and refined tickets use the following sections, concisely:
+
+1. **Context & Objective** — Why the work matters and the expected outcome.
+2. **Scope / Out of Scope** — Boundaries and deferred capabilities.
+3. **Research Questions** — Topics to investigate, candidate approaches and trade-offs.
+4. **Open Decisions** — Choices requiring discussion and approval.
+5. **Expected Deliverables** — Concrete outcomes.
+6. **Acceptance Criteria & Verification** — How success will be demonstrated and tested.
+7. **Dependencies & References** — Related issues and applicable requirements.
+8. **Implementation Plan** — Initially `TBD`; refined together after research and approval.
+
+Never pre-fill research findings, decisions or implementation plans as if they were already agreed. Keep uncertainty and open questions visible.
+
+## Epic format
+
+Detailed epics state:
+
+- stable ID and title, milestone and objective;
+- intended capability and acceptance/exit signals;
+- scope and out-of-scope boundaries;
+- dependencies, prerequisites and references;
+- source link and planning state.
+
+Outline epics state:
+
+- stable ID and title, milestone and intended capability;
+- non-binding candidate directions;
+- prerequisites and scientific or technical guardrails;
+- an explicit note that tickets are deferred.
+
+## Milestone format
+
+A milestone states its objective and exit demonstration, contains no fixed due date, and treats epic and ticket counts as indicative. A milestone is not complete until its exit criteria are demonstrated.
+
+## Workflow and guardrails
+
+The roadmap provides direction; research determines the approach; implementation requires explicit approval; tests demonstrate completion.
+
+- Do not make arbitrary technical decisions or prematurely prescribe files, classes, libraries or architectures.
+- Do not decompose work artificially to fill a ticket count.
+- Do not infer scientific validation from a passing software test.
+- Do not start implementation from a ticket alone.
+- Record assumptions, provenance, quality and limitations explicitly.
+
+## Applicability and migration
+
+This format applies to all new milestones, epics and tickets, and to tickets when they are refined. The existing M0–M4 ticket bodies are preserved; migrate them opportunistically when a ticket is refined, unless the maintainer explicitly requests a bulk migration. Existing identifiers and native relationships are never changed by a format migration.
+
+## References
+
+- `AGENTS.md` — agent roles, routing and execution policy.
+- `ROADMAP.md` — milestone, epic and ticket direction and identifiers.
+- `documentation/project_definition.md` — intended scientific behavior and requirements.
+- `agents/CODING_STANDARDS.md` — coding conventions.
+- `agents/UNIT_TEST_GUIDE.md` — unit-test rules.
+- `agents/SOFTWARE_VALIDATION_PLAN.md` — scientific and software validation.

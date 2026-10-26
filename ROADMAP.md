@@ -10,7 +10,7 @@
 
 - **Science before platform breadth.** The Product Engine exists to study Earth observation, algorithms, data quality and validation. Domain examples are optional; do not turn the backlog into a fixed application catalogue.
 - **A real existing monorepo.** Reuse `meogap_core` (Python library), `meogap_api`, `meogap_worker` and `meogap_ui` (React/Vite), existing Make/uv/npm tooling, Buildx Bake, GitHub CI and conventions. A new repository system is **not** a milestone deliverable.
-- **Local-first only.** M0 needs Docker Compose for repeatable development and E2E tests. No production or hosted infrastructure is planned in M0–M5. Even M6+ does not automatically imply deployment.
+- **Local-first only.** M0 needs Docker Compose for repeatable development and E2E tests. No production or hosted infrastructure is planned in M0–M5. Even M6 does not automatically imply deployment; hosted infrastructure remains optional.
 - **Minimal M0.** One useful integrated AOI-based prototype, real HTTP/API boundaries, deterministic simulated Core, basic map/series UI and functional tests. No real user sign-in, ownership enforcement, credit ledger, robust persistence or production operations in M0.
 - **First real science in M1.** Start with a small L1 product family (e.g. NDVI and a second well-defined index). Source access, validity masks, spatial treatment and validation must be scientifically explicit.
 - **H3 is an intentional pragmatic V1 spatial strategy.** Use a replaceable spatial alignment/aggregation abstraction; allow an early H3-based common support, while recording the approximation, native resolution, cell coverage, masks and method version. H3 does not constitute exact per-pixel raster registration, and aggregation order can affect nonlinear index results. A more precise V2 is learning-driven, not a prerequisite for M1.
@@ -30,17 +30,17 @@
 | **M3 — Platform & UX Consolidation** | Improve the full product-exploration experience and reinforce local services, identity, request execution, result management and testability. | 6 | 16 | Architecture and UX are informed by the actual M1–M2 scientific workflows. |
 | **M4 — First Indicator Engine** | Define, configure, evaluate and understand real Monitoring Indicators built from scientific products; prototype and consolidate the initial visual configuration experience. | 5 | 13 | Indicator UX design is a first-class epic, not a by-product of API implementation. |
 | **M5 — Advanced Monitoring Indicators** | Richer rule composition, temporal evaluation, monitoring history and progressive refinement of indicator UX; notifications are optional. | 4 | Not yet refined | Epic-level outline only; tickets are intentionally deferred. |
-| **M6+ — Exploratory Extensions** | Optional scientific and interoperability extensions such as LST, data exchange, external API/MCP and performance work, when justified by learning. | Not fixed | Not yet refined | Remote/production infrastructure is not planned; any future need would be a separate, optional decision. |
+| **M6 — Secondary Platform & Scientific Extensions** | Rolling backlog (Minfinite) of optional secondary platform and scientific capabilities; epics may be promoted, deferred or dropped. | 11 | Not yet refined | No fixed exit; not a delivery milestone; no impact on M0–M5. |
 
-Milestones have **no due dates**. M0–M4 are elaborated below as a first issue catalogue. M5 is an epic-only outline, and M6+ is an open exploration horizon.
+Milestones have **no due dates**. M0–M4 are elaborated below as a first issue catalogue. M5 is an epic-only outline; M6 is an open rolling backlog (Minfinite); M7+ is an open exploration horizon.
 
 ## 3. Backlog and GitHub issue conventions
 
-1. Create one GitHub **Milestone** for each active M0–M5 stage (M6+ optional). Create one GitHub **Epic issue** for each heading such as `[M1-E03] Spatial Alignment & Aggregation Engine — H3 V1`, with the matching milestone. Create each `[M1-E03-T01] …` as a task/sub-issue of that epic. Do not invent extra tasks when generating issues from this file.
+1. Create one GitHub **Milestone** for each active M0–M6 stage (M7+ optional). Create one GitHub **Epic issue** for each heading such as `[M1-E03] Spatial Alignment & Aggregation Engine — H3 V1`, with the matching milestone. Create each `[M1-E03-T01] …` as a task/sub-issue of that epic. Do not invent extra tasks when generating issues from this file.
 2. Preserve identifiers as stable planning keys; issue numbers assigned by GitHub are separate. If a ticket is removed, keep its identifier retired rather than silently renumbering later tickets.
 3. All tickets start **Proposed / Backlog**. Promote a ticket to **Ready for implementation** only after the user has researched options, agreed the solution and explicitly reviewed an implementation plan and test plan. Neither a detailed ticket nor a roadmap milestone is authorization to start coding.
-4. Issue titles, bodies, PRs and code-facing documentation use **English** in line with the existing project convention. Avoid invented due dates, estimates, priorities, implementation classes or files. Type labels may express `research`, `design`, `implementation`, `validation` and `ux`.
-5. For each ticket, copy **Outcome**, **Research / decisions**, **Evidence to accept**, **Dependencies**, and **Related requirements** below into the issue. Add empty editable sections **Research notes**, **Decisions / ADR**, **Implementation plan**, **Test plan**, and **Results / evidence**; never auto-fill these as if decided.
+4. Issue titles, bodies, PRs and code-facing documentation use **English**; see [`REPOSITORY_RULES.md`](REPOSITORY_RULES.md). Avoid invented due dates, estimates, priorities, implementation classes or files. Type labels may express `research`, `design`, `implementation`, `validation` and `ux`.
+5. Use the ticket format in [`REPOSITORY_RULES.md`](REPOSITORY_RULES.md); preserve identifiers, dependencies and native relationships. Existing ticket bodies remain valid and are migrated when refined; never auto-fill research, decisions or implementation plans as if decided.
 6. Epic order and dependencies are guides, not a forced critical path. Research/prototyping can run in parallel. Update, split, merge, defer or close tickets when real scientific findings justify it; record the reason and traceability impact.
 7. An agent asked to **create GitHub issues** may create issues and link them only when expressly instructed; it must **not** change source code, open PRs, commit, push or begin execution from the roadmap alone.
 
@@ -935,11 +935,27 @@ M5 is intentionally not ticketized yet; the M4 prototype, evaluation findings an
 | **M5-E03 — Advanced Indicator UX** | Evolve the M4 builder to support added complexity without sacrificing readability or scientific interpretability. |
 | **M5-E04 — Optional Alerts & Notifications** | Add alerts only when compelling research or actual usage justifies their design and lifecycle. |
 
-## 10. M6+ — Exploratory Extensions (open horizon)
+## 10. M6 — Secondary Platform & Scientific Extensions (epic outline only)
 
-Possible work: literature-derived products such as land surface temperature **after** thermal, atmospheric and emissivity prerequisites; additional scientific sources; more accurate V2 spatial alignment; interoperability/exports; optional external REST/MCP clients; profiling/scaling only against demonstrated limitations. Products may be explored earlier when scientifically ready—M6+ is not a rigid gate for scientific curiosity.
+M6 is an open-ended rolling backlog (Minfinite), not a finite delivery milestone. It has no exit criteria or due date; epics may be promoted to a milestone, deferred, merged or dropped. No M6 tickets are created yet; candidate directions are illustrative, not commitments. M6 does not gate or block M0–M5.
 
-**No hosted or production infrastructure is currently planned.** If it ever becomes useful, treat it as an independent, optional, explicitly scoped later milestone (M6++ or beyond), not as an implied obligation of M3 or M6.
+| Proposed epic | Intended capability | Candidate directions (non-binding) | Prerequisites / guardrails |
+|---|---|---|---|
+| **M6-E01 — Hosted Infrastructure & Operations** | Deploy and operate MEOGAP in a hosted environment when local workflows no longer suffice. | Configuration and secrets, persistence, backups, access control, observability, cost boundaries. | Only if justified; no production SaaS commitment. |
+| **M6-E02 — Elastic Execution & Resource Management** | Allocate and scale worker resources automatically while keeping execution bounded and recoverable. | Worker autoscaling, resource limits, queue/backpressure, cost-aware scheduling, failure recovery. | Only against demonstrated bottlenecks; local Docker Compose remains the default. |
+| **M6-E03 — Automated Monitoring & Scheduling** | Schedule scene discovery and monitoring work without losing REST as the source of truth. | Scheduled scene discovery, automatic triggers, deduplication, freshness/coverage checks, optional notifications. | No guaranteed real-time monitoring; notifications remain optional. |
+| **M6-E04 — External Access & MCP** | Expose controlled external access to existing services for agents and other consumers. | REST/MCP clients, authentication, authorization, audit, quotas, versioned contracts. | Reuse existing REST contracts; no arbitrary code execution; security review required. |
+| **M6-E05 — Advanced Scientific Products** | Add physically based or literature-derived scientific products once their prerequisites exist. | Land surface temperature (Ermida et al. physical retrieval candidate), local turbidity/water optics, nighttime radiance, additional non-ML or literature-derived products. | LST cannot be inferred from NDVI alone; explicit units, uncertainty and validation; no health or causal claims. ML-based product generation is handled in M6-E10. |
+| **M6-E06 — Monitoring Proxies & Change Detection** | Research indirect monitoring proxies and multi-source change detection without overstating evidence. | Mining-detection proxies, multi-source/cross-sensor change detection, anomalies, nighttime luminosity. | Indicators are not proof of cause, crime or illegal activity; document assumptions, sensitivity and limitations. |
+| **M6-E07 — Scientific Quality & Spatial Methods** | Improve spatial treatment, uncertainty handling and scientific quality beyond the H3 V1 baseline. | More precise raster alignment V2, uncertainty propagation, native-resolution preservation, validation improvements. | H3 V1 remains selectable; only pursue when demonstrated limitations justify it. |
+| **M6-E08 — Interoperability & Data Exchange** | Make products and provenance usable outside the original workflow. | Exports, metadata/provenance interchange, open formats, external consumers. | Align with versioned contracts; avoid format churn. |
+| **M6-E09 — Performance & Cost Optimization** | Improve throughput and cost efficiency against measured limitations. | Caching, result reuse, profiling, bounded processing, cost visibility. | No premature scaling; measure before optimizing. |
+| **M6-E10 — ML-Based Product Generation** | Generate scientific products using versioned machine-learning models and reproducible inference pipelines. | Land-cover classification; ground-level ozone estimation (e.g., He et al., 2024, XGBoost + SHAP); optional Prithvi-EO-2.0 (300M/600M) fine-tuning via TerraTorch/Hugging Face; model registry, provenance, spatial/temporal validation, uncertainty and interpretability. | Representative labels and ground-station data where required; spatial and temporal cross-validation; extreme-value bias; statistical proxy, not a direct measurement; no health or causal claims; GPU/compute, versioning, licensing and attribution; classical baselines first. |
+| **M6-E11 — User-Trained Indicators** | Allow user-labeled examples to train, validate and apply learned monitoring indicators. | Positive/negative samples; classical ML first (Random Forest, gradient boosting, anomaly detection); guided training workflow; spatial/temporal validation; model registry; indicator integration; interpretability. | No auto-training without sufficient labels; learned indicators are not scientific validation; human approval required; keep indicator training separate from Product Engine; no causal or criminal claims. |
+
+### M7+ — Open horizon
+
+M7+ remains an open horizon for ideas not yet scoped, including further scientific products, cross-sensor fusion, improved aggregation and uncertainty, richer interoperability, and other capabilities justified by learning. It is not a commitment. Products may be explored earlier when scientifically ready; M6 and M7+ are not rigid gates for scientific curiosity.
 
 ## 11. Cross-cutting disciplines
 
@@ -978,4 +994,4 @@ The supplied `project_definition.md` v0.13 still treats **P0 = fully delivered i
 
 ---
 
-**Draft size:** 28 detailed epics, 70 indicative tickets across M0–M4; four additional outline epics in M5. All ticket IDs are unique and all declared ticket dependencies refer to entries in this document.
+**Draft size:** 28 detailed epics and 70 indicative tickets across M0–M4; four M5 outline epics; eleven M6 outline epics and zero M6 tickets. All ticket IDs are unique and all declared ticket dependencies refer to entries in this document.
