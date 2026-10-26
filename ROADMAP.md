@@ -1,19 +1,19 @@
 # MEOGAP — Development Roadmap v1
 
-**Status:** Draft derived from `documentation/project_definition.md` v0.13.
+**Status:** Draft derived from `documentation/project_definition.md` v0.14.
 **Purpose:** Sequence learning-enabled capabilities, not fixed deadlines. The order may evolve as scientific interests and technical findings change.
 
 ## 1. Principles
 
 - Scientific learning and validation come before feature accumulation.
-- The Product Engine comes first; the Proxy Engine is a later capability.
+- The Product Engine comes first; the Indicator Engine is a later capability.
 - Internal L0–LN levels are not provider processing levels.
 - Spatial representation is not fixed; H3 is a candidate, not a commitment.
 - Missing, masked, invalid, and unobserved data are never silently treated as zero.
 - Every supported product carries versioned documentation, provenance, quality metadata, and an explicit validation status.
 - Technical decisions that do not change requirements belong in ADRs or tickets, not in the roadmap.
 - Interfaces are frozen through versioned contracts, contract tests, and deterministic mocks before real providers are integrated.
-- M0 proves the request workflow end to end with a technical probe, mock-backed core engines, and a minimal proxy placeholder; it does not require a real scientific product.
+- M0 proves the request workflow end to end with a technical probe, mock-backed core engines, and a minimal indicator placeholder; it does not require a real scientific product.
 
 ## 2. Milestones at a glance
 
@@ -22,8 +22,8 @@
 | **M0** | Minimal product definition, architecture, mock engines, MVP UI, and first E2E exploration | 12 | To be refined | One authenticated, cost-aware, spatial-input request reaches a downloadable, mappable result through realistic contracts and mock engines. |
 | **M1** | First real scientific product and analysis baseline | 6 | Refined at milestone entry | One real EO product is computed, analysed spatially and temporally, documented, and compared with a reference. |
 | **M2** | Reusable Product Engine and richer analysis | 7 | Refined at milestone entry | A second product is added with limited impact; dependencies, intermediates, multi-source analysis, and quality are addressed. |
-| **M3** | First configurable Proxy Engine | 3 | Refined at milestone entry | A first proxy can be configured and evaluated from mature products. |
-| **M4** | Advanced Proxy Engine | 4 | Refined at milestone entry | Rules, temporal conditions, monitoring outputs, and optional alerts are supported. |
+| **M3** | First configurable Indicator Engine | 3 | Refined at milestone entry | A first monitoring indicator can be configured and evaluated from mature products. |
+| **M4** | Advanced Indicator Engine | 4 | Refined at milestone entry | Rules, temporal conditions, monitoring outputs, and optional alerts are supported. |
 | **M5** | Optional advanced capabilities | 5 | Refined at milestone entry | Advanced scientific or platform capabilities are added when justified by learning needs. |
 
 M0 is detailed first. M1–M5 are refined before each milestone starts. Ticket breakdowns are listed and validated before any commit that adds them.
@@ -42,7 +42,7 @@ The order below is intentional. Contracts and architecture come before the UI an
 |---:|---|---|
 | 1 | **M0-E01 Product definition, documentation model, and test strategy** | Define the minimal probe product, spatial/temporal semantics, documentation and validation model, and functional test strategy. |
 | 2 | **M0-E02 Backend architecture and service boundaries** | ADR comparing a modular monolith with split catalog, identity, and request-gateway services. Decide boundaries before freezing contracts. |
-| 3 | **M0-E03 Contracts and product model** | Versioned shared contracts, product definitions, dependency graph, request/result/status/provenance/quality/validation/credit/proxy contracts, and engine interfaces. |
+| 3 | **M0-E03 Contracts and product model** | Versioned shared contracts, product definitions, dependency graph, request/result/status/provenance/quality/validation/credit/indicator contracts, and engine interfaces. |
 | 4 | **M0-E04 MVP UI** | Contract-first UI foundation: shell, navigation, catalogue, basemap, AOI/POI/LOI, request composer, credits, Requests view, live-update placeholder, downloads, and UI tests. |
 | 5 | **M0-E05 Core engines and mocks** | Data Retrieval Engine and Resampling/Rescaling Engine with deterministic mocks, contract tests, and integration points. |
 | 6 | **M0-E06 Authentication and ownership** | Multi-account-capable authentication, sessions, trusted server-side identity, and ownership enforcement. |
@@ -50,7 +50,7 @@ The order below is intentional. Contracts and architecture come before the UI an
 | 8 | **M0-E08 Catalogue, documentation, and quality backend** | Catalogue API, versioned documentation, validation records, quality metadata, and completeness gate. |
 | 9 | **M0-E09 Persistence, request lifecycle, live updates, and downloads** | Persistence, state machine, job queue, worker, recovery, request APIs, owner-scoped events, and downloads. |
 | 10 | **M0-E10 Probe computation and engine integration** | Integrate mocked engines, compute the probe, crop to spatial input, expose map data, time series, missing/masked/zero states, and SAU/AOI summaries. |
-| 11 | **M0-E11 Proxy placeholder** | Owner-scoped proxy definitions, create/list, stub evaluation, non-map placeholder result, and UI integration. |
+| 11 | **M0-E11 Indicator placeholder** | Owner-scoped indicator definitions, create/list, stub evaluation, non-map placeholder result, and UI integration. |
 | 12 | **M0-E12 Engineering baseline, CI, and operations** | CI gates, CVE, migrations, health/readiness, structured logs, audit correlation, documented commands, and reproducibility. |
 
 ### 3.3 M0-E01 ticket for functional tests
@@ -83,7 +83,7 @@ The order below is intentional. Contracts and architecture come before the UI an
 - request composer with product, spatial input, inclusive UTC window, parameters, cost estimate, and explicit errors;
 - persistent credit balance and actual-cost display;
 - Requests view with statuses, failure reasons, live-update placeholder, manual refresh fallback, and download actions;
-- non-map proxy placeholder view for creating, listing, and inspecting stub proxy evaluations;
+- non-map indicator placeholder view for creating, listing, and inspecting stub indicator evaluations;
 - contract-derived mock API and deterministic fixtures;
 - Playwright UI scenarios and smoke checks.
 
@@ -125,7 +125,7 @@ The recommended starting hypothesis is a modular monolith with explicit module b
 - The time series distinguishes missing, masked, and genuine zero values; coverage is explicit.
 - A basic SAU or AOI-summary aggregation is selectable and interpretable.
 - Provenance, quality status, quality index (`unknown` allowed), documentation, and validation status are visible.
-- The minimal proxy placeholder can be created and listed through the API and the non-map UI placeholder, and stub-evaluated outside the map layer.
+- The minimal indicator placeholder can be created and listed through the API and the non-map UI placeholder, and stub-evaluated outside the map layer.
 - Interrupted processing recovers or fails explicitly without losing request state.
 - CI is green, migrations are versioned, and no secrets are committed.
 
@@ -152,22 +152,22 @@ The recommended starting hypothesis is a modular monolith with explicit module b
 | **M2-E06 Discovery** | Request filtering/sorting/pagination and catalogue search. |
 | **M2-E07 Operational maturity** | Metrics/traces, backup/restore, and license/SBOM tracking. |
 
-## 6. M3 — First configurable Proxy Engine
+## 6. M3 — First configurable Indicator Engine
 
 | Epic | Objective |
 |---|---|
-| **M3-E01 Proxy rule model** | Rules, temporal conditions, and combinations of existing products. |
-| **M3-E02 Proxy configuration and evaluation** | Configure a proxy and evaluate it over products and time. |
-| **M3-E03 Proxy API and UI** | Create, inspect, and display proxy configuration and evaluation results. |
+| **M3-E01 Indicator rule model** | Rules, temporal conditions, and combinations of existing products. |
+| **M3-E02 Indicator configuration and evaluation** | Configure a monitoring indicator and evaluate it over products and time. |
+| **M3-E03 Indicator API and UI** | Create, inspect, and display indicator configuration and evaluation results. |
 
-## 7. M4 — Advanced Proxy Engine
+## 7. M4 — Advanced Indicator Engine
 
 | Epic | Objective |
 |---|---|
 | **M4-E01 Advanced rules and temporal conditions** | Richer rule composition and temporal logic. |
 | **M4-E02 Monitoring and evaluation outputs** | Multi-product monitoring results and evaluation history. |
-| **M4-E03 Proxy API and UI extensions** | Advanced configuration, inspection, and comparison. |
-| **M4-E04 Optional alerts and notifications** | Notify on configured proxy conditions without replacing REST. |
+| **M4-E03 Indicator API and UI extensions** | Advanced configuration, inspection, and comparison. |
+| **M4-E04 Optional alerts and notifications** | Notify on configured indicator conditions without replacing REST. |
 
 ## 8. M5 — Optional advanced capabilities
 
@@ -195,7 +195,7 @@ The recommended starting hypothesis is a modular monolith with explicit module b
 
 ## 10. Traceability
 
-`documentation/project_definition.md` v0.13 is authoritative. The matrix below is the P0 baseline. BDD identifiers are acceptance labels; final Gherkin files belong in `tests/functional/features/`.
+`documentation/project_definition.md` v0.14 is authoritative. The matrix below is the P0 baseline. BDD identifiers are acceptance labels; final Gherkin files belong in `tests/functional/features/`.
 
 | SYS | Responsible components | BDD sketch | Target milestone |
 |---|---|---|---|
@@ -208,7 +208,7 @@ The recommended starting hypothesis is a modular monolith with explicit module b
 | SYS-07 | BE-05, BE-06, CORE-05, CORE-08, FE-05, FE-17 | `E2E-SERIES-01`, `E2E-QUAL-01` | M0 |
 | SYS-08a | BE-05, CORE-04, FE-04 | `E2E-REQ-01`, `E2E-SERIES-01` | M0 |
 | SYS-10 | BE-04, BE-06, BE-19, BE-21, CORE-06, CORE-07, FE-05, FE-17 | `E2E-PROV-01` | M0 / M1 |
-| SYS-11 | BE-13, BE-14, CORE-11, FE-07 | `E2E-PROXY-01` (placeholder) | M0 / M3 |
+| SYS-11 | BE-13, BE-14, CORE-11, FE-07 | `E2E-INDICATOR-01` (placeholder) | M0 / M3 |
 | SYS-12 | BE-04, BE-07, BE-11, BE-12, BE-20, FE-03, FE-06, FE-09, FE-15, FE-19 | `E2E-REQ-02`, `E2E-OWN-01` | M0 |
 | SYS-13 | BE-09, BE-12, FE-09 | `E2E-DL-01` | M0 |
 | SYS-14a | BE-01, BE-06, CORE-12, CORE-15, FE-01, FE-03, FE-05 | `E2E-CAT-01`, `E2E-PROV-01` | M0 / M1 |
@@ -304,7 +304,7 @@ These are working assumptions, not requirements. They may change through ADRs.
 | Core engines | Interfaces in contracts; deterministic mocks in M0; real adapters in M1. |
 | MVP UI | Contract-first with a mock API; frontend slices of credits, spatial input, and requests; minimal auth/catalogue shell. |
 | Authentication | Multi-account-capable mock or basic provider in M0; mechanism remains an ADR. |
-| Proxy | Minimal placeholder in M0; configurable engine in M3; advanced rules in M4. |
+| Indicator | Minimal placeholder in M0; configurable engine in M3; advanced rules in M4. |
 
 ## 16. Open decisions
 

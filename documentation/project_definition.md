@@ -1,8 +1,8 @@
 # MEOGAP — Modular Earth Observation & Geospatial Analytics Platform
 
-**Project Definition — v0.13 (Concept and Requirements)**
+**Project Definition — v0.14 (Concept and Requirements)**
 
-**Status:** Living draft · **Date:** 25 October 2026
+**Status:** Living draft · **Date:** 26 October 2026
 
 **Project type:** Personal learning and scientific exploration project, with an engineering portfolio dimension
 
@@ -33,7 +33,7 @@ A single research script may answer one question, but it is rarely a reusable fo
 
 The Product Engine is the main technical and scientific asset of the project. It should be possible to start with elementary indices, then introduce more sophisticated methods from scientific literature, reuse previous products as inputs, compare results with reference datasets, and make new capabilities available for geographical and temporal exploration. Each new product should provide an opportunity to understand a physical phenomenon or a scientific method more deeply.
 
-A **Proxy Engine** will make these products useful for configurable monitoring. A proxy will combine existing products, rules, and temporal conditions to observe a phenomenon over an area. A minimal proxy placeholder is present in the first end-to-end demonstration, while full proxy configuration and evaluation are implemented later. Proxies do not replace the scientific products, and **a product does not need a proxy to be useful**.
+An **Indicator Engine** will make these products useful for configurable monitoring. A monitoring indicator will combine existing products, rules, and temporal conditions to observe a phenomenon over an area. A minimal indicator placeholder is present in the first end-to-end demonstration, while full monitoring indicator configuration and evaluation are implemented later. Monitoring indicators do not replace the scientific products, and **a product does not need an indicator to be useful**.
 
 The intended value is therefore cumulative:
 
@@ -67,7 +67,7 @@ These are **scientific exploration opportunities**, not required business domain
 
 **Supporting objectives.** Provide access to public EO data; make outputs comparable at appropriate spatial and temporal scales; display maps and time series; retain scientific context and missing-data information; make processing reusable; and keep the platform practical for a solo developer.
 
-**Major future extension — Proxy Engine.** Allow user-configured indicators to combine already available products, temporal analysis, thresholds and other rules for monitoring. A placeholder path is included early so the full request flow can be tested end to end.
+**Major future extension — Indicator Engine.** Allow user-configured monitoring indicators to combine already available products, temporal analysis, thresholds and other rules for monitoring. A placeholder path is included early so the full request flow can be tested end to end.
 
 **Guiding principles:**
 
@@ -82,7 +82,7 @@ These are **scientific exploration opportunities**, not required business domain
 
 ---
 
-## 3. Processing Model: From Observations to Products to Proxies
+## 3. Processing Model: From Observations to Products to Indicators
 
 This is the **central conceptual model** of the platform.
 
@@ -92,7 +92,7 @@ This is the **central conceptual model** of the platform.
 |---|---|---|
 | **Source observation** | Satellite bands, radiance, reflectance, auxiliary observations or provider-supplied scientific datasets used as inputs. | External data providers |
 | **Scientific product** | A documented scientific transformation or analysis based on one or more source observations or existing products. | Developed and maintained within the Product Engine |
-| **Proxy** | A configurable monitoring definition that combines existing products and rules to follow a phenomenon over space and time. | Configured by the user; a placeholder path is present in the first end-to-end demonstration |
+| **Monitoring Indicator** | A configurable monitoring definition that combines existing products and rules to follow a phenomenon over space and time. | Configured by the user; a placeholder path is present in the first end-to-end demonstration |
 
 A **product definition** describes *what is calculated*; a **product result** is *what was calculated for particular sources, parameters, place and period*. This distinction allows the same scientific method to be reused in many analyses.
 
@@ -112,14 +112,14 @@ The original **L0 → L1 → … → LN** model is retained to express increasin
 - These are **internal project levels**. They are **not** the processing levels used by providers (for example, Sentinel-2 L2A or Landsat Level-2).
 - A higher level does **not** mean higher accuracy, higher spatial resolution, or stronger validation.
 - Levels are explanatory: actual products form a **dependency graph**, and some computations may skip levels or depend on multiple branches.
-- A proxy is **not** an additional `LN` product. It is a separate monitoring layer consuming products.
+- A monitoring indicator is **not** an additional `LN` product. It is a separate monitoring layer consuming products.
 - Aggregating a product onto a spatial grid does **not**, by itself, create a higher-level scientific product.
 
 ### 3.3 How the hierarchy grows
 
 **Example A — Nighttime luminosity**
 
-**L0:** VIIRS radiance observations or published composites → **L1:** change between comparable periods → **L2:** anomaly against a temporal baseline → **Proxy (placeholder early, full evaluation later):** alert when increases persist in selected spatial units.
+**L0:** VIIRS radiance observations or published composites → **L1:** change between comparable periods → **L2:** anomaly against a temporal baseline → **Monitoring Indicator (placeholder early, full evaluation later):** alert when increases persist in selected spatial units.
 
 This example can support a very small first demonstration without multi-sensor fusion.
 
@@ -155,7 +155,7 @@ A *successful request* means that processing or retrieval completed and a result
 
 The proposal defines **responsibilities only**. It does not prescribe repository organization, component packaging, runtime deployment or specific frameworks; those choices will follow the project's template.
 
-**High-level flow:** **Frontend submits an analysis request → Backend retrieves or coordinates computation → Core / Product Engine supplies an analytical result → Backend makes the request result available → Frontend displays it from the Requests view**. External EO sources feed the Core. The **Proxy Engine** will consume scientific products and their analytical results; a minimal placeholder path is present in the first end-to-end demonstration, while full evaluation is implemented later. Execution may be synchronous or delegated to background workers when needed.
+**High-level flow:** **Frontend submits an analysis request → Backend retrieves or coordinates computation → Core / Product Engine supplies an analytical result → Backend makes the request result available → Frontend displays it from the Requests view**. External EO sources feed the Core. The **Indicator Engine** will consume scientific products and their analytical results; a minimal placeholder path is present in the first end-to-end demonstration, while full evaluation is implemented later. Execution may be synchronous or delegated to background workers when needed.
 
 | Logical component | Responsibility | Boundary |
 |---|---|---|
@@ -163,7 +163,7 @@ The proposal defines **responsibilities only**. It does not prescribe repository
 | **Backend** | Expose REST services; manage spatial inputs (AOI, POI, LOI), product catalogue information, requests, request status changes, result availability and retrieval; publish request-state notifications. | Coordinates processing and keeps track of request state; does not duplicate scientific computation. |
 | **Core / Product Engine** | Access data sources; calculate scientific products; resolve product dependencies; apply quality rules; support spatial and temporal operations; provide analysis-ready results. | Works independently of the user interface. |
 | **Execution responsibility** | Run potentially long calculations and report their outcome. | May initially be part of the backend process; dedicated workers are optional later. |
-| **Proxy Engine (placeholder early; full engine later)** | Interpret configurable monitoring rules and combine available scientific products. The placeholder path exposes the proxy concept without implementing the full evaluation engine. | Depends on the Product Engine; does not replace its scientific methods. |
+| **Indicator Engine (placeholder early; full engine later)** | Interpret configurable monitoring rules and combine available scientific products. The placeholder path exposes the monitoring indicator concept without implementing the full evaluation engine. | Depends on the Product Engine; does not replace its scientific methods. |
 
 **Service and notification principles:** REST remains the stable interface for creating and consulting requests, statuses and results, including for future external consumers (such as MCP-powered agents). **Automatic notifications are part of the first end-to-end demonstration**: a request-state change should become visible in the UI without a page reload. **NATS is a candidate for publishing these change notifications**, but the browser-facing transport is not prescribed here. Notifications indicate that something changed; REST remains the source of truth for retrieving the current request state and result, including after reconnection.
 
@@ -194,7 +194,7 @@ Requirements are described at three levels:
 | **SYS-08b** | P1 | A user shall be able to obtain configurable seasonal or richer temporal aggregations and summaries. |
 | **SYS-09** | P2 | The platform shall support meaningful comparison or combination of products with different spatial and temporal characteristics through explicit harmonization. |
 | **SYS-10** | P0 | Each calculated result shall be immutable and versioned when recomputed, and shall expose its lineage: source datasets, intermediate products, method and version, parameters, time window, spatial scope, quality status and limitations, and scientific validation status. |
-| **SYS-11** | P0 | A user shall be able to define a proxy that combines existing products and monitoring rules. The platform shall expose a minimal proxy placeholder path in the first end-to-end demonstration; full proxy evaluation and configuration are later capabilities. |
+| **SYS-11** | P0 | A user shall be able to define a monitoring indicator that combines existing products and monitoring rules. The platform shall expose a minimal indicator placeholder path in the first end-to-end demonstration; full indicator evaluation and configuration are later capabilities. |
 | **SYS-12** | P0 | An authenticated user shall be able to consult a dedicated list of their own analysis requests, see the current state of each request, and access its available results, cost, and quality status. |
 | **SYS-13** | P0 | A user shall be able to download a successful result as a final product, with its units and essential context. |
 | **SYS-14a** | P0 | Every supported scientific product shall carry a mandatory validation record containing at least a reference, a metric, a tolerance, an observed result, and a scientific validation status (`validated` or `unvalidated`). The record shall be exposed with the product and its results. This product-level status is distinct from the per-result quality status. |
@@ -213,7 +213,7 @@ Requirements are described at three levels:
 
 ### 5.2 Frontend Requirements
 
-**Alignment note:** The `FE`, `BE`, `CORE`, and `ENG` requirements remain aligned with the system requirements. This revision updates the development roadmap to introduce backend architecture, mock-backed core engines, and an MVP UI earlier in M0, and to sequence the first real product and analysis baseline before the reusable Product Engine and the first configurable Proxy Engine.
+**Alignment note:** The `FE`, `BE`, `CORE`, and `ENG` requirements remain aligned with the system requirements. This revision updates the development roadmap to introduce backend architecture, mock-backed core engines, and an MVP UI earlier in M0, and to sequence the first real product and analysis baseline before the reusable Product Engine and the first configurable Indicator Engine.
 
 | ID | Priority | Requirement | Linked system requirements |
 |---|---|---|---|
@@ -223,7 +223,7 @@ Requirements are described at three levels:
 | **FE-04** | P0 | Display a time-series chart for a selected SAU or AOI summary, using inclusive UTC filters at the granularities supported by the product, and allow selecting the SAU or AOI summary from the map or a list. | SYS-06, SYS-08a, SYS-18, SYS-21 |
 | **FE-05** | P0 | Clearly represent missing, masked, invalid, and genuine zero values, and expose units, quality status and index, method and version, scientific validation status, and known limitations. | SYS-07, SYS-10, SYS-14a, SYS-18, SYS-20 |
 | **FE-06** | P0 | Provide a dedicated Requests tab listing the authenticated user's own requests, with processing and quality statuses, estimated and actual cost, failure reasons, and access to available results and downloads. | SYS-12, SYS-16, SYS-18, SYS-20, SYS-25 |
-| **FE-07** | P0 | Provide a minimal proxy placeholder view to create a proxy definition, list proxies, trigger a stub evaluation, and see the placeholder result in the proxy view. The placeholder result is not a map layer. | SYS-11, SYS-18 |
+| **FE-07** | P0 | Provide a minimal indicator placeholder view to create an indicator definition, list indicators, trigger a stub evaluation, and see the placeholder result in the indicator view. The placeholder result is not a map layer. | SYS-11, SYS-18 |
 | **FE-08** | P0 | Automatically reflect request-state changes for the authenticated user's requests in the Requests view without a page reload, provide a manual refresh fallback, show the live-update connection state, and retrieve the latest state through REST after reconnection. | SYS-16, SYS-18 |
 | **FE-09** | P0 | Allow the authenticated user to download a successful result as a final product, with its units and essential context; this is the default download action. | SYS-12, SYS-13, SYS-18 |
 | **FE-10** | P0 | Provide sign-in and sign-out, show the authenticated identity, and protect authenticated views. | SYS-18 |
@@ -253,7 +253,7 @@ Requirements are described at three levels:
 | **CORE-08** | P0 | Aggregate into a selected SAU or AOI summary with explicit resampling or averaging, coverage, and missing-data rules. | SYS-06, SYS-07, SYS-15 |
 | **CORE-09** | P1 | Enable scientific comparisons against documented reference data or methods. | SYS-14b |
 | **CORE-10** | P2 | Harmonize and combine compatible products with different native grids, resolutions, or temporal characteristics. | SYS-09 |
-| **CORE-11** | P2 | Evaluate the scientific inputs and analytical operations needed by configured proxies. | SYS-11 |
+| **CORE-11** | P2 | Evaluate the scientific inputs and analytical operations needed by configured monitoring indicators. | SYS-11 |
 | **CORE-12** | P0 | Expose each product's validation record with its reference, metric, tolerance, observed result, and status. | SYS-14a |
 | **CORE-13** | P1 | Provide seasonal and richer temporal aggregations. | SYS-08b |
 | **CORE-14** | P1 | Support alternative spatial aggregation strategies without changing product definitions. | SYS-15 |
@@ -275,8 +275,8 @@ Requirements are described at three levels:
 | **BE-10** | P0 | Estimate cost before admission, atomically verify sufficient credits and record the admission decision, and post idempotent ledger transactions for the actual cost and balance according to a versioned credit policy, including failed or cancelled requests. Unlimited credits may be configured. | SYS-24, SYS-25 |
 | **BE-11** | P0 | Authenticate users, manage sessions, support multiple accounts, enforce ownership, and propagate a trusted server-side identity to every component involved in processing; components shall not accept client-supplied identity as authoritative. | SYS-12, SYS-17, SYS-18 |
 | **BE-12** | P0 | Provide a REST interface for submitting and listing requests, consulting statuses, retrieving results, downloading outputs, reading costs and balances, and exposing the current authenticated identity, with a stable error model, for authenticated users and authorized future consumers, scoped to the caller and recording the origin channel. | SYS-03, SYS-12, SYS-13, SYS-17, SYS-18, SYS-24, SYS-25 |
-| **BE-13** | P0 | Persist owner-scoped proxy definitions and stub evaluations, and provide a proxy placeholder to create and list definitions, trigger a stub evaluation, and expose the placeholder result outside the map layer. | SYS-11, SYS-18 |
-| **BE-14** | P1 | Manage proxy configurations and rules and expose their evaluations. | SYS-11 |
+| **BE-13** | P0 | Persist owner-scoped indicator definitions and stub evaluations, and provide an indicator placeholder to create and list definitions, trigger a stub evaluation, and expose the placeholder result outside the map layer. | SYS-11, SYS-18 |
+| **BE-14** | P1 | Manage indicator configurations and rules and expose their evaluations. | SYS-11 |
 | **BE-15** | P1 | Expose documented reference comparisons for scientific methods. | SYS-14b |
 | **BE-16** | P1 | Accommodate additions to the product catalogue without coupling the user interface to specific algorithms. | SYS-15 |
 | **BE-17** | P2 | Expose harmonized multi-product results. | SYS-09 |
@@ -310,7 +310,7 @@ Engineering requirements state outcomes, not implementation choices.
 
 After signing in, a user sees a multi-resolution satellite basemap, selects a supported product (for example, nighttime radiance), defines an AOI, POI, or LOI and chooses a range of months. The platform shows the estimated cost and the user's credit balance before submission. The user submits an **analysis request**, which appears in the **Requests** tab with its current status and updates automatically; REST remains the source of truth after reconnection. Once it succeeds, the user can download the **final product only**, or include intermediate products and source observations in an archive. The user selects **Display on map** from that request entry. The final product appears cropped to the spatial input for an available month, and the user selects a **Spatial Analysis Unit** to inspect its time series. If a month contains no valid observations, the plot shows a gap or an explicit unavailable status—not a zero. A successful request can therefore still contain missing observations. The user can also identify the source, method, quality status, and scientific validation status behind the result.
 
-**This single journey, together with the minimal proxy placeholder path, is a sufficient first end-to-end demonstration.** Multiple sensors, elaborate proxies, distributed execution and advanced scientific retrieval algorithms are not needed to prove it.
+**This single journey, together with the minimal indicator placeholder path, is a sufficient first end-to-end demonstration.** Multiple sensors, elaborate monitoring indicators, distributed execution and advanced scientific retrieval algorithms are not needed to prove it.
 
 ### 5.7 Terminology
 
@@ -340,7 +340,7 @@ After signing in, a user sees a multi-resolution satellite basemap, selects a su
 - **Credit**: unit used to estimate and record the cost of an analysis request.
 - **Cost estimate**: expected credit cost presented before a request is admitted.
 - **Intermediate product**: a product produced as a dependency of another product and retained for reuse and provenance.
-- **Proxy placeholder**: minimal end-to-end path that represents a proxy without implementing the full evaluation engine.
+- **Indicator placeholder**: minimal end-to-end path that represents a monitoring indicator without implementing the full evaluation engine.
 - **Configuration**: deployment-supplied values, not code constants.
 
 ## 6. Non-Functional Requirements and Scientific Safeguards
@@ -370,16 +370,16 @@ The roadmap describes **learning-enabled capabilities**, not mandated scientific
 | Stage | Main objective | Tangible deliverable |
 |---|---|---|
 | **0 — Scientific feasibility** | Demonstrate access to one EO dataset and calculation or extraction of one meaningful value. | Small reproducible scientific experiment. |
-| **1 — First end-to-end exploration (M0)** | Establish the backend architecture, versioned shared contracts, mock-backed Data Retrieval and Resampling/Rescaling engines, and an MVP UI; then connect product selection, an AOI, POI, or LOI spatial input, a multi-resolution satellite basemap, request submission with cost visibility, automatic request-status updates, final and intermediate downloads, a Requests tab, **Display on map**, a basic SAU/AOI time series with missing-data handling, multi-account-capable authentication, a real credit ledger, and a minimal proxy placeholder. | A usable authenticated spatial-input-driven, single-product exploration flow built on stable interfaces, with automatic status updates, credit accounting, downloadable provenance, an early UI foundation, and a minimal proxy placeholder. |
+| **1 — First end-to-end exploration (M0)** | Establish the backend architecture, versioned shared contracts, mock-backed Data Retrieval and Resampling/Rescaling engines, and an MVP UI; then connect product selection, an AOI, POI, or LOI spatial input, a multi-resolution satellite basemap, request submission with cost visibility, automatic request-status updates, final and intermediate downloads, a Requests tab, **Display on map**, a basic SAU/AOI time series with missing-data handling, multi-account-capable authentication, a real credit ledger, and a minimal indicator placeholder. | A usable authenticated spatial-input-driven, single-product exploration flow built on stable interfaces, with automatic status updates, credit accounting, downloadable provenance, an early UI foundation, and a minimal indicator placeholder. |
 | **2 — First real scientific product and analysis baseline (M1)** | Replace the technical probe with one real EO product, real source access, real resampling, a first validation record, and basic spatial and temporal analysis. | One real product is computed, analysed spatially and temporally, documented, and compared with a reference or an explicitly justified alternative. |
 | **3 — Reusable Product Engine and richer analysis (M2)** | Introduce a reusable product registry, explicit dependencies and repeatable results, a second product, and richer spatial, temporal, multi-source, and quality analysis. | A second product can be introduced with limited impact; dependencies, intermediates, comparisons, and quality are addressed coherently. |
-| **4 — First configurable Proxy Engine (M3)** | Replace the proxy placeholder with a first configurable proxy engine built on mature products. | A first proxy can be configured and evaluated from existing products. |
-| **5 — Advanced Proxy Engine (M4)** | Extend proxy rules, temporal conditions, monitoring outputs, and optional alerts. | One or more understandable proxies using already developed products, with monitoring and notification support where justified. |
+| **4 — First configurable Indicator Engine (M3)** | Replace the indicator placeholder with a first configurable indicator engine built on mature products. | A first monitoring indicator can be configured and evaluated from existing products. |
+| **5 — Advanced Indicator Engine (M4)** | Extend indicator rules, temporal conditions, monitoring outputs, and optional alerts. | One or more understandable monitoring indicators using already developed products, with monitoring and notification support where justified. |
 | **6 — Optional advanced capabilities (M5)** | Add sophisticated scientific methods, export/interoperability, external API/MCP access, performance work, or automation as interest and needs justify. | Individually documented experiments or platform improvements that do not redefine the Product Engine foundations. |
 
 Detailed epics are maintained in `ROADMAP.md`; ticket breakdowns are added as each milestone is refined. This table defines the capability order, and the roadmap document defines milestone and epic sequencing.
 
-Advanced scientific products, including LST, **can be explored at any suitable point once their prerequisites exist**. They are not contingent on completing the Proxy Engine, and no specific one is required to finish the roadmap.
+Advanced scientific products, including LST, **can be explored at any suitable point once their prerequisites exist**. They are not contingent on completing the Indicator Engine, and no specific one is required to finish the roadmap.
 
 ## 8. Scientific Exploration Backlog
 
@@ -411,7 +411,7 @@ A comparison with an existing satellite product is a useful **preliminary check*
 
 ## 10. Future Directions and Success Criteria
 
-**Possible future directions** include advanced product families, improved aggregation and uncertainty handling, cross-sensor fusion, richer proxy rules and alerts, more capable execution infrastructure, or controlled LLM/MCP access to the existing REST services. Extending access to an external agent is not part of the initial MVP, even though the REST interface itself is an early requirement.
+**Possible future directions** include advanced product families, improved aggregation and uncertainty handling, cross-sensor fusion, richer indicator rules and alerts, more capable execution infrastructure, or controlled LLM/MCP access to the existing REST services. Extending access to an external agent is not part of the initial MVP, even though the REST interface itself is an early requirement.
 
 **Success should be assessed primarily through scientific learning and secondarily through the platform's ability to grow:**
 
@@ -434,4 +434,4 @@ An agent reading the proposal should distinguish **required capabilities**, **la
 
 ---
 
-**End of proposal — v0.13.**
+**End of proposal — v0.14.**

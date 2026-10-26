@@ -156,3 +156,5 @@ build_secrets_decrypted
 
 # Local working plan (not versioned)
 PLAN.md
+
+discussions_chatgpt/*

@@ -25,7 +25,7 @@ MEOGAP uses an **internal** processing hierarchy to express how products build o
 
 These levels describe **MEOGAP's own processing depth**; they are not the same as satellite providers' processing levels (such as Sentinel-2 L2A). Products can depend on other products, and the hierarchy may evolve as the scientific catalogue grows.
 
-A future **Proxy Engine** will use existing products to define configurable indicators, time-based conditions, and monitoring rules. **Scientific products are valuable on their own and do not require a proxy.**
+A future **Indicator Engine** will use existing products to define configurable monitoring indicators, time-based conditions, and monitoring rules. **Scientific products are valuable on their own and do not require a monitoring indicator.**
 
 ### High-level repository responsibilities
 
@@ -37,7 +37,7 @@ The repository is intended to support the following **logical components**. Thei
 | **Backend / API** | Manage analysis requests, their status and results, and expose stable REST access for the UI and external consumers. |
 | **Frontend** | Provide an interactive map, product/AOI selection, a Requests view, and spatial and temporal exploration of results. |
 | **Execution layer** | Run potentially long calculations and report their progress; dedicated workers can be introduced as needed. |
-| **Proxy Engine (future)** | Combine existing products into user-configured monitoring indicators and rules. |
+| **Indicator Engine (future)** | Combine existing products into user-configured monitoring indicators and rules. |
 
 Scientific calculations should remain independent of the user interface. Spatial harmonization may use a common **Spatial Analysis Unit (SAU)**, such as a pixel or grid cell; H3 is a possible approach, not a fixed requirement. Aggregation for analysis must not be confused with the native resolution of the underlying observations.
 
@@ -53,7 +53,7 @@ Missing observations, cloud-masked measurements, and valid zero values must rema
 
 ### Boundaries and direction
 
-Potential areas of exploration include nighttime lights, vegetation dynamics, land surface temperature, water conditions, and combinations of environmental indicators. **No single use case is a mandatory destination.** The Product Engine comes first; configurable proxies and more advanced integrations can follow when useful.
+Potential areas of exploration include nighttime lights, vegetation dynamics, land surface temperature, water conditions, and combinations of environmental indicators. **No single use case is a mandatory destination.** The Product Engine comes first; configurable monitoring indicators and more advanced integrations can follow when useful.
 
 MEOGAP is **not intended initially** to be a commercial SaaS, a planetary-scale processing service, or a validated operational monitoring system. Scientific results should retain their assumptions, provenance, quality limitations, and validation status.
 
