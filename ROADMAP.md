@@ -1,327 +1,981 @@
-# MEOGAP — Development Roadmap v1
+# MEOGAP — Development Roadmap
 
-**Status:** Draft derived from `documentation/project_definition.md` v0.14.
-**Purpose:** Sequence learning-enabled capabilities, not fixed deadlines. The order may evolve as scientific interests and technical findings change.
+**Version:** 2.0-draft · **Date:** 2026-10-26 · **Status:** indicative, human-owned backlog; not yet created in GitHub.
 
-## 1. Principles
+**Intent:** A learning-driven scientific project, not a SaaS product plan. This file defines milestone outcomes, epics and indicative issue candidates; it is **not** an approved implementation plan, fixed deadline schedule or authorization for an agent to write code or create GitHub issues.
 
-- Scientific learning and validation come before feature accumulation.
-- The Product Engine comes first; the Indicator Engine is a later capability.
-- Internal L0–LN levels are not provider processing levels.
-- Spatial representation is not fixed; H3 is a candidate, not a commitment.
-- Missing, masked, invalid, and unobserved data are never silently treated as zero.
-- Every supported product carries versioned documentation, provenance, quality metadata, and an explicit validation status.
-- Technical decisions that do not change requirements belong in ADRs or tickets, not in the roadmap.
-- Interfaces are frozen through versioned contracts, contract tests, and deterministic mocks before real providers are integrated.
-- M0 proves the request workflow end to end with a technical probe, mock-backed core engines, and a minimal indicator placeholder; it does not require a real scientific product.
+**Existing context:** `documentation/project_definition.md` v0.13 is the current requirements baseline; `README.md`, `AGENTS.md`, `agents/CODING_STANDARDS.md`, `agents/UNIT_TEST_GUIDE.md`, `agents/SOFTWARE_VALIDATION_PLAN.md` and the existing Make/Docker/CI template describe the working engineering foundations. See [Requirements migration notes](#requirements-migration-notes) for deliberate changes not yet reflected in the v0.13 specification.
+
+## 1. Agreed direction and guardrails
+
+- **Science before platform breadth.** The Product Engine exists to study Earth observation, algorithms, data quality and validation. Domain examples are optional; do not turn the backlog into a fixed application catalogue.
+- **A real existing monorepo.** Reuse `meogap_core` (Python library), `meogap_api`, `meogap_worker` and `meogap_ui` (React/Vite), existing Make/uv/npm tooling, Buildx Bake, GitHub CI and conventions. A new repository system is **not** a milestone deliverable.
+- **Local-first only.** M0 needs Docker Compose for repeatable development and E2E tests. No production or hosted infrastructure is planned in M0–M5. Even M6+ does not automatically imply deployment.
+- **Minimal M0.** One useful integrated AOI-based prototype, real HTTP/API boundaries, deterministic simulated Core, basic map/series UI and functional tests. No real user sign-in, ownership enforcement, credit ledger, robust persistence or production operations in M0.
+- **First real science in M1.** Start with a small L1 product family (e.g. NDVI and a second well-defined index). Source access, validity masks, spatial treatment and validation must be scientifically explicit.
+- **H3 is an intentional pragmatic V1 spatial strategy.** Use a replaceable spatial alignment/aggregation abstraction; allow an early H3-based common support, while recording the approximation, native resolution, cell coverage, masks and method version. H3 does not constitute exact per-pixel raster registration, and aggregation order can affect nonlinear index results. A more precise V2 is learning-driven, not a prerequisite for M1.
+- **M2 proves processing depth.** A second L1 index does not establish the reusable multi-level engine. M2 must execute an L2 product depending on L1 (FVC-from-NDVI is the leading candidate), preserve intermediates and lineage, and expose SAU-based analyses.
+- **UX follows science.** M0 minimal UI; M3 consolidates the scientific workspace once L1/L2 needs are concrete; M4 contains a dedicated Indicator UX research, prototype and initial builder consolidation epic.
+- **Terminology.** `Indicator Engine` is the component; `Monitoring Indicator` is a configurable monitoring definition; `Indicator Evaluation` is its evaluated result. These are **not** MEOGAP scientific product levels. Retire the former `Proxy Engine` / `Proxy` names in new issues.
+- **Priority is not delivery date.** The P0/P1/P2 requirement priority must be distinct from the target milestone. A partially implemented or simulated M0 capability is not fully verified simply because its parent requirement was originally tagged P0.
+- **No agent autonomy assumed.** Tickets guide the human maintainer's research and decisions. Coding is supervised and only follows an agreed ticket-specific implementation and test plan.
 
 ## 2. Milestones at a glance
 
-| Milestone | Objective | Epics | Tickets | Exit outcome |
-|---|---|---:|---|---|
-| **M0** | Minimal product definition, architecture, mock engines, MVP UI, and first E2E exploration | 12 | To be refined | One authenticated, cost-aware, spatial-input request reaches a downloadable, mappable result through realistic contracts and mock engines. |
-| **M1** | First real scientific product and analysis baseline | 6 | Refined at milestone entry | One real EO product is computed, analysed spatially and temporally, documented, and compared with a reference. |
-| **M2** | Reusable Product Engine and richer analysis | 7 | Refined at milestone entry | A second product is added with limited impact; dependencies, intermediates, multi-source analysis, and quality are addressed. |
-| **M3** | First configurable Indicator Engine | 3 | Refined at milestone entry | A first monitoring indicator can be configured and evaluated from mature products. |
-| **M4** | Advanced Indicator Engine | 4 | Refined at milestone entry | Rules, temporal conditions, monitoring outputs, and optional alerts are supported. |
-| **M5** | Optional advanced capabilities | 5 | Refined at milestone entry | Advanced scientific or platform capabilities are added when justified by learning needs. |
+| Milestone | Goal | Epic count | Indicative ticket count | Exit demonstration |
+|---|---|---:|---:|---|
+| **M0 — Minimal Foundations** | A reproducible local prototype with a real UI → API → simulated Core → result → UI path; no real EO source. | 6 | 16 | Engineering foundation, not a miniature production platform. |
+| **M1 — First L1 Scientific Products** | Real EO observations yield one or more scientifically specified L1 products; an initial H3-based spatial alignment/aggregation strategy is tested and qualified. | 6 | 13 | Native sensor data, quality masks and validation come before breadth. |
+| **M2 — Multi-level Product Engine** | A real L2 product (FVC is the candidate) depends on L1 outputs through a reusable dependency graph, with intermediates, provenance and SAU analyses. | 5 | 12 | The milestone proves processing depth, not merely another L1 index. |
+| **M3 — Platform & UX Consolidation** | Improve the full product-exploration experience and reinforce local services, identity, request execution, result management and testability. | 6 | 16 | Architecture and UX are informed by the actual M1–M2 scientific workflows. |
+| **M4 — First Indicator Engine** | Define, configure, evaluate and understand real Monitoring Indicators built from scientific products; prototype and consolidate the initial visual configuration experience. | 5 | 13 | Indicator UX design is a first-class epic, not a by-product of API implementation. |
+| **M5 — Advanced Monitoring Indicators** | Richer rule composition, temporal evaluation, monitoring history and progressive refinement of indicator UX; notifications are optional. | 4 | Not yet refined | Epic-level outline only; tickets are intentionally deferred. |
+| **M6+ — Exploratory Extensions** | Optional scientific and interoperability extensions such as LST, data exchange, external API/MCP and performance work, when justified by learning. | Not fixed | Not yet refined | Remote/production infrastructure is not planned; any future need would be a separate, optional decision. |
 
-M0 is detailed first. M1–M5 are refined before each milestone starts. Ticket breakdowns are listed and validated before any commit that adds them.
+Milestones have **no due dates**. M0–M4 are elaborated below as a first issue catalogue. M5 is an epic-only outline, and M6+ is an open exploration horizon.
 
-## 3. M0 — Minimal product definition, architecture, and E2E
+## 3. Backlog and GitHub issue conventions
 
-### 3.1 Goal
+1. Create one GitHub **Milestone** for each active M0–M5 stage (M6+ optional). Create one GitHub **Epic issue** for each heading such as `[M1-E03] Spatial Alignment & Aggregation Engine — H3 V1`, with the matching milestone. Create each `[M1-E03-T01] …` as a task/sub-issue of that epic. Do not invent extra tasks when generating issues from this file.
+2. Preserve identifiers as stable planning keys; issue numbers assigned by GitHub are separate. If a ticket is removed, keep its identifier retired rather than silently renumbering later tickets.
+3. All tickets start **Proposed / Backlog**. Promote a ticket to **Ready for implementation** only after the user has researched options, agreed the solution and explicitly reviewed an implementation plan and test plan. Neither a detailed ticket nor a roadmap milestone is authorization to start coding.
+4. Issue titles, bodies, PRs and code-facing documentation use **English** in line with the existing project convention. Avoid invented due dates, estimates, priorities, implementation classes or files. Type labels may express `research`, `design`, `implementation`, `validation` and `ux`.
+5. For each ticket, copy **Outcome**, **Research / decisions**, **Evidence to accept**, **Dependencies**, and **Related requirements** below into the issue. Add empty editable sections **Research notes**, **Decisions / ADR**, **Implementation plan**, **Test plan**, and **Results / evidence**; never auto-fill these as if decided.
+6. Epic order and dependencies are guides, not a forced critical path. Research/prototyping can run in parallel. Update, split, merge, defer or close tickets when real scientific findings justify it; record the reason and traceability impact.
+7. An agent asked to **create GitHub issues** may create issues and link them only when expressly instructed; it must **not** change source code, open PRs, commit, push or begin execution from the roadmap alone.
 
-Prove the complete Product Engine path with a technical probe, deterministic mocks, a realistic backend architecture, and an early MVP UI. The scientific value of the probe is secondary; contracts, interfaces, workflow, provenance, quality semantics, recoverability, and UI foundations are the deliverables.
+### Epic index (M0–M4)
 
-### 3.2 Epic sequence
+| Milestone | Epic | Indicative tickets | Epic outcome |
+|---|---|---:|---|
+| M0 | **M0-E01** — Monorepo Tooling & Quality Integration | 3 | Reuse and complete the established monorepo tooling; only fill gaps that hinder M0. |
+| M0 | **M0-E02** — Minimal Architecture & Contracts | 3 | Define the smallest end-to-end component boundaries and versioned data interchange needed for M0. |
+| M0 | **M0-E03** — Frontend Foundations & Minimal UX | 3 | Build a coherent, intentionally small UI for the first local end-to-end journey. |
+| M0 | **M0-E04** — Minimal Backend & Mock Product Engine | 3 | Exercise real API/Core boundaries and deterministic synthetic computation without integrating external EO providers. |
+| M0 | **M0-E05** — Local Docker Compose Integration | 2 | Use the existing containerization and Make targets as a reliable local integration/test environment. |
+| M0 | **M0-E06** — Functional E2E Validation | 2 | Make requirements-based functional testing part of normal local development from the first prototype. |
+| M1 | **M1-E01** — EO Product Research & Scientific Specification | 2 | Select and properly specify a small family of scientifically meaningful L1 products. |
+| M1 | **M1-E02** — Real EO Data Retrieval & Preparation | 2 | Make the first genuine source observations available to the scientific Core with faithful metadata and validity information. |
+| M1 | **M1-E03** — Spatial Alignment & Aggregation Engine — H3 V1 | 3 | Develop a replaceable spatial alignment/aggregation abstraction and use H3 as a deliberately simple, qualified first strategy. |
+| M1 | **M1-E04** — First L1 Scientific Products | 2 | Implement a small, meaningful L1 product family over actual EO data. |
+| M1 | **M1-E05** — Real Product Integration & Basic Exploration | 2 | Replace the synthetic demonstration results with scientifically grounded L1 outputs in the existing app journey. |
+| M1 | **M1-E06** — Scientific Verification & Product Documentation | 2 | Conclude M1 with evidence of scientific meaning rather than only technical success. |
+| M2 | **M2-E01** — Multi-level Product Model & Registry | 2 | Make the Product Engine generic across MEOGAP internal levels L0, L1 and L2+. |
+| M2 | **M2-E02** — Dependency Graph, Intermediate Products & Lineage | 3 | Execute real product-on-product computations with pinned versions and reusable intermediate results. |
+| M2 | **M2-E03** — First L2 Scientific Product — FVC Candidate | 3 | Use a meaningful scientific transformation of an existing L1 product to prove the new processing depth. |
+| M2 | **M2-E04** — SAU Generation & Reusable Spatial/Temporal Analysis | 2 | Turn H3 V1 spatial supports into stable selectable analysis units and product time-series services. |
+| M2 | **M2-E05** — Product Engine Generalization & Scientific Regression | 2 | Verify that multi-level processing is truly reusable and retains scientific interpretability. |
+| M3 | **M3-E01** — Architecture & Contract Consolidation | 2 | Use actual L1/L2 implementations to address real design friction instead of theoretical architecture work. |
+| M3 | **M3-E02** — Scientific Workspace UX Consolidation | 4 | Build an effective human workflow for understanding products, constructing requests and interpreting results. |
+| M3 | **M3-E03** — Authentication, Sessions & User Ownership | 3 | Introduce real accounts after initial local scientific learning, while preserving clear ownership of persisted data. |
+| M3 | **M3-E04** — Request Execution, State & Reliability | 3 | Harden the request lifecycle for real scientific computations and asynchronous execution on a local stack. |
+| M3 | **M3-E05** — Credits, Results & Data Management | 2 | Complete deferred P0 transparency and retrieval functions in a local, auditable implementation. |
+| M3 | **M3-E06** — Local Operations, Security & Integrated Verification | 2 | Consolidate local engineering reliability and confidence without creating a production deployment project. |
+| M4 | **M4-E01** — Monitoring Indicator Concepts & Functional Model | 2 | Define Monitoring Indicators as configurations consuming scientific products, clearly distinct from L0–LN products. |
+| M4 | **M4-E02** — Indicator UX Research & Visual Builder Design | 3 | Research and prototype an intelligible way to build, inspect and evaluate Monitoring Indicators. |
+| M4 | **M4-E03** — First Indicator Evaluation Engine | 3 | Implement a small real evaluator consuming already calculated scientific products under defined simple rules. |
+| M4 | **M4-E04** — Indicator API & Frontend Integration | 3 | Connect real indicator definitions and evaluations to the user experience designed in the dedicated UX epic. |
+| M4 | **M4-E05** — Indicator Functional Validation & Usability | 2 | Demonstrate correct, interpretable and usable indicator behavior before adding advanced monitoring features. |
 
-The order below is intentional. Contracts and architecture come before the UI and engine implementations. The MVP UI is developed early, against contracts and mock APIs, to establish a usable interface base.
+### Ticket types and acceptance levels
 
-| Order | Epic | Objective |
-|---:|---|---|
-| 1 | **M0-E01 Product definition, documentation model, and test strategy** | Define the minimal probe product, spatial/temporal semantics, documentation and validation model, and functional test strategy. |
-| 2 | **M0-E02 Backend architecture and service boundaries** | ADR comparing a modular monolith with split catalog, identity, and request-gateway services. Decide boundaries before freezing contracts. |
-| 3 | **M0-E03 Contracts and product model** | Versioned shared contracts, product definitions, dependency graph, request/result/status/provenance/quality/validation/credit/indicator contracts, and engine interfaces. |
-| 4 | **M0-E04 MVP UI** | Contract-first UI foundation: shell, navigation, catalogue, basemap, AOI/POI/LOI, request composer, credits, Requests view, live-update placeholder, downloads, and UI tests. |
-| 5 | **M0-E05 Core engines and mocks** | Data Retrieval Engine and Resampling/Rescaling Engine with deterministic mocks, contract tests, and integration points. |
-| 6 | **M0-E06 Authentication and ownership** | Multi-account-capable authentication, sessions, trusted server-side identity, and ownership enforcement. |
-| 7 | **M0-E07 Credit ledger and cost API** | Ledger, cost estimation, admission, debit/credit, balance, and versioned credit policy. |
-| 8 | **M0-E08 Catalogue, documentation, and quality backend** | Catalogue API, versioned documentation, validation records, quality metadata, and completeness gate. |
-| 9 | **M0-E09 Persistence, request lifecycle, live updates, and downloads** | Persistence, state machine, job queue, worker, recovery, request APIs, owner-scoped events, and downloads. |
-| 10 | **M0-E10 Probe computation and engine integration** | Integrate mocked engines, compute the probe, crop to spatial input, expose map data, time series, missing/masked/zero states, and SAU/AOI summaries. |
-| 11 | **M0-E11 Indicator placeholder** | Owner-scoped indicator definitions, create/list, stub evaluation, non-map placeholder result, and UI integration. |
-| 12 | **M0-E12 Engineering baseline, CI, and operations** | CI gates, CVE, migrations, health/readiness, structured logs, audit correlation, documented commands, and reproducibility. |
+- **Research/design:** accepted with a documented comparison, decisions/open questions and planned experiment or ADR; *not* with placeholder code.
+- **Implementation:** accepted with working behavior, narrow tests, documentation/contract changes and an explicit statement of simulated versus real components.
+- **Validation/UX:** accepted with reproducible checks, actual observations and captured limitations. Scientific reference agreement is not automatically independent validation.
+- **Maturity labels:** `real`, `mocked`, `visual-only`, `partial`, `deferred` describe the current implementation. Test coverage of a mock only validates that mock path.
 
-### 3.3 M0-E01 ticket for functional tests
+## 4. M0 — Minimal Foundations
 
-`M0-E01` contains the single ticket **`M0-E01-T03` — Define functional test strategy and scaffold the functional test harness**. Its agreed scope:
+**Milestone objective:** a local, deterministic, browser-driven demonstration proving the existing monorepo can support UI → HTTP API → mocked Core → result → UI. The frontend offers a small coherent P0 subset, not all future features.
 
-- Create `agents/FUNCTIONAL_TEST_GUIDE.md`.
-- Add a functional-test category to `agents/SOFTWARE_VALIDATION_PLAN.md`.
-- Create `tests/functional/` as an isolated `uv` project.
-- Use Behave + Playwright Python.
-- Use tags `@m0`–`@m5`, `@e2e`, `@api`, `@ui`, `@contract`, `@recovery`, `@validation`, and `@scientific`.
-- Use deterministic fixtures: seeded accounts, mock EO source, isolated database.
-- Use no real external provider by default; live tests are explicitly opt-in.
-- Provide page objects for UI scenarios.
-- Carry `SYS`/`FE`/`BE`/`CORE`/`ENG` traceability identifiers in scenarios.
-- Capture failure artifacts: Playwright traces/screenshots, Behave JSON/JUnit reports, and logs.
-- Allow no silent skips; P0 scenarios are not skippable without a ticket and justification.
-- Run merge-blocking functional smoke in CI; keep the full suite runnable on demand.
-- Include traceability updates in the definition of done.
+**Exit checks:** documented local start/reset; product catalogue; AOI and inclusive UTC range; actual API submission; synthetic completion/failure semantics; Requests display; simple mapped result and temporal series; explicit zero/missing/masked semantics; traceable functional browser smoke. No real auth, credit ledger, Indicator Engine or scientific result claims.
 
-`M0-E12` wires the functional smoke into CI; it does not own the strategy or harness.
+### [M0-E01] Monorepo Tooling & Quality Integration
 
-### 3.4 MVP UI scope
+**Objective:** Reuse and complete the established monorepo tooling; only fill gaps that hinder M0.
+**Epic acceptance:** The documented Make/CI entry points exercise the relevant Python and frontend checks, including a meaningful cross-project change.
+**Out of scope:** No repository migration, wholesale template rewrite, new CI platform or production pipeline.
 
-`M0-E04` owns the frontend slices that were previously split across credits, spatial input, and requests. It includes:
+#### [M0-E01-T01] Audit the Existing Monorepo and Record Only Actionable Gaps
 
-- application shell, routing, navigation, design tokens, error boundaries, and explicit loading/empty/unavailable/failure states;
-- minimal authenticated shell and catalogue view;
-- multi-resolution basemap and AOI/POI/LOI selection with product constraints and geometry display;
-- request composer with product, spatial input, inclusive UTC window, parameters, cost estimate, and explicit errors;
-- persistent credit balance and actual-cost display;
-- Requests view with statuses, failure reasons, live-update placeholder, manual refresh fallback, and download actions;
-- non-map indicator placeholder view for creating, listing, and inspecting stub indicator evaluations;
-- contract-derived mock API and deterministic fixtures;
-- Playwright UI scenarios and smoke checks.
+- **Type:** research
+- **Outcome:** Establish what already works in the project/component/library structure, Make targets, uv/npm dependency flow, Docker Bake and CI.
+- **Research / decisions:** Inspect repository files and reproduce representative commands; look for obsolete template paths, root-level changes and impact of changes to shared libraries.
+- **Evidence to accept:** A short evidence-based inventory states verified, missing and deliberately deferred items; no assumed refactor.
+- **Dependencies:** —
+- **Related requirements:** ENG-07, ENG-09
 
-`M0-E04` does not own persistence, real authentication, computation, or backend APIs. Those arrive in later M0 epics behind the same contracts. The MVP UI is built contract-first and mock-backed, with no premature polish.
+#### [M0-E01-T02] Complete TypeScript and React Quality and Unit-Test Conventions
 
-### 3.5 Core engine scope
+- **Type:** implementation
+- **Outcome:** Make frontend formatting, linting, typing and unit/component tests consistent with existing Make conventions.
+- **Research / decisions:** Compare existing package scripts and configurations before selecting or changing ESLint, formatting, TS checks and a UI test runner.
+- **Evidence to accept:** A representative failing lint/type/test is caught, valid checks pass through Make, and frontend standards are documented.
+- **Dependencies:** M0-E01-T01
+- **Related requirements:** ENG-07
 
-`M0-E05` establishes the two core engine boundaries:
+#### [M0-E01-T03] Verify CI Coverage for Affected Projects and Root Changes
 
-- **Data Retrieval Engine:** source-agnostic query interface, dataset selection, spatial/temporal coverage, source version, quality/masks, licensing/attribution metadata, and a deterministic mock adapter.
-- **Resampling/Rescaling Engine:** source-grid to target-grid or SAU transformation, explicit method, coverage, missing-data mask, native-resolution metadata, and a deterministic mock implementation.
-- Versioned interfaces, contract tests, and integration points for the probe.
-- Real adapters arrive in M1 and replace mocks without changing contracts.
+- **Type:** research/implementation
+- **Outcome:** Ensure CI checks meaningful affected projects rather than silently missing changes to common code or tooling.
+- **Research / decisions:** Study push versus pull-request triggers, dependency fan-out from meogap_core, root Make/Docker/workflow edits and CI behavior on no detected projects.
+- **Evidence to accept:** Documented test cases show that changes trigger appropriate consumer checks; implement only justified fixes.
+- **Dependencies:** M0-E01-T01
+- **Related requirements:** ENG-07, ENG-09
 
-### 3.6 Backend architecture scope
+### [M0-E02] Minimal Architecture & Contracts
 
-`M0-E02` produces an ADR comparing:
+**Objective:** Define the smallest end-to-end component boundaries and versioned data interchange needed for M0.
+**Epic acceptance:** UI, API and mock Core agree on product/request/result shapes and lifecycle semantics, with explicit deferred requirements.
+**Out of scope:** No speculative service decomposition, full product DAG, real identity model or complete future Indicator schemas.
 
-1. a modular monolith with catalog, identity, and request/gateway modules;
-2. separate catalog, identity, and request-gateway services.
+#### [M0-E02-T01] Define M0 Reference Journey and Reallocate Requirements
 
-Criteria: solo-maintainer simplicity, data ownership, authentication boundary, contract stability, testability, transactional consistency, latency, deployment, and operational cost.
+- **Type:** design
+- **Outcome:** Write down the single observable M0 demonstration and the real/mock/visual/deferred capability boundary.
+- **Research / decisions:** Choose the initial AOI/UTC-window flow; map original P0 requirements to partial M0 demonstrations versus full M1–M4 delivery; identify essential negative cases.
+- **Evidence to accept:** A versioned acceptance checklist and allocation matrix exist; M0 does not claim full compliance with deferred P0 requirements.
+- **Dependencies:** —
+- **Related requirements:** SYS-01, SYS-02, SYS-03, SYS-05, SYS-06, SYS-07, SYS-12, ENG-07
 
-The recommended starting hypothesis is a modular monolith with explicit module boundaries and versioned contracts. Splitting services remains possible if the ADR criteria justify it later.
+#### [M0-E02-T02] Define Minimal Product, Request, Result and Error Contracts
 
-### 3.7 M0 exit criteria
+- **Type:** design
+- **Outcome:** Specify small cross-component interfaces for the M0 demonstration.
+- **Research / decisions:** Choose contract source and Python/TypeScript sharing or generation; model product ID/version, AOI, UTC range, request status, mapped result, simple series and missing/masked/valid-zero states.
+- **Evidence to accept:** Examples and boundary tests demonstrate agreement between consumers and explicit errors; contracts are version-identifiable.
+- **Dependencies:** M0-E02-T01
+- **Related requirements:** ENG-01, SYS-01, SYS-03, SYS-07
 
-- A new environment starts from documented commands and deterministic fixtures.
-- The backend architecture ADR is accepted before contracts are frozen.
-- Shared contracts and engine interfaces are versioned and contract-tested.
-- Data Retrieval and Resampling/Rescaling engines exist with mocks and are integrated into the probe.
-- The MVP UI runs against contract-derived mocks and covers shell, catalogue, basemap, spatial input, composer, credits, requests, and downloads.
-- The functional test strategy and harness exist, and the functional smoke is merge-blocking.
-- Two accounts can sign in; each can access only its own requests and results.
-- A user selects an AOI, POI, or LOI, chooses a product and inclusive UTC window, sees the estimated cost, and submits.
-- The request appears in the Requests view; state updates arrive automatically, and REST remains authoritative after reconnection.
-- A successful result is downloadable as the final product only or as an archive with intermediates, sources, and provenance.
-- The result is cropped to the spatial input and displayable on the map for an available period.
-- The time series distinguishes missing, masked, and genuine zero values; coverage is explicit.
-- A basic SAU or AOI-summary aggregation is selectable and interpretable.
-- Provenance, quality status, quality index (`unknown` allowed), documentation, and validation status are visible.
-- The minimal indicator placeholder can be created and listed through the API and the non-map UI placeholder, and stub-evaluated outside the map layer.
-- Interrupted processing recovers or fails explicitly without losing request state.
-- CI is green, migrations are versioned, and no secrets are committed.
+#### [M0-E02-T03] Document Minimal Component Boundaries and Deferred Architecture Choices
 
-## 4. M1 — First real scientific product and analysis baseline
+- **Type:** design
+- **Outcome:** Capture where UI, API, Core library and existing worker responsibilities sit in M0.
+- **Research / decisions:** Decide whether mock execution is inline or worker-backed; how temporary request state works; how a later authenticated user context can be introduced without implementing login now.
+- **Evidence to accept:** One short architectural decision record and component flow exist; all intentionally postponed choices are listed.
+- **Dependencies:** M0-E02-T01, M0-E02-T02
+- **Related requirements:** ENG-01, ENG-03
 
-| Epic | Objective |
+### [M0-E03] Frontend Foundations & Minimal UX
+
+**Objective:** Build a coherent, intentionally small UI for the first local end-to-end journey.
+**Epic acceptance:** A user can choose the probe product and AOI, submit a request, inspect a synthetic result on the map and see a basic series.
+**Out of scope:** No advanced Product Engine workbench, completed POI/LOI flows, Indicator builder or comprehensive UX polish.
+
+#### [M0-E03-T01] Implement Minimal Application Shell, Catalogue and Map Context
+
+- **Type:** implementation
+- **Outcome:** Provide navigation, a clear demo catalogue and a usable spatial context in the existing React/Vite project.
+- **Research / decisions:** Review current UI before adding components; choose minimal map interaction, loading/error states, attribution and distinction between basemap and results.
+- **Evidence to accept:** Catalogue and map render reliably and are covered by appropriate UI/component tests.
+- **Dependencies:** M0-E02-T02, M0-E01-T02
+- **Related requirements:** FE-01, FE-17, FE-21
+
+#### [M0-E03-T02] Implement AOI and Time-Window Request Composition
+
+- **Type:** implementation
+- **Outcome:** Let a user select or draw an AOI, select the demo product and submit a bounded UTC period.
+- **Research / decisions:** Decide the simplest AOI control and valid geometry/time constraints; present precise validation errors; do not invent advanced spatial input capabilities.
+- **Evidence to accept:** A valid request reaches the real local API with the expected geometry and inclusive UTC period; invalid input is rejected visibly.
+- **Dependencies:** M0-E03-T01, M0-E04-T02
+- **Related requirements:** SYS-02, SYS-03, FE-02, FE-16
+
+#### [M0-E03-T03] Display Requests, Synthetic Map Results and Basic Time Series
+
+- **Type:** implementation
+- **Outcome:** Make the entire prototype demonstrable without pretending it is scientifically validated.
+- **Research / decisions:** Choose a minimal Requests state display and map/time-series representation; distinguish zero, missing, masked and failure states; mark the probe as synthetic.
+- **Evidence to accept:** A completed result can be selected from Requests and displayed; missing values remain gaps, not zeros; failure states are explicit.
+- **Dependencies:** M0-E03-T01, M0-E04-T02
+- **Related requirements:** SYS-05, SYS-06, SYS-07, FE-03, FE-04, FE-05, FE-06
+
+### [M0-E04] Minimal Backend & Mock Product Engine
+
+**Objective:** Exercise real API/Core boundaries and deterministic synthetic computation without integrating external EO providers.
+**Epic acceptance:** A true HTTP request flows into a predictable Core adapter and returns a mapped, inspectable result with meaningful metadata.
+**Out of scope:** No scientific product claims, real source access, complex job orchestration, credit ledger, multi-account security or durable recovery.
+
+#### [M0-E04-T01] Create Deterministic Source and Probe Product Fixtures
+
+- **Type:** implementation
+- **Outcome:** Produce a repeatable synthetic product with spatial scope and multiple observation periods.
+- **Research / decisions:** Design tiny fixtures with valid zeros, absent observations, masked samples and simple reference calculations; give the probe explicit synthetic/unvalidated metadata.
+- **Evidence to accept:** Identical inputs yield identical artifacts, tests cover validity semantics, and no remote provider is contacted.
+- **Dependencies:** M0-E02-T02
+- **Related requirements:** CORE-02, CORE-03, CORE-04, CORE-05, SYS-07
+
+#### [M0-E04-T02] Connect Catalogue and Request API to the Mock Core
+
+- **Type:** implementation
+- **Outcome:** Use meogap_api and the importable meogap_core library to serve the prototype through real HTTP.
+- **Research / decisions:** Choose minimal routes, input validation and request/result association; reuse existing worker only if it simplifies this bounded path.
+- **Evidence to accept:** A request submitted over HTTP produces a retrievable synthetic result through the Core boundary; contract and integration tests pass.
+- **Dependencies:** M0-E02-T02, M0-E04-T01
+- **Related requirements:** BE-01, BE-03, BE-05, BE-12
+
+#### [M0-E04-T03] Implement Minimal Request States and Transparent Failure Semantics
+
+- **Type:** implementation
+- **Outcome:** Give the prototype enough lifecycle behavior to test successful, rejected and failed analyses.
+- **Research / decisions:** Choose simple state transitions and error codes; expose unavailable periods and synthetic provenance; keep storage/retry guarantees explicitly outside M0.
+- **Evidence to accept:** Users and tests can distinguish success, invalid submission, processing failure and missing scientific observations.
+- **Dependencies:** M0-E04-T02
+- **Related requirements:** SYS-07, SYS-12, BE-07
+
+### [M0-E05] Local Docker Compose Integration
+
+**Objective:** Use the existing containerization and Make targets as a reliable local integration/test environment.
+**Epic acceptance:** A documented local stack starts, becomes ready, runs tests and resets reproducibly without remote infrastructure.
+**Out of scope:** No Kubernetes, cloud provisioning, remote environments, HA, production secrets or production deployment.
+
+#### [M0-E05-T01] Establish a Minimal Docker Compose Profile for Local E2E
+
+- **Type:** implementation
+- **Outcome:** Make local UI, API and any needed worker/storage start together from the existing build/run tooling.
+- **Research / decisions:** Inspect actual Compose definitions; verify ports and health checks; consider a test profile that avoids decrypting external-service keys when mocks suffice.
+- **Evidence to accept:** A clean checkout with documented local prerequisites can build and start the required stack, and a smoke check reaches UI and API.
+- **Dependencies:** M0-E01-T01, M0-E02-T03
+- **Related requirements:** ENG-04, ENG-06, ENG-09
+
+#### [M0-E05-T02] Make Local Test State, Fixtures, Logs and Teardown Reproducible
+
+- **Type:** implementation
+- **Outcome:** Prevent test results from depending on leftover containers or mutable local state.
+- **Research / decisions:** Decide fixture seeding, reset and cleanup strategy, log collection, failure artifacts and which state needs isolation.
+- **Evidence to accept:** Two consecutive clean-stack runs produce equivalent test outcomes; diagnostics are available on a deliberate failure.
+- **Dependencies:** M0-E05-T01, M0-E04-T01
+- **Related requirements:** ENG-05, ENG-08, ENG-09
+
+### [M0-E06] Functional E2E Validation
+
+**Objective:** Make requirements-based functional testing part of normal local development from the first prototype.
+**Epic acceptance:** A repeatable test drives the browser through the real local API and simulated Core, and reports traceable results.
+**Out of scope:** No claim of scientific validation; no mandatory full P0 regression suite in M0.
+
+#### [M0-E06-T01] Define M0 Functional Scenarios, Traceability and Test Harness Decision
+
+- **Type:** research/design
+- **Outcome:** Select an executable functional testing approach consistent with existing unit, regression and scientific validation policies.
+- **Research / decisions:** Review the Behave + Playwright Python proposal, tags and fixture approach; define smoke, negative and validity scenarios with requirement IDs and explicit partial/mock statuses.
+- **Evidence to accept:** Agreed scenarios and harness design cover the M0 reference journey with unambiguous expected outcomes.
+- **Dependencies:** M0-E02-T01
+- **Related requirements:** ENG-07, SYS-03, SYS-05, SYS-07
+
+#### [M0-E06-T02] Run Local Browser E2E Smoke Against the Compose Stack
+
+- **Type:** implementation/verification
+- **Outcome:** Exercise catalogue → AOI/request → API/Core mock → Requests → map/time series with a browser-driven test.
+- **Research / decisions:** Decide fixtures, clean boot, screenshots/traces/logs, CI scope and failure policy; ensure calls are not replaced entirely by browser intercepts.
+- **Evidence to accept:** Clean runs pass repeatably, an intentionally failing path is observable, and CI runs an agreed smoke subset.
+- **Dependencies:** M0-E06-T01, M0-E05-T02, M0-E03-T03
+- **Related requirements:** ENG-07, SYS-02, SYS-03, SYS-05, SYS-06
+
+## 5. M1 — First L1 Scientific Products
+
+**Milestone objective:** Real EO observations yield one or more scientifically specified L1 products; an initial H3-based spatial alignment/aggregation strategy is tested and qualified.
+**Exit focus:** Native sensor data, quality masks and validation come before breadth.
+
+**Spatial-method guardrail:** An H3-based aggregation/alignment policy is an acceptable **V1 experiment** for selected products; it must be explicitly qualified. If a scientific operation requires native-grid calculations to preserve meaning, compute on the appropriate native/support grid and only then aggregate for SAU/display. The contract must not force a scientifically invalid operation.
+
+**Exit demonstration:** At least two well-specified L1 products can be obtained through the common path from real EO inputs; each has reproducible scientific checks, validation documentation and explicit source/spatial-quality limitations.
+
+### [M1-E01] EO Product Research & Scientific Specification
+
+**Objective:** Select and properly specify a small family of scientifically meaningful L1 products.
+**Epic acceptance:** At least one first product and one second L1 candidate have documented inputs, equations, assumptions and verification strategies.
+**Out of scope:** No fixed application domain; NDVI, NDMI and a precisely specified NDTI are candidates, not irrevocable commitments.
+
+#### [M1-E01-T01] Review and Select the Initial L1 Scientific Products
+
+- **Type:** research
+- **Outcome:** Choose a tractable first real satellite dataset and L1 calculation, plus a useful second L1 candidate.
+- **Research / decisions:** Compare data accessibility, pixel resolutions, available QA masks, scientific meaning, expected learning and reference material; disambiguate NDTI before selecting it.
+- **Evidence to accept:** A justified shortlist and an initial product sequence are documented with sources and open questions.
+- **Dependencies:** M0-E06-T02
+- **Related requirements:** SYS-01, SYS-14b, CORE-02
+
+#### [M1-E01-T02] Specify Product Methods, Units, Parameters and Validation Evidence
+
+- **Type:** research/design
+- **Outcome:** Define what will be computed and how its correctness and limitations will be assessed.
+- **Research / decisions:** Record band identities and processing levels, physical units, masks, valid ranges, temporal interpretation, versioning and scientific references.
+- **Evidence to accept:** Product specs include inputs, outputs, assumptions, quality rules, test cases and preliminary reference comparisons.
+- **Dependencies:** M1-E01-T01
+- **Related requirements:** SYS-14a, SYS-20, SYS-22
+
+### [M1-E02] Real EO Data Retrieval & Preparation
+
+**Objective:** Make the first genuine source observations available to the scientific Core with faithful metadata and validity information.
+**Epic acceptance:** A small real AOI/time slice can be fetched reproducibly and inspected, including acquisition identity, grids, masks and permissions.
+**Out of scope:** No exhaustive provider support, planetary tiling or expensive bulk ingestion.
+
+#### [M1-E02-T01] Research and Integrate the First Real EO Source Adapter
+
+- **Type:** research/implementation
+- **Outcome:** Replace the synthetic source for selected analyses with genuine remote-sensing observations.
+- **Research / decisions:** Compare available source APIs and access modes, product levels, terms of use, time/area limits and local caching; implement only the selected narrow adapter.
+- **Evidence to accept:** A repeatable bounded acquisition yields input data plus provenance and licensing context; failure conditions are surfaced clearly.
+- **Dependencies:** M1-E01-T01, M0-E04-T02
+- **Related requirements:** CORE-01, SYS-04, SYS-10
+
+#### [M1-E02-T02] Preserve Source Grids, QA Masks, Availability and Missing Data
+
+- **Type:** implementation
+- **Outcome:** Carry source acquisition identity, coordinate system, band resolution and quality flags into processing.
+- **Research / decisions:** Decide how to interpret cloud/no-data/invalid observations per provider; retain metadata needed by the spatial engine and scientific algorithms.
+- **Evidence to accept:** Source tests demonstrate correct mask propagation and distinguish measured zero from unobserved or invalid data.
+- **Dependencies:** M1-E02-T01, M1-E01-T02
+- **Related requirements:** SYS-07, SYS-20, CORE-05
+
+### [M1-E03] Spatial Alignment & Aggregation Engine — H3 V1
+
+**Objective:** Develop a replaceable spatial alignment/aggregation abstraction and use H3 as a deliberately simple, qualified first strategy.
+**Epic acceptance:** One real multi-band example is handled with an explicit target support, weighting/coverage assumptions, native resolution and validation against controlled cases.
+**Out of scope:** Do not present H3 indexing as exact pixel co-registration or claim that grid refinement increases observational resolution.
+
+#### [M1-E03-T01] Research H3 V1 Spatial Semantics and Define a Replaceable Interface
+
+- **Type:** research/design
+- **Outcome:** Specify the contract for mapping source pixels/bands to a common analysis support without locking the Core to H3.
+- **Research / decisions:** Explore H3 level selection, centroid versus area-weighted mapping, CRS transformations, source/target GSD, mask rules and whether index-before/after-aggregation is appropriate.
+- **Evidence to accept:** An ADR states the chosen V1 approximations, expected errors and alternative V2 raster-alignment implementations; examples are reproducible.
+- **Dependencies:** M1-E01-T02, M1-E02-T02
+- **Related requirements:** CORE-03, CORE-08, SYS-07
+
+#### [M1-E03-T02] Implement H3-based V1 Mapping, Aggregation and Coverage
+
+- **Type:** implementation
+- **Outcome:** Provide a usable source-to-H3 grid path for the first products, including mixed native band resolutions if selected.
+- **Research / decisions:** Handle cell assignment, optional weighting, partial cells, quality masks and provenance of the spatial method; avoid hard-coding H3 into product formulas.
+- **Evidence to accept:** Small synthetic tests and one real example produce interpretable, reproducible aligned/aggregated observations with explicit coverage.
+- **Dependencies:** M1-E03-T01
+- **Related requirements:** CORE-03, CORE-08, SYS-06, SYS-20
+
+#### [M1-E03-T03] Quantify V1 Spatial Error and Define the V2 Improvement Threshold
+
+- **Type:** research/validation
+- **Outcome:** Measure how the initial strategy differs from an appropriate native-grid or raster-resampling reference.
+- **Research / decisions:** Study boundary cells, sub-cell variation, ratio-of-means versus mean-of-ratios, mixed-GSD inputs and conservation/coverage behavior.
+- **Evidence to accept:** A documented comparison explains where H3 V1 is acceptable, when it is not, and which future tests must guard improvement work.
+- **Dependencies:** M1-E03-T02
+- **Related requirements:** SYS-07, SYS-20, CORE-08
+
+### [M1-E04] First L1 Scientific Products
+
+**Objective:** Implement a small, meaningful L1 product family over actual EO data.
+**Epic acceptance:** At least one L1 result is scientifically specified and computed end-to-end; a second L1 product demonstrates a nearby but non-identical scientific path.
+**Out of scope:** No requirement to build all indices or advanced L2/L3 methods here.
+
+#### [M1-E04-T01] Implement and Verify the First L1 Product (NDVI Candidate)
+
+- **Type:** implementation
+- **Outcome:** Calculate the first elementary product independently from UI and provider-specific presentation code.
+- **Research / decisions:** Use product specification, expected band semantics, safe denominator rules, source masks, units and controlled analytical examples.
+- **Evidence to accept:** Scientific unit tests, source-to-product integration and documented metadata demonstrate a reproducible real result.
+- **Dependencies:** M1-E01-T02, M1-E02-T02, M1-E03-T02
+- **Related requirements:** CORE-02, CORE-05, SYS-04
+
+#### [M1-E04-T02] Implement a Second L1 Product to Exercise Different Inputs
+
+- **Type:** research/implementation
+- **Outcome:** Add a second elementary product, potentially NDMI or a scientifically specified NDTI, without a second bespoke application path.
+- **Research / decisions:** Choose an index with different useful characteristics (e.g. SWIR or quality/scale issues); reuse source and spatial abstractions; retain distinct method documentation.
+- **Evidence to accept:** Both L1 products run via the same interface, with independent scientific tests and no algorithm-specific UI branching.
+- **Dependencies:** M1-E01-T02, M1-E04-T01
+- **Related requirements:** SYS-15, CORE-02, CORE-15
+
+### [M1-E05] Real Product Integration & Basic Exploration
+
+**Objective:** Replace the synthetic demonstration results with scientifically grounded L1 outputs in the existing app journey.
+**Epic acceptance:** The user can request, inspect and plot genuine L1 results for a bounded area/period, with visible quality and scale context.
+**Out of scope:** Advanced UX consolidation, full SAU selection and enterprise-grade request operations are postponed.
+
+#### [M1-E05-T01] Integrate Real L1 Execution Through the Existing Request Path
+
+- **Type:** implementation
+- **Outcome:** Make real scientific results retrievable through the established API/request/result contract.
+- **Research / decisions:** Connect chosen adapter, spatial operation and L1 algorithm without embedding scientific formulas in the API; preserve error semantics.
+- **Evidence to accept:** A browser or API request yields a real L1 result with method/source identity and clear unvalidated/validated status.
+- **Dependencies:** M1-E04-T01, M0-E04-T02
+- **Related requirements:** BE-04, BE-05, SYS-04, SYS-05
+
+#### [M1-E05-T02] Expose Real Map and Temporal Results with Validity and Coverage
+
+- **Type:** implementation
+- **Outcome:** Upgrade the minimal visualization to make actual observation periods and quality information understandable.
+- **Research / decisions:** Define coherent output units, spatial scope and time bins; show native GSD, aggregation support and periods lacking observations.
+- **Evidence to accept:** A bounded real analysis can be mapped and its time periods inspected without confusing masked, missing or zero data.
+- **Dependencies:** M1-E05-T01, M1-E03-T02
+- **Related requirements:** SYS-05, SYS-06, SYS-07, SYS-08a
+
+### [M1-E06] Scientific Verification & Product Documentation
+
+**Objective:** Conclude M1 with evidence of scientific meaning rather than only technical success.
+**Epic acceptance:** Each delivered L1 product has a versioned method/validation record and reproducible reference or benchmark comparison.
+**Out of scope:** Matching a reference product is evidence of agreement, not automatic independent scientific validation.
+
+#### [M1-E06-T01] Compare L1 Outputs Against Reproducible Scientific References
+
+- **Type:** research/validation
+- **Outcome:** Evaluate numerical outputs on controlled examples and appropriate independent or published references where feasible.
+- **Research / decisions:** Distinguish analytical tests, provider/reference-product comparisons, uncertainty sources and scientifically meaningful tolerances.
+- **Evidence to accept:** Comparison results are repeatable and report agreement, discrepancies and limitations, including spatial V1 approximations.
+- **Dependencies:** M1-E04-T01, M1-E04-T02
+- **Related requirements:** SYS-14a, SYS-14b, CORE-09
+
+#### [M1-E06-T02] Publish Versioned L1 Product Documentation and Validation Status
+
+- **Type:** documentation
+- **Outcome:** Document the method, bands, assumptions, quality, limitations, lineage and level for each supported product.
+- **Research / decisions:** Define a minimally complete scientific validation record and status without equating HTTP success with validation.
+- **Evidence to accept:** Catalogue and results link to versioned docs with an explicit scientifically justified validation status.
+- **Dependencies:** M1-E06-T01
+- **Related requirements:** SYS-01, SYS-10, SYS-14a, SYS-22
+
+## 6. M2 — Multi-level Product Engine
+
+**Milestone objective:** A real L2 product (FVC is the candidate) depends on L1 outputs through a reusable dependency graph, with intermediates, provenance and SAU analyses.
+**Exit focus:** The milestone proves processing depth, not merely another L1 index.
+
+**Depth criterion:** At least one L2 calculation must genuinely consume a versioned L1 product, execute dependencies and preserve complete provenance; adding another independent L1 formula does not satisfy M2.
+
+**Exit demonstration:** An L2 product (preferably FVC) executes through a versioned L1 dependency, retains intermediate provenance, and supplies spatial-unit and AOI time series with coverage/validity semantics.
+
+### [M2-E01] Multi-level Product Model & Registry
+
+**Objective:** Make the Product Engine generic across MEOGAP internal levels L0, L1 and L2+.
+**Epic acceptance:** Products are registered through versioned definitions and dependency declarations rather than special cases in orchestration.
+**Out of scope:** Provider processing levels must remain distinct from MEOGAP levels; no plug-in marketplace needed.
+
+#### [M2-E01-T01] Define a Versioned Registry for L0–LN Product Definitions
+
+- **Type:** design/implementation
+- **Outcome:** Express product identity, internal level, source dependencies, parameters, units, outputs and validation/documentation references.
+- **Research / decisions:** Check which M1 contracts can be extended versus replaced; define compatibility/version policies without overdesigning arbitrary future science.
+- **Evidence to accept:** Existing L1 products are registered unchanged scientifically; invalid or incompatible definitions are rejected.
+- **Dependencies:** M1-E06-T02
+- **Related requirements:** SYS-19, CORE-15, ENG-01
+
+#### [M2-E01-T02] Formalize Product Parameters, Capabilities and Extension Boundaries
+
+- **Type:** design/implementation
+- **Outcome:** Allow a new level of product to declare required inputs and analytical capabilities through shared interfaces.
+- **Research / decisions:** Study product-specific spatial/temporal constraints, source selection and supported output forms; avoid leaking engine-specific rules into UI code.
+- **Evidence to accept:** One well-formed candidate L2 definition can be described and inspected using only the reusable registry/contract.
+- **Dependencies:** M2-E01-T01
+- **Related requirements:** SYS-15, SYS-19, CORE-15
+
+### [M2-E02] Dependency Graph, Intermediate Products & Lineage
+
+**Objective:** Execute real product-on-product computations with pinned versions and reusable intermediate results.
+**Epic acceptance:** A requested L2 computation resolves its L1 dependency, stores lineage and avoids invalid reuse.
+**Out of scope:** No fully distributed DAG scheduler; build only the local behavior required by demonstrated products.
+
+#### [M2-E02-T01] Plan and Execute a Versioned Product Dependency Graph
+
+- **Type:** design/implementation
+- **Outcome:** Resolve dependency order, missing inputs and invalid cycles for L1→L2 chains.
+- **Research / decisions:** Decide how to pin definitions/parameters and represent a DAG shared by dependencies; keep execution local and inspectable.
+- **Evidence to accept:** A multi-stage computation runs in dependency order and tests reject cycles and incompatible inputs.
+- **Dependencies:** M2-E01-T02
+- **Related requirements:** CORE-07, BE-19, SYS-04, SYS-19
+
+#### [M2-E02-T02] Persist and Reuse Compatible Intermediate Products
+
+- **Type:** implementation
+- **Outcome:** Avoid recomputing an unchanged compatible L1 intermediate when producing a derived L2 product.
+- **Research / decisions:** Define compatibility keys for dataset versions, algorithms, parameters, spatial/temporal coverage and quality; ensure immutable result versions.
+- **Evidence to accept:** Tests show reuse only when safe and new result/intermediate versions when relevant inputs or methods change.
+- **Dependencies:** M2-E02-T01
+- **Related requirements:** SYS-04, SYS-10, CORE-06, CORE-07
+
+#### [M2-E02-T03] Expose End-to-End Scientific Provenance and Lineage
+
+- **Type:** implementation
+- **Outcome:** Keep sufficient links to reproduce and interpret an L2 output, including the chosen L1 intermediate and EO observations.
+- **Research / decisions:** Determine minimum processing-run identity, source/algorithm versions, spatial method and validation/quality metadata across stages.
+- **Evidence to accept:** An L2 result can be traced backward to its exact L1 version and source inputs, with no ambiguous overwritten history.
+- **Dependencies:** M2-E02-T02
+- **Related requirements:** SYS-10, BE-06, BE-19, BE-21
+
+### [M2-E03] First L2 Scientific Product — FVC Candidate
+
+**Objective:** Use a meaningful scientific transformation of an existing L1 product to prove the new processing depth.
+**Epic acceptance:** A documented FVC-like L2 result derives from pinned NDVI inputs and is tested scientifically, including boundary and invalid cases.
+**Out of scope:** No Landsat thermal retrieval or LST promise in M2; FVC and emissivity relevance are only future scientific groundwork.
+
+#### [M2-E03-T01] Review FVC Methods, Parameters and Scientific Applicability
+
+- **Type:** research
+- **Outcome:** Select and justify an FVC estimation method that actually uses an L1 NDVI dependency.
+- **Research / decisions:** Review literature on NDVI-based pixel dichotomy or alternatives, calibration endpoints, saturation, clipping, land-cover assumptions and uncertainty.
+- **Evidence to accept:** An explicit method specification, validity domain, source references and validation plan are agreed.
+- **Dependencies:** M1-E06-T02
+- **Related requirements:** SYS-14b, CORE-09
+
+#### [M2-E03-T02] Implement FVC as a Versioned L2 Product Depending on NDVI
+
+- **Type:** implementation
+- **Outcome:** Exercise the new registry, dependency resolver and intermediate tracking through an actual L2 calculation.
+- **Research / decisions:** Handle units, parameter validation, masks, boundedness and reproducibility; do not hard-code FVC as a special path in request handling.
+- **Evidence to accept:** FVC runs from cached or computed NDVI through the common engine, with closed-form unit tests and full lineage.
+- **Dependencies:** M2-E03-T01, M2-E02-T02
+- **Related requirements:** CORE-02, CORE-07, CORE-15
+
+#### [M2-E03-T03] Evaluate FVC Results and Document Scientific Limitations
+
+- **Type:** research/validation
+- **Outcome:** Compare the L2 result with relevant methods/data and make parameter sensitivity visible.
+- **Research / decisions:** Investigate reference suitability, sensitivity to NDVI source quality, spatial aggregation order, vegetation/endmember assumptions and uncertainty.
+- **Evidence to accept:** A scientific validation record documents agreement, failure cases and what cannot be inferred from FVC alone.
+- **Dependencies:** M2-E03-T02
+- **Related requirements:** SYS-14a, SYS-14b, SYS-20, SYS-22
+
+### [M2-E04] SAU Generation & Reusable Spatial/Temporal Analysis
+
+**Objective:** Turn H3 V1 spatial supports into stable selectable analysis units and product time-series services.
+**Epic acceptance:** An AOI can be partitioned into SAUs and each unit can return correctly qualified values through time.
+**Out of scope:** An advanced interactive map/plot experience comes in M3; H3 remains a replaceable strategy.
+
+#### [M2-E04-T01] Generate Stable SAUs and Coverage-Aware Spatial Summaries
+
+- **Type:** design/implementation
+- **Outcome:** Expose H3-backed SAUs with stable identifiers and explicit AOI overlap/coverage semantics.
+- **Research / decisions:** Define grid resolution policy, cell boundary behavior, polygon and raster intersection assumptions, null/quality rules and native resolution metadata.
+- **Evidence to accept:** Tests prove stable SAU identities, correct partial-coverage handling and reproducible summaries for sample products.
+- **Dependencies:** M1-E03-T03, M2-E01-T02
+- **Related requirements:** CORE-08, SYS-06, SYS-07
+
+#### [M2-E04-T02] Provide SAU and AOI Temporal Series Across Product Levels
+
+- **Type:** implementation
+- **Outcome:** Generate comparable time series for a selected SAU or AOI summary for both L1 and L2 products.
+- **Research / decisions:** Define UTC period inclusion, supported frequencies, missing periods and mixed-quality coverage; do not require the final M3 UI.
+- **Evidence to accept:** The same identified SAU yields period-qualified series for NDVI and derived FVC, with missing/zero separation.
+- **Dependencies:** M2-E04-T01, M2-E03-T02
+- **Related requirements:** CORE-04, CORE-08, SYS-06, SYS-08a, SYS-21
+
+### [M2-E05] Product Engine Generalization & Scientific Regression
+
+**Objective:** Verify that multi-level processing is truly reusable and retains scientific interpretability.
+**Epic acceptance:** The first L2 product extends the engine without duplicating unrelated L1 orchestration; reference and regression suites detect breaking changes.
+**Out of scope:** No promise of a universally generic EO scientific platform or mandatory multi-sensor fusion.
+
+#### [M2-E05-T01] Prove Extensibility by Exercising L1-to-L2 Product Addition
+
+- **Type:** verification
+- **Outcome:** Assess change impact when adding FVC and a small additional variant or parameterized dependency.
+- **Research / decisions:** Track modifications to existing products, API/UI coupling and registry/runner logic; identify accidental product-specific switches.
+- **Evidence to accept:** A documented extension exercise and tests show that L1 products remain unchanged and the general path supports L2.
+- **Dependencies:** M2-E03-T02, M2-E02-T03
+- **Related requirements:** SYS-15, CORE-07, CORE-15
+
+#### [M2-E05-T02] Consolidate Scientific Quality, Regression Fixtures and Spatial V2 Backlog
+
+- **Type:** research/validation
+- **Outcome:** Turn M1–M2 scientific learnings into test coverage and prioritized potential improvements.
+- **Research / decisions:** Recheck provenance, quality masks, deterministic regression references, H3 V1 bias and situations needing precise raster co-registration.
+- **Evidence to accept:** Scientific, regression and integration checks cover demonstrated product levels; any spatial V2 work is explicitly justified and deferred or scoped.
+- **Dependencies:** M2-E05-T01, M2-E04-T02
+- **Related requirements:** SYS-07, SYS-10, SYS-20, ENG-07
+
+## 7. M3 — Platform & UX Consolidation
+
+**Milestone objective:** Improve the full product-exploration experience and reinforce local services, identity, request execution, result management and testability.
+**Exit focus:** Architecture and UX are informed by the actual M1–M2 scientific workflows.
+
+**Local-only consolidation:** Authentication and owned data are introduced for sound session boundaries and tests, not as a step towards a planned public production deployment.
+
+**Exit demonstration:** The local scientific workbench is usable for the supported spatial inputs, products and SAUs; two accounts are isolated, request execution is reliable, credits/downloads work, and integrated tests support these claims.
+
+### [M3-E01] Architecture & Contract Consolidation
+
+**Objective:** Use actual L1/L2 implementations to address real design friction instead of theoretical architecture work.
+**Epic acceptance:** Component boundaries and contracts are simplified or strengthened with supported migration and regression paths.
+**Out of scope:** No cloud deployment, artificial service splitting or infrastructure for hypothetical SaaS load.
+
+#### [M3-E01-T01] Review M0–M2 Architecture with Real Scientific Workflows
+
+- **Type:** research/design
+- **Outcome:** Identify API/Core/worker/UI coupling, performance limits and duplication revealed by multiple scientific product levels.
+- **Research / decisions:** Inspect actual code paths, ownership boundaries, contract proliferation, storage and data exchange; prefer minimal incremental change.
+- **Evidence to accept:** A prioritized decision log distinguishes necessary refactors from optional architecture ideas, with justifications.
+- **Dependencies:** M2-E05-T01
+- **Related requirements:** ENG-01, SYS-15
+
+#### [M3-E01-T02] Evolve Shared Contracts with Compatibility and Consumer Tests
+
+- **Type:** implementation
+- **Outcome:** Make product/request/result contracts robust enough for authentication, ownership, advanced UI and future Indicators.
+- **Research / decisions:** Define versioning policy, migration compatibility, API error conventions and who tests cross-language changes.
+- **Evidence to accept:** Contract upgrades have automated compatibility/consumer checks, without breaking existing L1/L2 reference journeys.
+- **Dependencies:** M3-E01-T01
+- **Related requirements:** ENG-01, SYS-17
+
+### [M3-E02] Scientific Workspace UX Consolidation
+
+**Objective:** Build an effective human workflow for understanding products, constructing requests and interpreting results.
+**Epic acceptance:** The existing UI supports complete P0-relevant exploration of products and their SAU/time series, with meaningful validation of usability.
+**Out of scope:** This is not the advanced Indicator builder; that has a dedicated M4 epic.
+
+#### [M3-E02-T01] Review Scientific User Journeys and Define the UX Consolidation Scope
+
+- **Type:** research/design
+- **Outcome:** Identify friction in the real catalogue → request → results → interpretation workflow after M1/M2.
+- **Research / decisions:** Review actual screens and workflows; evaluate map-first versus request-first navigation, discoverability, states and small-screen constraints if relevant.
+- **Evidence to accept:** An annotated user-flow inventory and prioritized UX improvements exist, supported by functional scenarios.
+- **Dependencies:** M2-E04-T02, M1-E05-T02
+- **Related requirements:** FE-01, FE-03, FE-06
+
+#### [M3-E02-T02] Refine Catalogue, Request Composer and Requests Views
+
+- **Type:** implementation
+- **Outcome:** Make real products, their constraints and request lifecycle easy to understand and use.
+- **Research / decisions:** Study product documentation/availability, AOI/POI/LOI input support as scientifically relevant, parameter editing, status/errors, request history and helpful cost/quality labels.
+- **Evidence to accept:** Users can discover products, supply supported AOI/POI/LOI inputs where applicable and manage real requests without ambiguous availability states.
+- **Dependencies:** M3-E02-T01
+- **Related requirements:** FE-01, FE-02, FE-06, FE-17
+
+#### [M3-E02-T03] Integrate Map-Based SAU Selection and Spatial Exploration
+
+- **Type:** implementation
+- **Outcome:** Provide intuitive selection/inspection of H3 or other SAUs over displayed scientific results.
+- **Research / decisions:** Evaluate map layering, cell highlighting, AOI summaries, spatial precision legends, partial coverage and future alternative SAU layouts.
+- **Evidence to accept:** A user can select a stable SAU and see spatially correct values/metadata; native GSD is not mistaken for display resolution.
+- **Dependencies:** M3-E02-T01, M2-E04-T02
+- **Related requirements:** FE-03, FE-04, FE-15, FE-16
+
+#### [M3-E02-T04] Consolidate Time-Series Charts, Quality and Provenance Presentation
+
+- **Type:** implementation
+- **Outcome:** Make source validity, algorithm versions, lineage and temporal evolution interpretable in the UI.
+- **Research / decisions:** Choose chart treatment of absent/cloud-masked/zero points, confidence/quality labels, contextual docs and comparisons within current supported products.
+- **Evidence to accept:** Real L1/L2 results expose meaningful periods, gaps, quality and scientific validation without falsely implying certainty.
+- **Dependencies:** M3-E02-T03, M2-E02-T03
+- **Related requirements:** FE-04, FE-05, FE-17, SYS-10
+
+### [M3-E03] Authentication, Sessions & User Ownership
+
+**Objective:** Introduce real accounts after initial local scientific learning, while preserving clear ownership of persisted data.
+**Epic acceptance:** Two local test accounts are isolated throughout requests, results, downloads and Indicators-ready APIs.
+**Out of scope:** No enterprise IAM, self-service registration, complex roles or public SaaS deployment.
+
+#### [M3-E03-T01] Choose and Implement a Proportionate Local Authentication Approach
+
+- **Type:** research/implementation
+- **Outcome:** Add sign-in/sign-out and session identity without changing scientific Core algorithms.
+- **Research / decisions:** Compare a small local auth approach with external identity providers; define session/credential handling and an identity context at the API boundary.
+- **Evidence to accept:** Login/logout works locally, secrets are not committed, and unauthenticated restricted requests are rejected.
+- **Dependencies:** M3-E01-T02
+- **Related requirements:** SYS-18, BE-11, ENG-10
+
+#### [M3-E03-T02] Introduce Ownership and Migrate Existing Local Request Data
+
+- **Type:** implementation
+- **Outcome:** Protect requests/results/derived data by their authenticated owner, including pre-auth M0–M2 data.
+- **Research / decisions:** Decide migration policy for legacy single-user records and storage model; ensure Core receives trusted server-derived identity, not caller-spoofed ownership.
+- **Evidence to accept:** Cross-account access to requests/results/artifacts fails; migrated historical records are accounted for and tested.
+- **Dependencies:** M3-E03-T01
+- **Related requirements:** SYS-12, SYS-17, SYS-18, BE-11
+
+#### [M3-E03-T03] Validate Session Lifecycle and Ownership Boundaries End-to-End
+
+- **Type:** verification
+- **Outcome:** Exercise sign-in, sign-out, expired sessions and cross-account access across APIs and frontend.
+- **Research / decisions:** Test URL redirect/back navigation, failed downloads, request events and direct API calls as a second account.
+- **Evidence to accept:** Functional and API tests prove owner isolation and explicit session failure states.
+- **Dependencies:** M3-E03-T02, M3-E02-T02
+- **Related requirements:** FE-10, FE-18, SYS-18
+
+### [M3-E04] Request Execution, State & Reliability
+
+**Objective:** Harden the request lifecycle for real scientific computations and asynchronous execution on a local stack.
+**Epic acceptance:** Interrupted or repeated operations recover or fail explicitly; REST remains authoritative while UI statuses update automatically.
+**Out of scope:** No distributed cluster scheduler or production uptime SLOs.
+
+#### [M3-E04-T01] Persist Request States and Add Recoverable Worker Execution
+
+- **Type:** implementation
+- **Outcome:** Move beyond ephemeral M0 processing to traceable durable request and execution state.
+- **Research / decisions:** Assess actual need for the existing meogap_worker, local queue, persistence choice, bounded retries and interruption semantics.
+- **Evidence to accept:** A request survives application restart or ends in an explicit recoverable failure; duplicate work is bounded.
+- **Dependencies:** M3-E01-T01, M3-E03-T02
+- **Related requirements:** ENG-02, ENG-03, SYS-12
+
+#### [M3-E04-T02] Add Owner-Scoped Status Updates with REST Reconciliation
+
+- **Type:** design/implementation
+- **Outcome:** Update Requests automatically without making notifications a second source of truth.
+- **Research / decisions:** Compare light polling, SSE and events; decide whether NATS is justified; account for reconnect and owner filtering.
+- **Evidence to accept:** State changes appear without page reload; REST returns authoritative current state after reconnect and isolation tests pass.
+- **Dependencies:** M3-E04-T01, M3-E03-T02
+- **Related requirements:** SYS-16, BE-08, FE-08
+
+#### [M3-E04-T03] Implement Safe Result Reuse and Idempotent Request Operations
+
+- **Type:** implementation
+- **Outcome:** Reuse compatible completed scientific artifacts and ensure repeated requests/actions do not corrupt state.
+- **Research / decisions:** Define equivalence across product/dependency versions, AOI/time, parameters, quality and owner; evaluate transaction and retry semantics.
+- **Evidence to accept:** Tests show incompatible results are not reused and repeated processing does not duplicate terminal results or owner-visible events.
+- **Dependencies:** M3-E04-T01, M2-E02-T03
+- **Related requirements:** SYS-04, SYS-10, ENG-02
+
+### [M3-E05] Credits, Results & Data Management
+
+**Objective:** Complete deferred P0 transparency and retrieval functions in a local, auditable implementation.
+**Epic acceptance:** Costs and balances have reliable records; users can download final results or interpretable provenance archives.
+**Out of scope:** Credits are an internal accounting abstraction, not an external billing integration.
+
+#### [M3-E05-T01] Design and Implement Local Credit Estimation, Admission and Ledger
+
+- **Type:** design/implementation
+- **Outcome:** Expose estimated and actual credit costs and implement a versioned policy, including an unlimited-credit mode.
+- **Research / decisions:** Study atomic admission, idempotent postings, failures/cancellations and balance interpretation; avoid money-payment concerns.
+- **Evidence to accept:** Tests cover admitted/rejected requests, repeated events, ledger audit and accurate UI balance/cost display.
+- **Dependencies:** M3-E03-T02, M3-E04-T01
+- **Related requirements:** SYS-24, SYS-25, BE-10, FE-11, FE-14
+
+#### [M3-E05-T02] Consolidate Immutable Result Artifacts and Provenance Downloads
+
+- **Type:** implementation
+- **Outcome:** Allow final-only download and an optional archive of intermediates/sources when permitted.
+- **Research / decisions:** Choose local artifact format, storage/versioning, source licensing, directory tree/provenance manifest and authorization enforcement.
+- **Evidence to accept:** A completed owner-scoped request downloads the expected immutable artifact and optional auditable archive; forbidden access fails.
+- **Dependencies:** M3-E03-T02, M2-E02-T03
+- **Related requirements:** SYS-10, SYS-13, SYS-23, BE-09, BE-21
+
+### [M3-E06] Local Operations, Security & Integrated Verification
+
+**Objective:** Consolidate local engineering reliability and confidence without creating a production deployment project.
+**Epic acceptance:** Local Compose, diagnostics, migrations and appropriately scoped CI/E2E suites cover the consolidated application.
+**Out of scope:** Cloud hosting, Kubernetes, high availability and managed observability services remain outside M3.
+
+#### [M3-E06-T01] Harden Local Compose, Configuration, Migrations and Diagnostics
+
+- **Type:** implementation
+- **Outcome:** Support realistic local API, worker, storage and UI operation with simple repeatable tooling.
+- **Research / decisions:** Review health/readiness, configuration validation, local secret handling, schema migrations, structured logs and straightforward troubleshooting.
+- **Evidence to accept:** From a clean local start the stack is diagnosable and restartable; data/migration and failure paths are verified.
+- **Dependencies:** M3-E04-T01, M3-E05-T01
+- **Related requirements:** ENG-04, ENG-05, ENG-06, ENG-12
+
+#### [M3-E06-T02] Extend Functional, Contract and Security Regression Coverage
+
+- **Type:** verification
+- **Outcome:** Make the P0 consolidated platform checks reliable as daily or merge-blocking tests where practical.
+- **Research / decisions:** Prioritize owner isolation, workflow failures, credits, downloads, recovery, contracts and CVE checks; retain heavier science validations on-demand.
+- **Evidence to accept:** Local/CI suites report repeatable results with coverage-to-requirements and actionable failure artifacts; no silent P0 skips.
+- **Dependencies:** M3-E03-T03, M3-E04-T03, M3-E05-T02, M3-E06-T01
+- **Related requirements:** ENG-07, ENG-10, SYS-18
+
+## 8. M4 — First Indicator Engine
+
+**Milestone objective:** Define, configure, evaluate and understand real Monitoring Indicators built from scientific products; prototype and consolidate the initial visual configuration experience.
+**Exit focus:** Indicator UX design is a first-class epic, not a by-product of API implementation.
+
+**UX gate:** UX research and a prototype precede a committed builder implementation; a follow-up usability review closes M4 and informs M5.
+
+**Exit demonstration:** A real Monitoring Indicator can be defined, evaluated and understood through the UI, with explicit inconclusive results for insufficient data; the visual-builder research and usability review produce a solid baseline for M5.
+
+### [M4-E01] Monitoring Indicator Concepts & Functional Model
+
+**Objective:** Define Monitoring Indicators as configurations consuming scientific products, clearly distinct from L0–LN products.
+**Epic acceptance:** A minimal indicator definition/rule/evaluation model is agreed and can be represented through stable contracts.
+**Out of scope:** Avoid the ambiguous term Proxy Engine and do not turn a configurable indicator into a new scientific product level.
+
+#### [M4-E01-T01] Define Indicator Concepts, Inputs and Simple Rule Semantics
+
+- **Type:** research/design
+- **Outcome:** Specify what a Monitoring Indicator monitors and how it differs from Product Engine computations.
+- **Research / decisions:** Study threshold, comparison, temporal window, AOI/SAU scope and possible multi-product conditions; define missing/uncertain/unavailable outcomes.
+- **Evidence to accept:** A concise concept model and example indicators cover both valid and undecidable cases, with clear semantics.
+- **Dependencies:** M2-E05-T01
+- **Related requirements:** SYS-11, CORE-11
+
+#### [M4-E01-T02] Specify Versioned Indicator Definitions and Evaluation Contracts
+
+- **Type:** design
+- **Outcome:** Describe configuration, pinned product references, validation, evaluation state and outputs independently of UI widget choices.
+- **Research / decisions:** Check ownership, versioning, parameter schemas and constraint reporting; avoid implementing advanced expression languages now.
+- **Evidence to accept:** Sample definitions can be validated and round-tripped, while invalid configurations produce understandable errors.
+- **Dependencies:** M4-E01-T01, M3-E01-T02
+- **Related requirements:** SYS-11, BE-14, ENG-01
+
+### [M4-E02] Indicator UX Research & Visual Builder Design
+
+**Objective:** Research and prototype an intelligible way to build, inspect and evaluate Monitoring Indicators.
+**Epic acceptance:** A tested interactive design specifies the initial blocks/tools, editing behaviors, validation feedback and output explanations.
+**Out of scope:** Do not assume a node editor or drag-and-drop before evidence; advanced composition can evolve in M5.
+
+#### [M4-E02-T01] Research Indicator Creation Workflows and Candidate UI Patterns
+
+- **Type:** research/ux
+- **Outcome:** Determine which mental model makes configurable monitoring approachable to the intended user.
+- **Research / decisions:** Compare forms, guided rules, visual blocks and node graphs for simple and moderately composed indicators; define representative user tasks.
+- **Evidence to accept:** A reasoned UX decision and prioritized tool/block inventory exist, with initial usability hypotheses.
+- **Dependencies:** M4-E01-T01, M3-E02-T01
+- **Related requirements:** FE-07, SYS-11
+
+#### [M4-E02-T02] Prototype Visual Indicator Configuration and Evaluation Preview
+
+- **Type:** ux/prototype
+- **Outcome:** Build a disposable or reusable interactive prototype to test creating, editing and previewing basic indicator rules.
+- **Research / decisions:** Study source-product selection, thresholds, units, spatial scope, validation affordances, inspectability and error recovery.
+- **Evidence to accept:** A user can complete representative tasks in a prototype without a real engine; design assumptions and compromises are recorded.
+- **Dependencies:** M4-E02-T01, M4-E01-T02
+- **Related requirements:** SYS-11, FE-07
+
+#### [M4-E02-T03] Test Usability and Consolidate the Initial Indicator UX Specification
+
+- **Type:** research/ux
+- **Outcome:** Validate whether the initial builder is understandable before freezing its component design.
+- **Research / decisions:** Run a small task-based review including missing-data, incompatible-input and condition-not-met cases; examine output interpretation.
+- **Evidence to accept:** A prioritized UX specification and tested prototype are approved for initial implementation, with advanced concerns deferred to M5.
+- **Dependencies:** M4-E02-T02
+- **Related requirements:** FE-07, SYS-11
+
+### [M4-E03] First Indicator Evaluation Engine
+
+**Objective:** Implement a small real evaluator consuming already calculated scientific products under defined simple rules.
+**Epic acceptance:** Evaluations are reproducible and distinguish false conditions from unavailable or invalid evidence.
+**Out of scope:** No arbitrary user-executed code, heavyweight event engine or advanced alert platform.
+
+#### [M4-E03-T01] Implement Simple Product-Driven Indicator Evaluation
+
+- **Type:** implementation
+- **Outcome:** Evaluate the first approved rule types against pinned product results and analysis supports.
+- **Research / decisions:** Define evaluation resolution, per-period input selection, units, threshold comparison and input compatibility; start with deterministic fixtures and simple real examples.
+- **Evidence to accept:** Controlled tests prove rule behavior and a real product-backed evaluation returns the expected outcome.
+- **Dependencies:** M4-E01-T02, M2-E04-T02
+- **Related requirements:** CORE-11, SYS-11
+
+#### [M4-E03-T02] Propagate Missing, Masked, Low-Coverage and Invalid Evidence
+
+- **Type:** implementation
+- **Outcome:** Keep indicator outcomes scientifically honest when product evidence is incomplete.
+- **Research / decisions:** Define evaluation states (e.g. triggered, not triggered, insufficient data, error) and reason codes; avoid treating absence as negative monitoring evidence.
+- **Evidence to accept:** Tests show genuine zeros, masked inputs, unavailable periods and threshold equality are handled consistently.
+- **Dependencies:** M4-E03-T01, M4-E01-T01
+- **Related requirements:** SYS-07, SYS-20, SYS-11
+
+#### [M4-E03-T03] Record Reproducible Indicator Evaluations and Input Provenance
+
+- **Type:** implementation
+- **Outcome:** Link an indicator run to the exact rule version, product versions, spatial support and time window.
+- **Research / decisions:** Choose minimal persistence/history compatible with owner scope; document which intermediate evidence to retain for explanation.
+- **Evidence to accept:** An evaluation can be inspected again and its outcome traced to versioned scientific inputs and rules.
+- **Dependencies:** M4-E03-T02, M3-E03-T02
+- **Related requirements:** SYS-10, SYS-11, BE-14
+
+### [M4-E04] Indicator API & Frontend Integration
+
+**Objective:** Connect real indicator definitions and evaluations to the user experience designed in the dedicated UX epic.
+**Epic acceptance:** An authenticated user can create, inspect, edit and evaluate a basic Monitoring Indicator and interpret the result.
+**Out of scope:** No advanced temporal rule composer or notification integration until M5.
+
+#### [M4-E04-T01] Expose Owner-Scoped Indicator Definition and Evaluation API
+
+- **Type:** implementation
+- **Outcome:** Create/version/list/read indicator definitions, validate inputs and trigger/retrieve evaluations through REST.
+- **Research / decisions:** Review stable schema/error handling, request origin and ownership; keep scientific evaluation in the engine, not the API.
+- **Evidence to accept:** API tests cover valid/invalid rules, execution states, history visibility and cross-account denial.
+- **Dependencies:** M4-E01-T02, M4-E03-T03
+- **Related requirements:** BE-14, SYS-11, SYS-18
+
+#### [M4-E04-T02] Implement the Initial Indicator Builder and User Workflow
+
+- **Type:** implementation
+- **Outcome:** Turn the validated M4 UX prototype into a maintainable UI integrated with real endpoints.
+- **Research / decisions:** Reuse M3 design system, expose valid/invalid/incomplete states and keep configuration readable rather than adding unsupported widgets.
+- **Evidence to accept:** A user creates and edits a basic indicator with clear feedback, and functional tests exercise the real API.
+- **Dependencies:** M4-E02-T03, M4-E04-T01
+- **Related requirements:** FE-07, SYS-11
+
+#### [M4-E04-T03] Present Evaluation Results, Rules and Scientific Evidence
+
+- **Type:** implementation
+- **Outcome:** Show why an Indicator triggered, did not trigger or was inconclusive, including source product context.
+- **Research / decisions:** Choose suitable map/series/summary displays based on actual output types and coverage; keep indicator outputs distinct from scientific raster layers.
+- **Evidence to accept:** Users can inspect contributing products, rule versions, time/spatial context and uncertainty without misreading no-data.
+- **Dependencies:** M4-E04-T02, M4-E03-T03
+- **Related requirements:** SYS-11, SYS-20
+
+### [M4-E05] Indicator Functional Validation & Usability
+
+**Objective:** Demonstrate correct, interpretable and usable indicator behavior before adding advanced monitoring features.
+**Epic acceptance:** End-to-end cases cover a real scientific product, a configured indicator and understandable evaluation results.
+**Out of scope:** Alert reliability and complex compositional semantics are reserved for M5.
+
+#### [M4-E05-T01] Validate Indicator Rules, Ownership and End-to-End Evaluation
+
+- **Type:** verification
+- **Outcome:** Prove that indicator configuration and execution are correct through unit, contract, API and browser scenarios.
+- **Research / decisions:** Use deterministic rule cases and real pinned product samples; include invalid configurations, masked inputs, history and account isolation.
+- **Evidence to accept:** A traceable E2E scenario exercises real UI→API→Indicator Engine→Product Engine results→UI and negative paths.
+- **Dependencies:** M4-E04-T03, M4-E03-T02
+- **Related requirements:** SYS-11, SYS-18, ENG-07
+
+#### [M4-E05-T02] Conduct Final M4 Indicator UX Review and Capture M5 Improvements
+
+- **Type:** research/ux
+- **Outcome:** Check whether initial builder choices and interpretation tools work with real product-backed evaluations.
+- **Research / decisions:** Observe editing errors, unintuitive blocks, default parameters, state explanation and reasonable extension needs.
+- **Evidence to accept:** A reviewed UX baseline and prioritized M5 enhancement backlog exist, with unresolved scientific/UX questions explicit.
+- **Dependencies:** M4-E05-T01, M4-E02-T03
+- **Related requirements:** FE-07, SYS-11
+
+## 9. M5 — Advanced Monitoring Indicators (epic outline only)
+
+M5 is intentionally not ticketized yet; the M4 prototype, evaluation findings and usability review must shape its content.
+
+| Proposed epic | Intended capability |
 |---|---|
-| **M1-E01 Source access and provenance** | Integrate a real Data Retrieval Engine adapter: source constraints, dataset versioning, quality metadata, and licensing. |
-| **M1-E02 Product algorithm and scientific quality** | Implement the first real product with units, masks, quality metadata, reproducible parameters, and explicit assumptions. |
-| **M1-E03 Spatial analysis baseline** | Integrate real resampling/rescaling, SAU/AOI aggregation, coverage, missing-data rules, and native-resolution metadata. |
-| **M1-E04 Temporal analysis baseline** | Support inclusive UTC windows, monthly and seasonal series, and the temporal aggregations needed by the first product. |
-| **M1-E05 Validation and reference comparison** | Produce the validation record and compare the method with a documented reference or justify its absence. |
-| **M1-E06 Product documentation and limitations** | Publish versioned documentation, scientific limitations, and catalogue metadata for the real product. |
+| **M5-E01 — Advanced Rule Composition** | Combine rule conditions and multi-product expressions with validated units and well-defined logical semantics. |
+| **M5-E02 — Temporal Monitoring & Evaluation History** | Evaluate persistence, change and recurrence over time; inspect historical outcomes and changing input quality. |
+| **M5-E03 — Advanced Indicator UX** | Evolve the M4 builder to support added complexity without sacrificing readability or scientific interpretability. |
+| **M5-E04 — Optional Alerts & Notifications** | Add alerts only when compelling research or actual usage justifies their design and lifecycle. |
 
-## 5. M2 — Reusable Product Engine and richer analysis
+## 10. M6+ — Exploratory Extensions (open horizon)
 
-| Epic | Objective |
+Possible work: literature-derived products such as land surface temperature **after** thermal, atmospheric and emissivity prerequisites; additional scientific sources; more accurate V2 spatial alignment; interoperability/exports; optional external REST/MCP clients; profiling/scaling only against demonstrated limitations. Products may be explored earlier when scientifically ready—M6+ is not a rigid gate for scientific curiosity.
+
+**No hosted or production infrastructure is currently planned.** If it ever becomes useful, treat it as an independent, optional, explicitly scoped later milestone (M6++ or beyond), not as an implied obligation of M3 or M6.
+
+## 11. Cross-cutting disciplines
+
+| Discipline | Working rule |
 |---|---|
-| **M2-E01 Reusable product registry** | Versioned definitions, parameter schemas, and catalogue reuse. |
-| **M2-E02 Dependency graph and intermediate reuse** | Execute dependencies, reuse compatible intermediates, and preserve lineage. |
-| **M2-E03 Second product and extensibility** | Add a second product with limited impact on unrelated logic. |
-| **M2-E04 Richer spatial and temporal analysis** | Alternative SAU strategies, richer seasonal/custom aggregations, and coverage rules. |
-| **M2-E05 Multi-source, comparison, and quality index** | Harmonize compatible products, expose comparisons, and compute quality indices where justified. |
-| **M2-E06 Discovery** | Request filtering/sorting/pagination and catalogue search. |
-| **M2-E07 Operational maturity** | Metrics/traces, backup/restore, and license/SBOM tracking. |
+| Scientific integrity | Preserve provider processing level separately from MEOGAP L0–LN. Keep units, native GSD, masks, invalid/missing/zero semantics, coverage, assumptions and quality/validation statuses explicit. |
+| Spatial abstraction | Keep H3 a selectable V1 method and retain metadata sufficient to compare against a more precise raster V2 later. Never imply that finer H3 cells add source measurements. |
+| Contracts | Prefer the minimum shared, versioned contract needed at each milestone. Changes affecting Python/TS consumers get coordinated compatibility tests. |
+| Test taxonomy | Respect existing unit, non-regression, external scientific validation and benchmark categories in `SOFTWARE_VALIDATION_PLAN.md`; introduce functional browser E2E tests separately. |
+| Local reproducibility | Prefer stable fixtures and bounded AOIs. The E2E Docker Compose stack is a development/test tool, not an operational service. |
+| Security | No secrets in repo, images or logs. M0 must not expose an unauthenticated local backend publicly; authenticated authorization and user isolation arrive in M3. |
+| Human-guided workflow | Scientific research → joint decision → implementation plan + tests → supervised coding → evidence. No automatic ticket-driven coding. |
 
-## 6. M3 — First configurable Indicator Engine
+## 12. Requirements migration notes
 
-| Epic | Objective |
+The supplied `project_definition.md` v0.13 still treats **P0 = fully delivered in M0**, includes a functional **Proxy** placeholder in M0 and specifies early authentication/credits/advanced lifecycle. The changes below are **roadmap allocation decisions**, not silent edits to the underlying functional requirements. Before adopting this roadmap as the sole authority, revise the definition/requirements to align terminology and milestone allocation while preserving requirement identifiers and scientific intent.
+
+| Requirement theme / existing IDs | New intended delivery allocation |
 |---|---|
-| **M3-E01 Indicator rule model** | Rules, temporal conditions, and combinations of existing products. |
-| **M3-E02 Indicator configuration and evaluation** | Configure a monitoring indicator and evaluate it over products and time. |
-| **M3-E03 Indicator API and UI** | Create, inspect, and display indicator configuration and evaluation results. |
+| Catalogue, AOI, UTC submission, demo map/series (`SYS-01/02/03/05/06/07/08a/12`) | M0 **partial/mock-backed**, M1–M3 progressively real and complete (POI/LOI and full SAU UI when justified). |
+| Real product computation/source/quality/validation (`SYS-04/14a/14b/20/22`, `CORE-01/02/05`) | M1 real L1 products and references; M2 generalized dependencies/quality. |
+| Versioned registry, DAG, lineage, intermediates, SAU (`SYS-10/15/19/21`, `CORE-06/07/08/15`) | M2 engine capability; M3 hardening and full user presentation. |
+| Requests, automatic updates, identity, downloads, credits (`SYS-12/13/16/17/18/23/24/25`) | M0 prototype only; full implementation and owner protection M3. |
+| Configurable monitoring (`SYS-11`, `FE-07`, `BE-13/14`, `CORE-11`) | Rename Proxy → Monitoring Indicator; **no functional M0 placeholder**; initial real engine and UX M4, advanced capability M5. Revise old P0 requirements accordingly without changing identifiers silently. |
+| Engineering (`ENG-01…14`) | Minimal contracts/CI/local Compose in M0; reliability, authorization, migrations, stronger gates in M3; advanced/remote operations only if justified later. |
 
-## 7. M4 — Advanced Indicator Engine
+**Important:** Keep the scientific and functional requirements authoritative for *intended behavior* until changed; use this roadmap for the newly agreed *delivery order*. Record any unresolved conflict in the issue rather than pretending the two source documents are already synchronized.
 
-| Epic | Objective |
-|---|---|
-| **M4-E01 Advanced rules and temporal conditions** | Richer rule composition and temporal logic. |
-| **M4-E02 Monitoring and evaluation outputs** | Multi-product monitoring results and evaluation history. |
-| **M4-E03 Indicator API and UI extensions** | Advanced configuration, inspection, and comparison. |
-| **M4-E04 Optional alerts and notifications** | Notify on configured indicator conditions without replacing REST. |
+## 13. Backlog maintenance and change control
 
-## 8. M5 — Optional advanced capabilities
+1. Use this document as the source for the **initial** GitHub issue batch **only when explicitly requested**. Do not begin any implementation as part of importing issues.
+2. For each ticket, refine scientific evidence, proposed approach and tests with the project owner before marking it ready; keep all original ticket text editable.
+3. Add, merge, split or retire issues freely when research changes the best path. Reflect accepted changes in the epic summary and requirement mapping without preserving an arbitrary ticket count.
+4. Keep the project-definition requirements and agent guidance synchronized as a separate, reviewed documentation task; never infer scientific validation from a passing software test.
+5. At each milestone exit, demonstrate the actual user/scientific outcome, record what is mocked/deferred, and update the next milestone based on what was learned.
 
-| Epic | Objective |
-|---|---|
-| **M5-E01 Advanced scientific product** | LST or another literature-derived product when prerequisites exist. |
-| **M5-E02 Export and interoperability** | Additional export formats and interchange. |
-| **M5-E03 External API or MCP** | External consumer access with the same authorization and audit guarantees. |
-| **M5-E04 Performance and scaling** | Caching, bounded processing, and scaling only when justified. |
-| **M5-E05 Advanced notifications and automation** | Operational automation and richer notification flows. |
+---
 
-## 9. Cross-cutting workstreams
-
-| Workstream | Applies to | Rule |
-|---|---|---|
-| Shared contracts | All milestones | One versioned source; breaking changes require a version bump and consumer fan-out. |
-| Documentation gate | All products | Missing or incomplete documentation is a quality defect. |
-| Quality metadata | All results and source observations | Quality status and index exist; `unknown` is explicit. |
-| Scientific validation | M1 onward | A successful request does not imply scientific validation. |
-| Security and CVE | All milestones | CVE policy, least privilege, no secrets in repository, images, or logs. |
-| Observability | All milestones | Structured logs, durable audit, request/result/run correlation. |
-| Migrations | All persistence changes | Versioned, tested, and preserving result versions, lineage, and ledger history. |
-| Functional tests | M0 onward | Behave + Playwright Python; final feature files in `tests/functional/`. |
-| Contract-first UI | M0 onward | UI develops against versioned contracts and deterministic mocks. |
-
-## 10. Traceability
-
-`documentation/project_definition.md` v0.14 is authoritative. The matrix below is the P0 baseline. BDD identifiers are acceptance labels; final Gherkin files belong in `tests/functional/features/`.
-
-| SYS | Responsible components | BDD sketch | Target milestone |
-|---|---|---|---|
-| SYS-01 | BE-01, BE-20, CORE-15, FE-01, FE-20 | `E2E-CAT-01` | M0 |
-| SYS-02 | BE-02, CORE-03, FE-02, FE-16, FE-21 | `E2E-AOI-01`, `E2E-AOI-02` | M0 |
-| SYS-03 | BE-02, BE-03, BE-12, CORE-01, FE-02, FE-16 | `E2E-REQ-01` | M0 |
-| SYS-04 | BE-04, BE-19, BE-21, CORE-01, CORE-02, CORE-07 | `E2E-REQ-02`, `E2E-PROD-01` | M0 / M1 |
-| SYS-05 | BE-05, CORE-03, FE-03, FE-15, FE-21 | `E2E-MAP-01` | M0 |
-| SYS-06 | BE-05, CORE-03, CORE-04, CORE-08, FE-04 | `E2E-SERIES-01` | M0 / M1 |
-| SYS-07 | BE-05, BE-06, CORE-05, CORE-08, FE-05, FE-17 | `E2E-SERIES-01`, `E2E-QUAL-01` | M0 |
-| SYS-08a | BE-05, CORE-04, FE-04 | `E2E-REQ-01`, `E2E-SERIES-01` | M0 |
-| SYS-10 | BE-04, BE-06, BE-19, BE-21, CORE-06, CORE-07, FE-05, FE-17 | `E2E-PROV-01` | M0 / M1 |
-| SYS-11 | BE-13, BE-14, CORE-11, FE-07 | `E2E-INDICATOR-01` (placeholder) | M0 / M3 |
-| SYS-12 | BE-04, BE-07, BE-11, BE-12, BE-20, FE-03, FE-06, FE-09, FE-15, FE-19 | `E2E-REQ-02`, `E2E-OWN-01` | M0 |
-| SYS-13 | BE-09, BE-12, FE-09 | `E2E-DL-01` | M0 |
-| SYS-14a | BE-01, BE-06, CORE-12, CORE-15, FE-01, FE-03, FE-05 | `E2E-CAT-01`, `E2E-PROV-01` | M0 / M1 |
-| SYS-16 | BE-07, BE-08, FE-06, FE-08, FE-17 | `E2E-LIVE-01` | M0 |
-| SYS-17 | BE-03, BE-07, BE-08, BE-09, BE-11, BE-12 | `E2E-REQ-02` | M0 |
-| SYS-18 | BE-02, BE-03, BE-04, BE-05, BE-07, BE-08, BE-09, BE-11, BE-12, BE-13, BE-20, FE-02, FE-03, FE-04, FE-05, FE-06, FE-07, FE-08, FE-09, FE-10, FE-12, FE-14, FE-15, FE-16, FE-17, FE-18, FE-19, FE-21 | `E2E-AUTH-01`, `E2E-AUTH-02`, `E2E-OWN-01` | M0 |
-| SYS-19 | BE-01, BE-03, BE-19, BE-21, CORE-02, CORE-06, CORE-07, CORE-15, FE-01 | `E2E-PROD-01` | M0 / M2 |
-| SYS-20 | BE-04, BE-05, BE-06, CORE-01, CORE-05, FE-03, FE-05, FE-06 | `E2E-QUAL-01` | M0 / M1 |
-| SYS-21 | BE-01, CORE-04, FE-04 | `E2E-TEMP-01` | M0 |
-| SYS-22 | BE-01, CORE-15, FE-01 | `E2E-DOC-01` | M0 / M1 |
-| SYS-23 | BE-09, FE-12, FE-15 | `E2E-DL-02` | M0 |
-| SYS-24 | BE-07, BE-10, BE-12, FE-11, FE-14, FE-17 | `E2E-COST-01` | M0 |
-| SYS-25 | BE-07, BE-10, BE-12, FE-06, FE-11, FE-14, FE-17 | `E2E-COST-02` | M0 |
-
-| ENG | Responsible components | BDD sketch | Target milestone |
-|---|---|---|---|
-| ENG-01 | All components | `E2E-CONTRACT-01` | M0 |
-| ENG-02 | API, worker | `E2E-RECOVERY-01` | M0 |
-| ENG-03 | API, worker | `E2E-REQ-02` | M0 |
-| ENG-04 | API, worker | `E2E-HEALTH-01` | M0 |
-| ENG-05 | All components | `E2E-OBS-01` | M0 |
-| ENG-06 | All components | `E2E-CONFIG-01` | M0 |
-| ENG-07 | CI, functional tests | `E2E-TRACE-01` | M0 |
-| ENG-10 | API, UI, worker | `E2E-AUTH-01` | M0 |
-| ENG-12 | API, worker, persistence | `E2E-MIGRATION-01` | M0 |
-
-P1 and P2 system requirements are traced when their milestone is refined.
-
-## 11. Functional test linkage
-
-- Location: `tests/functional/`, isolated `uv` project.
-- Stack: Behave + Playwright Python.
-- Tags: `@m0`–`@m5`, `@e2e`, `@api`, `@ui`, `@contract`, `@recovery`, `@validation`, `@scientific`.
-- Every P0 scenario has a traceability identifier from the matrix.
-- Default execution uses deterministic fixtures and no live external provider.
-- Scientific validation campaigns and benchmarks are not part of the default unit/functional suite.
-- Merge-blocking functional smoke runs in CI; the full suite is runnable on demand.
-- Final conventions belong in `agents/FUNCTIONAL_TEST_GUIDE.md`.
-
-## 12. GitHub conventions
-
-| Item | Convention |
-|---|---|
-| Milestone | One per `M0`–`M5`; no due dates. |
-| Epic issue | Title `[M0-E01] Product definition, documentation model, and test strategy`; labels `type:epic`, `area:*`, `priority:*`; links to roadmap section. |
-| Ticket issue | Title `[M0-E01-T01] ...`; label `type:task`, `area:*`, `priority:*`, `size:*`; linked as a sub-issue of its epic. |
-| Project fields | `Status`, `Priority`, `Area`, `Size`, `Type`, `Milestone`. |
-| Initial status | M0 in `Todo`; M1–M5 in `Backlog`. |
-| Language | English for issues, PRs, commits, documentation, and code comments. |
-| Traceability | Every ticket lists the `SYS`/`FE`/`BE`/`CORE`/`ENG` IDs it implements or verifies. |
-| Pull requests | Link the ticket and milestone; no merge without explicit approval. |
-
-## 13. Definition of ready and done
-
-### Ready
-
-- The ticket has a clear outcome, scope, and acceptance criteria.
-- Requirements links are present.
-- Dependencies and open ADR decisions are identified.
-- The ticket is small enough for a bounded implementation step.
-
-### Done
-
-- Acceptance criteria are verified by targeted tests.
-- Relevant unit, contract, functional, migration, and security checks pass.
-- Documentation and provenance impacts are handled.
-- No secrets are committed.
-- Traceability and roadmap status are updated.
-
-## 14. Refinement and cleanup protocol
-
-1. Before starting a milestone, refine its epics and tickets; split anything larger than a bounded implementation step.
-2. Remove duplicate, obsolete, or superseded items; record the reason.
-3. Move unresolved technical choices to an ADR or a dedicated spike ticket.
-4. Recalculate epic and ticket counts after refinement; do not preserve stale totals.
-5. Update the traceability matrix when requirements or component links change.
-6. Never mark a ticket done because code exists; mark it done only when its acceptance checks pass.
-7. Keep M0 focused on the end-to-end path and realistic interfaces; defer scientific breadth to later milestones.
-
-## 15. Provisional technical decisions
-
-These are working assumptions, not requirements. They may change through ADRs.
-
-| Topic | Provisional decision |
-|---|---|
-| M0 test data | Deterministic mock data source for contract and functional tests. |
-| BDD stack | Behave + Playwright Python. |
-| Persistence and execution | Postgres + database-backed job queue + polling worker. |
-| Functional tests | Root `tests/functional/` with an isolated `uv` project. |
-| Configuration | Local configuration files plus environment variables; `confz` for Python components. |
-| Shared contracts | New `projects/meogap_contracts`, imported by every component. |
-| Backend topology | Modular monolith hypothesis, confirmed by the M0-E02 ADR; split services only if justified. |
-| Core engines | Interfaces in contracts; deterministic mocks in M0; real adapters in M1. |
-| MVP UI | Contract-first with a mock API; frontend slices of credits, spatial input, and requests; minimal auth/catalogue shell. |
-| Authentication | Multi-account-capable mock or basic provider in M0; mechanism remains an ADR. |
-| Indicator | Minimal placeholder in M0; configurable engine in M3; advanced rules in M4. |
-
-## 16. Open decisions
-
-- Authentication mechanism, session policy, and credential storage.
-- Configuration organization and secret injection.
-- Contract source format and generation strategy.
-- Map provider, map library, zoom levels, labels, and tile strategy; licensing and attribution.
-- POI/LOI crop footprints and SAU applicability per spatial input.
-- Notification transport and event-delivery semantics.
-- Real EO data source and access method.
-- Quality-index computation factors and validation thresholds.
-- Metrics, tracing, backup/restore, and SBOM tooling.
-- Final confirmation of backend topology after the M0-E02 ADR.
-
-## 17. Change control
-
-- Roadmap changes are allowed when they preserve the scientific-learning goal and the Product Engine priority.
-- Requirement changes require an update to `documentation/project_definition.md` first, then the roadmap and traceability matrix.
-- A milestone is not complete until its exit outcome and acceptance checks are demonstrated.
-- No application code, test implementation, or architecture implementation is introduced by this roadmap document.
+**Draft size:** 28 detailed epics, 70 indicative tickets across M0–M4; four additional outline epics in M5. All ticket IDs are unique and all declared ticket dependencies refer to entries in this document.
