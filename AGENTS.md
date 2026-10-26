@@ -15,7 +15,7 @@ Read the documents relevant to the task before acting:
 | Source | Purpose |
 | --- | --- |
 | `README.md` | Project overview, intended workflow, setup, and supported repository commands. |
-| `REPOSITORY_RULES.md` | Repository-wide language, planning hierarchy, epic and ticket authoring rules. |
+| `agents/REPOSITORY_RULES.md` | Repository-wide language, planning hierarchy, epic and ticket authoring rules. |
 | `documentation/project_definition.md` | Project vision, scientific processing levels, scope, component responsibilities, requirements, and roadmap. |
 | `agents/CODING_STANDARDS.md` | Authoritative coding conventions, engineering practices, and CVE management policy. |
 | `agents/UNIT_TEST_GUIDE.md` | Authoritative rules for writing and organizing unit tests. |
@@ -56,11 +56,11 @@ Consult `documentation/project_definition.md` for the full rationale and require
 - **Quality matters.** Do not silently treat cloudy, missing, invalid, or unobserved data as measured zero. Record assumptions, provenance, and limits of scientific results.
 - **Preserve the intended request workflow.** Requests and their status are retrievable through REST; successful results can be selected for map display. Live notifications (possibly using NATS) are optional later enhancements, not an initial MVP dependency.
 - **Do not design ahead of the template.** The repository template governs physical organization and implementation details. This project definition specifies component responsibilities, not directory layouts or premature service contracts.
-- **Repository language and planning rules.** Write milestones, epics, tickets, issue bodies, PRs and code-facing documentation in English. Follow `REPOSITORY_RULES.md` for the planning hierarchy and ticket format.
+- **Repository language and planning rules.** Write milestones, epics, tickets, issue bodies, PRs and code-facing documentation in English. Follow `agents/REPOSITORY_RULES.md` for the planning hierarchy and ticket format.
 
 ## Coding and test policy
 
-- **Before creating or editing milestones, epics or tickets:** Read and follow `REPOSITORY_RULES.md`.
+- **Before creating or editing milestones, epics or tickets:** Read and follow `agents/REPOSITORY_RULES.md`.
 - **Before coding:** Read and follow `agents/CODING_STANDARDS.md`.
 - **Before writing or modifying unit tests:** Read `agents/UNIT_TEST_GUIDE.md`.
 - **For scientific changes:** Use `agents/SOFTWARE_VALIDATION_PLAN.md` to select appropriate scientific checks; comparison with an existing satellite product is informative but does not by itself establish scientific validity.
@@ -84,7 +84,7 @@ When the user asks an agent to **remember** a rule or decision, persist it in th
 | Unit-test design and execution rules | `agents/UNIT_TEST_GUIDE.md` |
 | Scientific validation, test scenarios, acceptance criteria | `agents/SOFTWARE_VALIDATION_PLAN.md` |
 | Agent roles, routing, execution policy | `AGENTS.md` |
-| Repository language, planning hierarchy, milestone/epic/ticket format | `REPOSITORY_RULES.md` |
+| Repository language, planning hierarchy, milestone/epic/ticket format | `agents/REPOSITORY_RULES.md` |
 | Other operational knowledge | The most relevant document under `agents/` |
 
 Add an appropriate section when none exists. Summarize user guidance into precise instructions and keep documents consistent.

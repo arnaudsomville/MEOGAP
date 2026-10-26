@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document defines repository-wide rules for language, planning hierarchy and GitHub issue authoring. It complements, and does not replace, `AGENTS.md` (agent roles and routing), `documentation/project_definition.md` (intended behavior), `ROADMAP.md` (milestone, epic and ticket direction), `agents/CODING_STANDARDS.md` (code conventions), `agents/UNIT_TEST_GUIDE.md` (unit tests) and `agents/SOFTWARE_VALIDATION_PLAN.md` (validation).
+This document defines repository-wide rules for language, planning hierarchy and GitHub issue authoring. It complements, and does not replace, `../AGENTS.md` (agent roles and routing), `../documentation/project_definition.md` (intended behavior), `../ROADMAP.md` (milestone, epic and ticket direction), `CODING_STANDARDS.md` (code conventions), `UNIT_TEST_GUIDE.md` (unit tests) and `SOFTWARE_VALIDATION_PLAN.md` (validation).
 
 When rules conflict, report the conflict rather than silently inventing a policy.
 
@@ -14,7 +14,7 @@ All repository artifacts are written in English:
 - pull requests, commit messages and code-facing documentation;
 - this document and agent-facing rules.
 
-This consolidates the convention already stated in `ROADMAP.md` section 3.4. Scientific references and quoted source titles retain their original language.
+This consolidates the convention already stated in `../ROADMAP.md` section 3.4. Scientific references and quoted source titles retain their original language.
 
 ## Planning hierarchy
 
@@ -88,9 +88,9 @@ This format applies to all new milestones, epics and tickets, and to tickets whe
 
 ## References
 
-- `AGENTS.md` — agent roles, routing and execution policy.
-- `ROADMAP.md` — milestone, epic and ticket direction and identifiers.
-- `documentation/project_definition.md` — intended scientific behavior and requirements.
-- `agents/CODING_STANDARDS.md` — coding conventions.
-- `agents/UNIT_TEST_GUIDE.md` — unit-test rules.
-- `agents/SOFTWARE_VALIDATION_PLAN.md` — scientific and software validation.
+- `../AGENTS.md` — agent roles, routing and execution policy.
+- `../ROADMAP.md` — milestone, epic and ticket direction and identifiers.
+- `../documentation/project_definition.md` — intended scientific behavior and requirements.
+- `CODING_STANDARDS.md` — coding conventions.
+- `UNIT_TEST_GUIDE.md` — unit-test rules.
+- `SOFTWARE_VALIDATION_PLAN.md` — scientific and software validation.

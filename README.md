@@ -57,7 +57,7 @@ Potential areas of exploration include nighttime lights, vegetation dynamics, la
 
 MEOGAP is **not intended initially** to be a commercial SaaS, a planetary-scale processing service, or a validated operational monitoring system. Scientific results should retain their assumptions, provenance, quality limitations, and validation status.
 
-For more detailed context, see `documentation/project_definition.md`. Agent-specific guidance belongs in `AGENTS.md`, `REPOSITORY_RULES.md`, and the documentation under `agents/`.
+For more detailed context, see `documentation/project_definition.md`. Agent-specific guidance belongs in `AGENTS.md`, `agents/REPOSITORY_RULES.md`, and the documentation under `agents/`.
 
 ### Implemented projects
 
