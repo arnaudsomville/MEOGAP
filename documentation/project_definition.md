@@ -430,7 +430,7 @@ An agent reading the proposal should distinguish **required capabilities**, **la
 
 ### Reference
 
-- Ermida, S. L., et al. (2020). *Google Earth Engine Open-Source Code for Land Surface Temperature Estimation from the Landsat Series*. Remote Sensing, 12(9), 1471. https://doi.org/10.3390/rs12091471
+- Ermida, S. L., et al. (2020). *Google Earth Engine Open-Source Code for Land Surface Temperature Estimation from the Landsat Series*. Remote Sensing, 12(9), 1471. https://doi.org/10.3390/rs12091471 — see [Land references](papers/products/land.md#lst).
 
 ---
 

@@ -158,3 +158,6 @@ build_secrets_decrypted
 PLAN.md
 
 discussions_chatgpt/*
+# Copyrighted papers: local copies only, never committed
+documentation/papers/local_ref/
+documentation/papers/**/*.pdf

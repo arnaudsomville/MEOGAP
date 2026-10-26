@@ -57,6 +57,7 @@ Consult `documentation/project_definition.md` for the full rationale and require
 - **Preserve the intended request workflow.** Requests and their status are retrievable through REST; successful results can be selected for map display. Live notifications (possibly using NATS) are optional later enhancements, not an initial MVP dependency.
 - **Do not design ahead of the template.** The repository template governs physical organization and implementation details. This project definition specifies component responsibilities, not directory layouts or premature service contracts.
 - **Repository language and planning rules.** Write milestones, epics, tickets, issue bodies, PRs and code-facing documentation in English. Follow `agents/REPOSITORY_RULES.md` for the planning hierarchy and ticket format.
+- **Reference papers and copyright.** Never commit PDFs or full-text copyrighted papers. Every citation must have a metadata entry under `documentation/papers/`; local copies belong in `documentation/papers/local_ref/`. See `agents/REPOSITORY_RULES.md`.
 
 ## Coding and test policy
 

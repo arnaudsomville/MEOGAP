@@ -86,6 +86,22 @@ The roadmap provides direction; research determines the approach; implementation
 
 This format applies to all new milestones, epics and tickets, and to tickets when they are refined. The existing M0–M4 ticket bodies are preserved; migrate them opportunistically when a ticket is refined, unless the maintainer explicitly requests a bulk migration. Existing identifiers and native relationships are never changed by a format migration.
 
+## Reference papers and copyright
+
+Do not commit PDFs or full-text copyrighted papers to the repository.
+
+Every cited paper must have an entry in a topic reference document under `documentation/papers/`, organised by subject (for example `documentation/papers/products/land.md`, `documentation/papers/products/water.md`, or future `indicators/` and `methods/` documents). Each entry must include:
+
+- title, authors and year;
+- journal or venue;
+- DOI or canonical URL;
+- a short description of relevance;
+- limitations and notes.
+
+Local copies of papers must be kept in `documentation/papers/local_ref/`, which is gitignored and never committed. The directory mirrors the subject structure.
+
+Documentation must link to the reference entry or DOI, never to a local PDF.
+
 ## References
 
 - `../AGENTS.md` — agent roles, routing and execution policy.
