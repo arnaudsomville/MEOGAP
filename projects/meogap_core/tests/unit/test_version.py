@@ -15,7 +15,7 @@ def test_version_is_exposed() -> None:
 
     """
     # Arrange
-    expected = '0.1.0'
+    expected = '9.9.9'
     # Act
     package_version = VERSION
     module_version = VERSION_MODULE

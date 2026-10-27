@@ -24,7 +24,7 @@ describe('App', () => {
     render(<App />)
 
     expect(await screen.findByText(/API: ok/)).toBeInTheDocument()
-    expect(screen.getByText(/core 0.1.0/)).not.toBeInTheDocument()
+    expect(screen.getByText(/core 0.1.0/)).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/health')
   })
 
