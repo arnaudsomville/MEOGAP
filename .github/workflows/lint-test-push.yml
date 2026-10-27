@@ -48,9 +48,11 @@ jobs:
           fi
       - name: Validate encrypted secrets
         run: make sops-decrypt-all
-      - name: CI for affected projects
-        if: github.ref_type != 'tag'
-        run: make ci-modified-projects
-      - name: CI for all projects on tag
-        if: github.ref_type == 'tag'
-        run: make ci-all
+      - name: CI
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ] || \
+             [ "${{ github.ref_name }}" = "${{ github.event.repository.default_branch }}" ]; then
+            make ci-all
+          else
+            make ci-modified-projects
+          fi

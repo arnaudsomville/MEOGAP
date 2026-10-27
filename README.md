@@ -256,8 +256,8 @@ applying `MIN_TEST_COVERAGE` with its own toolchain.
 
 ## Continuous integration
 
-CI runs on every branch push and on tags. It installs, quality-checks and tests the **affected projects** through
-a single entry point:
+CI runs on every branch push and on tags. Development branches install, quality-check and test the **affected
+projects** through a single entry point:
 
 ```bash
 make ci-modified-projects
@@ -272,8 +272,8 @@ Project selection is based on the changed files:
 - documentation, `agents/`, `project_templates/`, `.sops.yaml`, `.trivyignore` and Markdown changes do not trigger
   CI.
 
-Tags run `make ci-all` so that every project is validated. CI does not build Docker images: image builds are
-reserved for the end-to-end tests introduced by the M0 functional epic.
+The default branch (for example `main`) and tags run `make ci-all`, so every project is validated. CI does not
+build Docker images: image builds are reserved for the end-to-end tests introduced by the M0 functional epic.
 
 ## Notebooks
 
