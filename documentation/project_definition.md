@@ -1,8 +1,8 @@
 # MEOGAP — Modular Earth Observation & Geospatial Analytics Platform
 
-**Project Definition — v0.14 (Concept and Requirements)**
+**Project Definition — v0.15 (Concept and Requirements)**
 
-**Status:** Living draft · **Date:** 26 October 2026
+**Status:** Living draft · **Date:** 27 October 2026
 
 **Project type:** Personal learning and scientific exploration project, with an engineering portfolio dimension
 
@@ -86,15 +86,19 @@ These are **scientific exploration opportunities**, not required business domain
 
 This is the **central conceptual model** of the platform.
 
-### 3.1 Three distinct concepts
+### 3.1 Distinct concepts and artifacts
 
 | Concept | Meaning | Who defines it? |
 |---|---|---|
 | **Source observation** | Satellite bands, radiance, reflectance, auxiliary observations or provider-supplied scientific datasets used as inputs. | External data providers |
 | **Scientific product** | A documented scientific transformation or analysis based on one or more source observations or existing products. | Developed and maintained within the Product Engine |
+| **Product definition** | Versioned description of what a product calculates, independently of any particular request, output file or storage layout. | Developed and maintained within the Product Engine |
+| **Analysis request** | A user-initiated demand for a product over a spatial input, UTC period and parameters. | Submitted by a user or authorized consumer |
+| **Product result** | The immutable, versioned outcome calculated or retrieved for a request and a precise set of inputs. | Produced by the Product Engine |
+| **Result representation** | A technical or analytical view of a result: native data, a common-grid resampling, an H3 aggregation, an extracted series, a display image or an archive. | Produced by the Product Engine or Backend and linked to its source result |
 | **Monitoring Indicator** | A configurable monitoring definition that combines existing products and rules to follow a phenomenon over space and time. | Configured by the user; a placeholder path is present in the first end-to-end demonstration |
 
-A **product definition** describes *what is calculated*; a **product result** is *what was calculated for particular sources, parameters, place and period*. This distinction allows the same scientific method to be reused in many analyses.
+A **product definition** describes *what is calculated*; a **product result** is *what was calculated for particular sources, parameters, place and period*. A **result representation** is not necessarily a new scientific product: it is a derived view that must remain linked to its source result and document its transformation, spatial support, native-resolution context and known information loss. This distinction allows the same scientific method to be reused in many analyses without conflating scientific results with storage or display artifacts.
 
 ### 3.2 Internal processing levels — L0 to LN
 
@@ -131,7 +135,13 @@ The paper by **Ermida et al. (2020)** provides a particularly useful future expe
 
 ### 3.4 Spatial and temporal analysis
 
-The platform should distinguish **scientific processing** from **analytical harmonization**.
+The platform should distinguish **scientific processing** from **analytical harmonization**. Three spatial levels must remain separable:
+
+1. **Native grid** — the geometry, coordinate reference system and resolution of the source observation or computed product. It is the scientific reference and must not be silently replaced.
+2. **Spatial harmonization** — an explicit operation that transforms or compares data on a common support (reprojection, resampling, aggregation or another documented method).
+3. **Spatial Analysis Unit (SAU)** — the unit on which values are selected, aggregated and analysed, possibly an H3 cell or a raster cell.
+
+**H3 is a candidate common analysis grid, not a storage format and not a raster resampling algorithm.** Its parent/child hierarchy provides a spatial structure, but it does not by itself define how a scientific cell value is computed.
 
 Scientific processing may need native raster geometry, appropriate reprojection, resampling and masking. Afterward, products may be aggregated into common **Spatial Analysis Units (SAUs)** so their evolution can be compared and displayed consistently.
 
@@ -148,6 +158,24 @@ An **analysis request** is a user-initiated demand to obtain a product for a sel
 **The Requests view is the entry point for putting analytical results on the map.** A user selects a successfully completed request and chooses **Display on map**. From the displayed result, the user can explore supported time windows and inspect values or time series for an SAU or AOI summary. An unsuccessful or unfinished request cannot be displayed as a result.
 
 A *successful request* means that processing or retrieval completed and a result is available. It does **not** imply that all periods contain valid observations or that the result has undergone independent scientific validation. Missing or masked observations remain visible as such.
+
+### 3.6 Results, representations and storage-independent access
+
+A **product result** is the scientific asset. It is immutable and versioned; recomputing the same product for different inputs, parameters or methods creates a new result version rather than overwriting the previous one.
+
+A result may be exposed through several **representations**: native scientific data, a resampling onto a common grid, an H3 aggregation, extracted point or AOI series, a display-ready image, or a downloadable archive. A representation is derived, never a substitute for the result, and must record:
+
+- the source result identifier and version;
+- the transformation method and version;
+- the spatial support, resolution and coordinate reference system;
+- coverage and missing-data rules;
+- the known information loss, approximation or uncertainty introduced.
+
+The access contract for results must remain **independent of the physical storage organization**. A consumer must be able to request a bounded temporal or spatial slice, or a single representation, without knowing whether the data are stored as rasters, multidimensional arrays, files or database records. Loading an entire result is acceptable only within explicit request limits (spatial extent, number of dates, pixel count, memory and response size).
+
+**Cartographic images are generated on demand, possibly with a cache.** The platform must not require a persisted image per date, and a display image must never become the sole persistent copy of a scientific result. Missing, masked, invalid, partial and genuine-zero values must remain distinguishable in every representation.
+
+The choice of a physical datacube organization (versioned raster collection, multidimensional array store such as Zarr, or another layout) is an implementation decision. It must not leak into product definitions or into the frontend contract.
 
 ---
 
@@ -207,9 +235,14 @@ Requirements are described at three levels:
 | **SYS-20** | P0 | Each product result and source observation shall carry the quality metadata needed to interpret it, including a quality status (`validated`, `poor_quality`, `unknown`) and a quality index field whose value may be `unknown` when it has not been computed. When several sources are available, the platform shall select them according to documented quality and availability criteria. Computing the quality index from factors such as spatial resolution, cloud cover, and source characteristics is a later capability. |
 | **SYS-21** | P0 | The platform shall support configurable temporal frequencies and maximum periods for products and source observations, including daily, monthly, annual, seasonal, and custom definitions. |
 | **SYS-22** | P0 | Every supported scientific product shall have versioned documentation covering its purpose, method, inputs, outputs, units, assumptions, limitations, references, and validation. Documentation completeness shall be verified by the project's quality gates and its status exposed in the product catalogue. |
-| **SYS-23** | P0 | A user shall be able to download a successful result as a final product only, or as an archive that additionally includes its intermediate products and source observations, organized as a directory tree with the provenance needed to interpret them. |
+| **SYS-23** | P0 | A user shall be able to download a successful result as a final product only, or as an archive that additionally includes its intermediate products and source observations, organized as a directory tree with the provenance needed to interpret them. The archive shall be constructed from the actual lineage of the result; source observations already available in the source store may be referenced rather than duplicated. |
 | **SYS-24** | P0 | Before accepting an analysis request, the platform shall estimate its cost in credits, verify that the authenticated user has sufficient credits, and record the admission decision. After processing, it shall record the actual cost and update the user's credit balance according to the configured credit policy. The initial configuration may grant unlimited credits, but estimation, admission, and recording shall still occur. |
 | **SYS-25** | P0 | A user shall be able to see the estimated cost before submitting a request, the actual cost after processing, and their current credit balance. |
+| **SYS-26** | P0 | The platform shall expose a storage-independent access contract for a result that can return a bounded spatial and temporal slice without requiring the whole result to be loaded. |
+| **SYS-27** | P0 | Every derived representation shall be linked to its source result and shall record its transformation method and version, spatial support and resolution, coverage, missing-data rules, and known information loss or uncertainty. |
+| **SYS-28** | P0 | The platform shall generate display representations on demand or from a cache; it shall not require a persisted image per date, and a display representation shall never be the sole persistent copy of a scientific result. |
+| **SYS-29** | P1 | The platform shall perform spatial harmonization through an explicit, replaceable operation that records its method, target support, aggregation, coverage and native-resolution context. H3 may be an analysis support but shall not be treated as a storage format or as a raster resampling algorithm. |
+| **SYS-30** | P0 | The platform shall enforce explicit analysis-request limits covering spatial extent, temporal period, pixel count, memory and response size, and shall reject requests outside supported bounds with explicit feedback. |
 
 ### 5.2 Frontend Requirements
 
@@ -219,8 +252,8 @@ Requirements are described at three levels:
 |---|---|---|---|
 | **FE-01** | P0 | Present the catalogue of supported products with the information needed to understand each product: purpose, scientific context, processing level, inputs and outputs, spatial and temporal characteristics, units, known limitations, an openable documentation reference and status, and scientific validation status. Catalogue availability shall remain distinct from result availability. | SYS-01, SYS-14a, SYS-19, SYS-22 |
 | **FE-02** | P0 | Let the authenticated user define or select a supported spatial input (AOI, POI, or LOI) within the selected product's constraints, choose a product, set a UTC time range `[start, end]`, and provide all required parameters. | SYS-02, SYS-03, SYS-18 |
-| **FE-03** | P0 | Provide **Display on map** for the authenticated user's successful requests in the Requests view and render only the final product, cropped to the request's spatial input and appropriate to its geometry (raster, point, or line), with legend, units, quality, and scientific validation context. | SYS-05, SYS-12, SYS-14a, SYS-18, SYS-20 |
-| **FE-04** | P0 | Display a time-series chart for a selected SAU or AOI summary, using inclusive UTC filters at the granularities supported by the product, and allow selecting the SAU or AOI summary from the map or a list. | SYS-06, SYS-08a, SYS-18, SYS-21 |
+| **FE-03** | P0 | Provide **Display on map** for the authenticated user's successful requests in the Requests view and render only the final product, cropped to the request's spatial input and appropriate to its geometry (raster, point, or line), with legend, units, quality, and scientific validation context. The frontend shall request a display representation through a storage-independent contract and shall not depend on physical storage paths or formats. | SYS-05, SYS-12, SYS-14a, SYS-18, SYS-20, SYS-26, SYS-28 |
+| **FE-04** | P0 | Display a time-series chart for a selected SAU or AOI summary, using inclusive UTC filters at the granularities supported by the product, and allow selecting the SAU or AOI summary from the map or a list. Extracted values shall be requested through a bounded, storage-independent contract and shall retain their missing, masked and genuine-zero semantics. | SYS-06, SYS-08a, SYS-18, SYS-21, SYS-26, SYS-27 |
 | **FE-05** | P0 | Clearly represent missing, masked, invalid, and genuine zero values, and expose units, quality status and index, method and version, scientific validation status, and known limitations. | SYS-07, SYS-10, SYS-14a, SYS-18, SYS-20 |
 | **FE-06** | P0 | Provide a dedicated Requests tab listing the authenticated user's own requests, with processing and quality statuses, estimated and actual cost, failure reasons, and access to available results and downloads. | SYS-12, SYS-16, SYS-18, SYS-20, SYS-25 |
 | **FE-07** | P0 | Provide a minimal indicator placeholder view to create an indicator definition, list indicators, trigger a stub evaluation, and see the placeholder result in the indicator view. The placeholder result is not a map layer. | SYS-11, SYS-18 |
@@ -245,12 +278,12 @@ Requirements are described at three levels:
 |---|---|---|---|
 | **CORE-01** | P0 | Acquire or access the source observations needed by a product, select sources according to documented quality and availability criteria, and record source dataset identifiers and versions. | SYS-03, SYS-04, SYS-20 |
 | **CORE-02** | P0 | Calculate the pinned product version from its defined inputs and parameters, reproducibly for identical versions, inputs, and parameters. | SYS-04, SYS-19 |
-| **CORE-03** | P0 | Produce geographically interpretable results and values, cropped to the requested AOI, POI, or LOI and appropriate to the output geometry, while preserving native-resolution metadata. | SYS-02, SYS-05, SYS-06 |
+| **CORE-03** | P0 | Produce geographically interpretable results and values, cropped to the requested AOI, POI, or LOI and appropriate to the output geometry, while preserving native-resolution metadata and the spatial context needed by derived representations. | SYS-02, SYS-05, SYS-06, SYS-27 |
 | **CORE-04** | P0 | Provide temporal filtering and analysis-ready series over inclusive UTC windows at product-supported frequencies and maximum periods, with per-period availability. | SYS-06, SYS-08a, SYS-21 |
 | **CORE-05** | P0 | Handle source quality information, masks, missing observations, genuine zeros, quality status, and a quality index that may be `unknown`, without substituting misleading values. | SYS-07, SYS-20 |
-| **CORE-06** | P0 | Produce immutable, versioned result artifacts with provenance and lineage: source datasets, intermediate products, method and version, product and dependency versions, parameters, time window, spatial scope, quality, limitations, validation status, and processing run. | SYS-10, SYS-19 |
+| **CORE-06** | P0 | Produce immutable, versioned result artifacts with provenance and lineage: source datasets, intermediate products, method and version, product and dependency versions, parameters, time window, spatial scope, quality, limitations, validation status, processing run, and links from derived representations to their source result. | SYS-10, SYS-19, SYS-27 |
 | **CORE-07** | P0 | Resolve and execute the product dependency graph/tree, produce required intermediate products, and reuse compatible intermediates with their provenance. | SYS-04, SYS-10, SYS-19 |
-| **CORE-08** | P0 | Aggregate into a selected SAU or AOI summary with explicit resampling or averaging, coverage, and missing-data rules. | SYS-06, SYS-07, SYS-15 |
+| **CORE-08** | P0 | Aggregate into a selected SAU or AOI summary with explicit resampling or averaging, coverage, and missing-data rules. Harmonization and aggregation shall remain explicit, replaceable operations recorded with their method, target support and native-resolution context. | SYS-06, SYS-07, SYS-15, SYS-27, SYS-29 |
 | **CORE-09** | P1 | Enable scientific comparisons against documented reference data or methods. | SYS-14b |
 | **CORE-10** | P2 | Harmonize and combine compatible products with different native grids, resolutions, or temporal characteristics. | SYS-09 |
 | **CORE-11** | P2 | Evaluate the scientific inputs and analytical operations needed by configured monitoring indicators. | SYS-11 |
@@ -258,6 +291,7 @@ Requirements are described at three levels:
 | **CORE-13** | P1 | Provide seasonal and richer temporal aggregations. | SYS-08b |
 | **CORE-14** | P1 | Support alternative spatial aggregation strategies without changing product definitions. | SYS-15 |
 | **CORE-15** | P0 | Maintain reusable product definitions, parameter schemas, versioned documentation, and validation records. | SYS-01, SYS-14a, SYS-15, SYS-19, SYS-22 |
+| **CORE-16** | P0 | Expose bounded spatial and temporal slices of a result without requiring the whole result to be loaded. | SYS-10, SYS-26 |
 
 ### 5.4 Backend Requirements
 
@@ -267,8 +301,8 @@ Requirements are described at three levels:
 | **BE-02** | P0 | Accept, validate, store, and retrieve AOI, POI, and LOI spatial inputs according to product constraints and configured limits, and snapshot the spatial input used by each request. | SYS-02, SYS-03, SYS-18 |
 | **BE-03** | P0 | Accept analysis requests with all required inputs and parameters, pin the exact product definition version, validate completeness and validity, reject invalid or incomplete requests with explicit errors, and record the caller identity and origin channel. | SYS-03, SYS-17, SYS-18, SYS-19 |
 | **BE-04** | P0 | Reuse only results that satisfy explicit product-version, parameter, spatial and temporal coverage, quality, and access-control criteria; otherwise coordinate computation. Associate the outcome with the originating request and owner and record the request lifecycle. | SYS-04, SYS-10, SYS-12, SYS-18, SYS-20 |
-| **BE-05** | P0 | Make available the final product cropped to the request's spatial input, SAU/AOI time series, inclusive UTC time filters, per-period availability, and missing or masked values with associated quality information. | SYS-05, SYS-06, SYS-07, SYS-08a, SYS-18, SYS-20 |
-| **BE-06** | P0 | Preserve and expose source datasets, selected source criteria, method and version, parameters, time window, spatial scope, quality status and index for results and source observations, limitations, validation status, and lineage links to the request, product version, dependency graph/tree, intermediate products, and processing run. | SYS-07, SYS-10, SYS-14a, SYS-20 |
+| **BE-05** | P0 | Make available the final product cropped to the request's spatial input, SAU/AOI time series, inclusive UTC time filters, per-period availability, and missing or masked values with associated quality information, through a contract independent of the physical storage organization. | SYS-05, SYS-06, SYS-07, SYS-08a, SYS-18, SYS-20, SYS-26 |
+| **BE-06** | P0 | Preserve and expose source datasets, selected source criteria, method and version, parameters, time window, spatial scope, quality status and index for results and source observations, limitations, validation status, and lineage links to the request, product version, dependency graph/tree, intermediate products, processing run, and derived representations. | SYS-07, SYS-10, SYS-14a, SYS-20, SYS-27 |
 | **BE-07** | P0 | Persist requests, owner, origin channel, state transitions, failure reasons, result availability, estimated and actual costs, and access them independently of notifications; scope access to the caller. | SYS-12, SYS-16, SYS-17, SYS-18, SYS-24, SYS-25 |
 | **BE-08** | P0 | Publish owner-scoped request-state change events only to the authenticated owner without replacing REST-based status and result retrieval. | SYS-16, SYS-17, SYS-18 |
 | **BE-09** | P0 | Provide owner-scoped final-product download by default and an optional archive containing intermediate products and source observations in a directory tree with provenance; record download access for audit. | SYS-13, SYS-17, SYS-18, SYS-23 |
@@ -283,7 +317,8 @@ Requirements are described at three levels:
 | **BE-18** | P1 | Provide seasonal and richer temporal aggregations. | SYS-08b |
 | **BE-19** | P0 | Persist each product version's dependency graph/tree, including dependencies, intermediate products, and ordering, and expose it with the product definition and result provenance. | SYS-04, SYS-10, SYS-19 |
 | **BE-20** | P1 | Provide filtering, sorting, and pagination for requests and search and filtering in the product catalogue. | SYS-01, SYS-12, SYS-18 |
-| **BE-21** | P0 | Persist completed results as immutable versions linked to the request, product definition version, dependency graph/tree version, and processing run; recomputation shall create a new result version rather than overwrite an existing one. | SYS-04, SYS-10, SYS-19 |
+| **BE-21** | P0 | Persist completed results as immutable versions linked to the request, product definition version, dependency graph/tree version, and processing run; recomputation shall create a new result version rather than overwrite an existing one. Derived representations shall not overwrite or replace the scientific result they reference. | SYS-04, SYS-10, SYS-19, SYS-27 |
+| **BE-22** | P0 | Expose representation descriptors and bounded result slices independently of the physical storage organization, including transformation, native-resolution context, coverage, missing-data rules and limitations. | SYS-26, SYS-27, SYS-28 |
 
 ### 5.5 Engineering Requirements
 
@@ -328,7 +363,14 @@ After signing in, a user sees a multi-resolution satellite basemap, selects a su
 - **Basemap**: multi-resolution satellite context used for spatial orientation and spatial-input selection; it is not an analysis result.
 - **Result**: the output associated with a request; it may contain missing or masked values.
 - **Result version**: immutable revision of a completed result linked to its request, product and dependency versions, and processing run; recomputation creates a new version.
-- **Lineage**: recorded links between a result and its request, product and dependency versions, intermediate products, source observations, and processing run.
+- **Representation**: a derived technical or analytical view of a result (native data, common-grid resampling, H3 aggregation, extracted series, display image or archive). It is linked to its source result and documents its transformation, support, resolution, coverage and known information loss; it is not a new scientific product by itself.
+- **Native grid**: the geometry, coordinate reference system and resolution of a source observation or computed product, preserved as the scientific reference.
+- **Spatial harmonization**: an explicit operation that transforms or compares data on a common spatial support, such as reprojection, resampling or aggregation.
+- **Spatial Harmonization Engine**: the replaceable component responsible for explicit spatial harmonization operations; it does not absorb product-specific scientific computation or decide aggregation validity on its own.
+- **Datacube**: an organized multidimensional store for a product across space and time. Its physical layout is an implementation decision and must not leak into product definitions or access contracts.
+- **Partial read**: retrieval of a bounded temporal or spatial slice of a result without loading the whole result.
+- **Retention**: the policy governing how long source observations, scientific results and derived representations are kept, which may differ by category.
+- **Lineage**: recorded links between a result and its request, product and dependency versions, intermediate products, source observations, processing run and derived representations.
 - **Successful request**: technically completed; it does not imply scientific validation or complete observations.
 - **Time window**: UTC interval `[start, end]`, with both bounds inclusive, at date or month granularity.
 - **Missing observation**: no usable observation; it is never treated as zero.
@@ -355,6 +397,9 @@ After signing in, a user sees a multi-resolution satellite basemap, selects a su
 | **Documentation** | Every supported product must have versioned documentation; missing or incomplete documentation is a quality defect. |
 | **Reproducibility** | Preserve enough provenance to explain and, when source data remain available, reproduce a result. |
 | **Spatial honesty** | Retain native resolution information, describe any resampling or spatial aggregation, and document how products are cropped to AOI, POI, or LOI; do not imply artificial precision. |
+| **Representation honesty** | Every derived representation must link to its source result and state its transformation, spatial support, resolution, coverage and known loss; a display image is never the sole copy of a scientific result. |
+| **Storage abstraction** | The result access contract must not expose physical paths or require a specific storage backend; bounded temporal and spatial slices must be supported. |
+| **Boundary enforcement** | Spatial extent, period, pixel count, memory and response-size limits must be explicit and enforced before processing or retrieval. |
 | **Temporal honesty** | Make observation gaps, cloud masking, period definitions and incomplete coverage explicit. |
 | **Modularity** | A new scientific product should not require modifying unrelated presentation and service logic. |
 | **Request-state reliability** | REST-accessible request statuses and results must remain recoverable after interruption. Notifications improve responsiveness but must not become the sole source of state. |
@@ -407,6 +452,8 @@ A comparison with an existing satellite product is a useful **preliminary check*
 | **Incompatible sources** | Different units, resolutions or acquisition times may invalidate a comparison. | Harmonize deliberately; reject unsupported combinations. |
 | **Cost and provider dependency** | Free datasets still have processing, storage and access constraints. | Prefer small regions, reuse results and keep data sources replaceable. |
 | **Over-engineering** | Premature technical decisions can make experimentation harder. | Let the template govern implementation; document only essential responsibilities here. |
+| **Datacube over-engineering** | Persisting a generic multidimensional cube before a demonstrated product need may freeze speculative schemas and heavy infrastructure. | Stabilize contracts first; prototype storage and partial reads only after the first real product. |
+| **Representation mistaken for result** | A display image or aggregated grid may hide native resolution and uncertainty. | Keep representations explicitly derived and linked; never treat them as the sole result. |
 | **Changing personal interests** | A rigid use-case roadmap would make the project feel like an obligation. | Keep scientific investigations optional and interchangeable. |
 
 ## 10. Future Directions and Success Criteria
@@ -434,4 +481,4 @@ An agent reading the proposal should distinguish **required capabilities**, **la
 
 ---
 
-**End of proposal — v0.14.**
+**End of proposal — v0.15.**

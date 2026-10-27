@@ -1,10 +1,10 @@
 # MEOGAP — Development Roadmap
 
-**Version:** 2.0-draft · **Date:** 2026-10-26 · **Status:** indicative, human-owned backlog; not yet created in GitHub.
+**Version:** 2.1-draft · **Date:** 2026-10-27 · **Status:** indicative, human-owned backlog; GitHub issues are created from this file.
 
 **Intent:** A learning-driven scientific project, not a SaaS product plan. This file defines milestone outcomes, epics and indicative issue candidates; it is **not** an approved implementation plan, fixed deadline schedule or authorization for an agent to write code or create GitHub issues.
 
-**Existing context:** `documentation/project_definition.md` v0.13 is the current requirements baseline; `README.md`, `AGENTS.md`, `agents/CODING_STANDARDS.md`, `agents/UNIT_TEST_GUIDE.md`, `agents/SOFTWARE_VALIDATION_PLAN.md` and the existing Make/Docker/CI template describe the working engineering foundations. See [Requirements migration notes](#requirements-migration-notes) for deliberate changes not yet reflected in the v0.13 specification.
+**Existing context:** `documentation/project_definition.md` v0.15 is the current requirements baseline; `README.md`, `AGENTS.md`, `agents/CODING_STANDARDS.md`, `agents/UNIT_TEST_GUIDE.md`, `agents/SOFTWARE_VALIDATION_PLAN.md` and the existing Make/Docker/CI template describe the working engineering foundations. See [Requirements migration notes](#requirements-migration-notes) for roadmap allocation decisions and any remaining differences with the v0.15 specification.
 
 ## 1. Agreed direction and guardrails
 
@@ -13,7 +13,9 @@
 - **Local-first only.** M0 needs Docker Compose for repeatable development and E2E tests. No production or hosted infrastructure is planned in M0–M5. Even M6 does not automatically imply deployment; hosted infrastructure remains optional.
 - **Minimal M0.** One useful integrated AOI-based prototype, real HTTP/API boundaries, deterministic simulated Core, basic map/series UI and functional tests. No real user sign-in, ownership enforcement, credit ledger, robust persistence or production operations in M0.
 - **First real science in M1.** Start with a small L1 product family (e.g. NDVI and a second well-defined index). Source access, validity masks, spatial treatment and validation must be scientifically explicit.
-- **H3 is an intentional pragmatic V1 spatial strategy.** Use a replaceable spatial alignment/aggregation abstraction; allow an early H3-based common support, while recording the approximation, native resolution, cell coverage, masks and method version. H3 does not constitute exact per-pixel raster registration, and aggregation order can affect nonlinear index results. A more precise V2 is learning-driven, not a prerequisite for M1.
+- **H3 is a candidate first spatial harmonization strategy.** Use a replaceable Spatial Harmonization Engine; allow H3 as an early common analysis support, while recording the approximation, native resolution, cell coverage, masks and method version. H3 does not constitute exact per-pixel raster registration, and aggregation order can affect nonlinear index results. A more precise raster strategy is learning-driven, not a prerequisite for M1.
+- **Storage and representations are deferred decisions.** M0 defines logical product/request/result/representation contracts and a storage-independent access boundary. It does not choose Zarr, S3, a datacube schema, H3 storage or precomputed representations. Those choices require an ADR and, for physical storage, evidence from the first real product.
+- **A representation is not a result.** Derived representations (common grid, H3 aggregation, extracted series, display image, archive) must link to their source result and record their transformation, support, resolution, coverage and known loss. A display image is never the sole persistent copy of a scientific result.
 - **M2 proves processing depth.** A second L1 index does not establish the reusable multi-level engine. M2 must execute an L2 product depending on L1 (FVC-from-NDVI is the leading candidate), preserve intermediates and lineage, and expose SAU-based analyses.
 - **UX follows science.** M0 minimal UI; M3 consolidates the scientific workspace once L1/L2 needs are concrete; M4 contains a dedicated Indicator UX research, prototype and initial builder consolidation epic.
 - **Terminology.** `Indicator Engine` is the component; `Monitoring Indicator` is a configurable monitoring definition; `Indicator Evaluation` is its evaluated result. These are **not** MEOGAP scientific product levels. Retire the former `Proxy Engine` / `Proxy` names in new issues.
@@ -25,7 +27,7 @@
 | Milestone | Goal | Epic count | Indicative ticket count | Exit demonstration |
 |---|---|---:|---:|---|
 | **M0 — Minimal Foundations** | A reproducible local prototype with a real UI → API → simulated Core → result → UI path; no real EO source. | 6 | 16 | Engineering foundation, not a miniature production platform. |
-| **M1 — First L1 Scientific Products** | Real EO observations yield one or more scientifically specified L1 products; an initial H3-based spatial alignment/aggregation strategy is tested and qualified. | 6 | 13 | Native sensor data, quality masks and validation come before breadth. |
+| **M1 — First L1 Scientific Products** | Real EO observations yield one or more scientifically specified L1 products; an initial spatial harmonization strategy (H3 candidate) is tested and qualified. | 6 | 13 | Native sensor data, quality masks and validation come before breadth. |
 | **M2 — Multi-level Product Engine** | A real L2 product (FVC is the candidate) depends on L1 outputs through a reusable dependency graph, with intermediates, provenance and SAU analyses. | 5 | 12 | The milestone proves processing depth, not merely another L1 index. |
 | **M3 — Platform & UX Consolidation** | Improve the full product-exploration experience and reinforce local services, identity, request execution, result management and testability. | 6 | 16 | Architecture and UX are informed by the actual M1–M2 scientific workflows. |
 | **M4 — First Indicator Engine** | Define, configure, evaluate and understand real Monitoring Indicators built from scientific products; prototype and consolidate the initial visual configuration experience. | 5 | 13 | Indicator UX design is a first-class epic, not a by-product of API implementation. |
@@ -36,7 +38,7 @@ Milestones have **no due dates**. M0–M4 are elaborated below as a first issue 
 
 ## 3. Backlog and GitHub issue conventions
 
-1. Create one GitHub **Milestone** for each active M0–M6 stage (M7+ optional). Create one GitHub **Epic issue** for each heading such as `[M1-E03] Spatial Alignment & Aggregation Engine — H3 V1`, with the matching milestone. Create each `[M1-E03-T01] …` as a task/sub-issue of that epic. Do not invent extra tasks when generating issues from this file.
+1. Create one GitHub **Milestone** for each active M0–M6 stage (M7+ optional). Create one GitHub **Epic issue** for each heading such as `[M1-E03] Spatial Harmonization Engine — H3 Candidate Strategy`, with the matching milestone. Create each `[M1-E03-T01] …` as a task/sub-issue of that epic. Do not invent extra tasks when generating issues from this file.
 2. Preserve identifiers as stable planning keys; issue numbers assigned by GitHub are separate. If a ticket is removed, keep its identifier retired rather than silently renumbering later tickets.
 3. All tickets start **Proposed / Backlog**. Promote a ticket to **Ready for implementation** only after the user has researched options, agreed the solution and explicitly reviewed an implementation plan and test plan. Neither a detailed ticket nor a roadmap milestone is authorization to start coding.
 4. Issue titles, bodies, PRs and code-facing documentation use **English**; see [`agents/REPOSITORY_RULES.md`](agents/REPOSITORY_RULES.md). Avoid invented due dates, estimates, priorities, implementation classes or files. Type labels may express `research`, `design`, `implementation`, `validation` and `ux`.
@@ -56,14 +58,14 @@ Milestones have **no due dates**. M0–M4 are elaborated below as a first issue 
 | M0 | **M0-E06** — Functional E2E Validation | 2 | Make requirements-based functional testing part of normal local development from the first prototype. |
 | M1 | **M1-E01** — EO Product Research & Scientific Specification | 2 | Select and properly specify a small family of scientifically meaningful L1 products. |
 | M1 | **M1-E02** — Real EO Data Retrieval & Preparation | 2 | Make the first genuine source observations available to the scientific Core with faithful metadata and validity information. |
-| M1 | **M1-E03** — Spatial Alignment & Aggregation Engine — H3 V1 | 3 | Develop a replaceable spatial alignment/aggregation abstraction and use H3 as a deliberately simple, qualified first strategy. |
+| M1 | **M1-E03** — Spatial Harmonization Engine — H3 Candidate Strategy | 3 | Develop a replaceable spatial harmonization abstraction and use H3 as a deliberately simple, qualified first candidate strategy. |
 | M1 | **M1-E04** — First L1 Scientific Products | 2 | Implement a small, meaningful L1 product family over actual EO data. |
 | M1 | **M1-E05** — Real Product Integration & Basic Exploration | 2 | Replace the synthetic demonstration results with scientifically grounded L1 outputs in the existing app journey. |
 | M1 | **M1-E06** — Scientific Verification & Product Documentation | 2 | Conclude M1 with evidence of scientific meaning rather than only technical success. |
 | M2 | **M2-E01** — Multi-level Product Model & Registry | 2 | Make the Product Engine generic across MEOGAP internal levels L0, L1 and L2+. |
 | M2 | **M2-E02** — Dependency Graph, Intermediate Products & Lineage | 3 | Execute real product-on-product computations with pinned versions and reusable intermediate results. |
 | M2 | **M2-E03** — First L2 Scientific Product — FVC Candidate | 3 | Use a meaningful scientific transformation of an existing L1 product to prove the new processing depth. |
-| M2 | **M2-E04** — SAU Generation & Reusable Spatial/Temporal Analysis | 2 | Turn H3 V1 spatial supports into stable selectable analysis units and product time-series services. |
+| M2 | **M2-E04** — SAU Generation & Reusable Spatial/Temporal Analysis | 2 | Turn harmonized spatial supports (H3 candidate) into stable selectable analysis units and product time-series services. |
 | M2 | **M2-E05** — Product Engine Generalization & Scientific Regression | 2 | Verify that multi-level processing is truly reusable and retains scientific interpretability. |
 | M3 | **M3-E01** — Architecture & Contract Consolidation | 2 | Use actual L1/L2 implementations to address real design friction instead of theoretical architecture work. |
 | M3 | **M3-E02** — Scientific Workspace UX Consolidation | 4 | Build an effective human workflow for understanding products, constructing requests and interpreting results. |
@@ -125,36 +127,42 @@ Milestones have **no due dates**. M0–M4 are elaborated below as a first issue 
 
 ### [M0-E02] Minimal Architecture & Contracts
 
-**Objective:** Define the smallest end-to-end component boundaries and versioned data interchange needed for M0.
-**Epic acceptance:** UI, API and mock Core agree on product/request/result shapes and lifecycle semantics, with explicit deferred requirements.
-**Out of scope:** No speculative service decomposition, full product DAG, real identity model or complete future Indicator schemas.
+**Objective:** Define the smallest end-to-end component boundaries and versioned data interchange needed for M0, including logical result/representation contracts and a storage-independent access boundary.
+**Epic acceptance:** UI, API and mock Core agree on product/request/result/representation shapes and lifecycle semantics; the access contract does not expose the physical storage organization; all deferred requirements are explicit.
+**Out of scope:** No speculative service decomposition, full product DAG, real identity model or complete future Indicator schemas. No physical datacube decision: Zarr, S3, versioned raster collections, H3 storage, partial-read implementation and precomputed representations are deferred. No persisted image per date.
+
+**Architecture note (2026-10-27):** The logical model distinguishes a product definition, an analysis request, an immutable product result and a derived representation. A representation carries a link to its source result plus transformation, support, resolution, coverage and loss metadata. M0 may hold results in memory or temporary files, but consumers must access them through the same bounded, storage-independent contract that a later backend will implement.
 
 #### [M0-E02-T01] Define M0 Reference Journey and Reallocate Requirements
 
 - **Type:** design
 - **Outcome:** Write down the single observable M0 demonstration and the real/mock/visual/deferred capability boundary.
-- **Research / decisions:** Choose the initial AOI/UTC-window flow; map original P0 requirements to partial M0 demonstrations versus full M1–M4 delivery; identify essential negative cases.
-- **Evidence to accept:** A versioned acceptance checklist and allocation matrix exist; M0 does not claim full compliance with deferred P0 requirements.
+- **Research / decisions:** Choose the initial AOI/UTC-window flow; map original P0 requirements to partial M0 demonstrations versus full M1–M4 delivery; identify essential negative cases. Allocate the new representation/storage/harmonization concepts explicitly as deferred or partially demonstrated rather than omitting them.
+- **Evidence to accept:** A versioned acceptance checklist and allocation matrix exist; M0 does not claim full compliance with deferred P0 requirements; deferred storage, datacube, H3 and precomputed-representation decisions are listed.
+- **Architecture note (2026-10-27):** The M0 journey must not require a specific storage layout, a per-date image or a physical H3 grid. Deferred items include Zarr, S3, common-grid resampling at scale, precomputed representations and the production Spatial Harmonization Engine.
 - **Dependencies:** —
 - **Related requirements:** SYS-01, SYS-02, SYS-03, SYS-05, SYS-06, SYS-07, SYS-12, ENG-07
 
 #### [M0-E02-T02] Define Minimal Product, Request, Result and Error Contracts
 
 - **Type:** design
-- **Outcome:** Specify small cross-component interfaces for the M0 demonstration.
-- **Research / decisions:** Choose contract source and Python/TypeScript sharing or generation; model product ID/version, AOI, UTC range, request status, mapped result, simple series and missing/masked/valid-zero states.
-- **Evidence to accept:** Examples and boundary tests demonstrate agreement between consumers and explicit errors; contracts are version-identifiable.
+- **Outcome:** Specify small cross-component interfaces for the M0 demonstration, including a logical representation descriptor and a bounded access contract that does not depend on physical storage.
+- **Research / decisions:** Choose contract source and Python/TypeScript sharing or generation; model product ID/version, AOI, UTC range, request status, mapped result, simple series and missing/masked/valid-zero states. Decide the minimum result identity and provenance (result ID, version, product definition version, spatial scope, time window, native grid/resolution, limitations). Decide how a consumer requests a bounded time/AOI slice or a display representation without receiving a storage path. Define explicit request limits: spatial extent, period, pixel count, memory and response size.
+- **Evidence to accept:** Examples and boundary tests demonstrate agreement between consumers and explicit errors; contracts are version-identifiable. The same consumer works against two interchangeable result backends (for example in-memory and file-backed) without contract changes. A temporal/spatial slice can be requested without loading the whole synthetic result. Missing, masked, unavailable and genuine-zero values remain distinct.
 - **Dependencies:** M0-E02-T01
-- **Related requirements:** ENG-01, SYS-01, SYS-03, SYS-07
+- **Related requirements:** ENG-01, SYS-01, SYS-03, SYS-07, SYS-26, SYS-27, SYS-30
+- **Architecture note (2026-10-27):** Model four distinct objects: product definition, analysis request, immutable result and derived representation. A representation descriptor must include `representation_id`, `kind` (native, common-grid, H3, extracted-series, display-image, archive), `source_result_id` and version, transformation method/version, spatial support and resolution, coverage, missing-data rules and known loss. The API must not expose a physical path or assume Zarr, S3, raster files or an H3 store. M0 may load a tiny whole result internally, but the contract must already be slice-oriented.
+- **Open decisions (2026-10-27):** Descriptor schema and identifier strategy; selector semantics (inclusive UTC window, bbox vs geometry, SAU selector); whether a representation is a separate API resource or an embedded descriptor; exact M0 limits; how provenance references the exact versioned method documentation.
 
 #### [M0-E02-T03] Document Minimal Component Boundaries and Deferred Architecture Choices
 
 - **Type:** design
 - **Outcome:** Capture where UI, API, Core library and existing worker responsibilities sit in M0.
-- **Research / decisions:** Decide whether mock execution is inline or worker-backed; how temporary request state works; how a later authenticated user context can be introduced without implementing login now.
-- **Evidence to accept:** One short architectural decision record and component flow exist; all intentionally postponed choices are listed.
+- **Research / decisions:** Decide whether mock execution is inline or worker-backed; how temporary request state works; how a later authenticated user context can be introduced without implementing login now. Record the storage/representation boundary and state that physical storage, datacube and harmonization choices are deferred.
+- **Evidence to accept:** One short architectural decision record and component flow exist; all intentionally postponed choices are listed, including Zarr, S3, datacube schema, H3 storage, precomputed representations, partial-read implementation and the first harmonization backend.
 - **Dependencies:** M0-E02-T01, M0-E02-T02
-- **Related requirements:** ENG-01, ENG-03
+- **Related requirements:** ENG-01, ENG-03, SYS-26, SYS-27, SYS-29
+- **Architecture note (2026-10-27):** The ADR must state the non-decisions explicitly. Any later decision that constrains product definitions, the access contract or the frontend requires its own ADR before becoming an architectural constraint. M0 uses in-memory/temporary storage; durable immutability and retention remain deferred.
 
 ### [M0-E03] Frontend Foundations & Minimal UX
 
@@ -184,10 +192,11 @@ Milestones have **no due dates**. M0–M4 are elaborated below as a first issue 
 
 - **Type:** implementation
 - **Outcome:** Make the entire prototype demonstrable without pretending it is scientifically validated.
-- **Research / decisions:** Choose a minimal Requests state display and map/time-series representation; distinguish zero, missing, masked and failure states; mark the probe as synthetic.
-- **Evidence to accept:** A completed result can be selected from Requests and displayed; missing values remain gaps, not zeros; failure states are explicit.
+- **Research / decisions:** Choose a minimal Requests state display and map/time-series representation; distinguish zero, missing, masked and failure states; mark the probe as synthetic. Render the display representation on demand from the logical result, without persisting an image per date and without knowing the physical storage.
+- **Evidence to accept:** A completed result can be selected from Requests and displayed; missing values remain gaps, not zeros; failure states are explicit; no per-date image artifact is required; native resolution and the synthetic/unvalidated status remain visible.
 - **Dependencies:** M0-E03-T01, M0-E04-T02
-- **Related requirements:** SYS-05, SYS-06, SYS-07, FE-03, FE-04, FE-05, FE-06
+- **Related requirements:** SYS-05, SYS-06, SYS-07, SYS-28, FE-03, FE-04, FE-05, FE-06
+- **Architecture note (2026-10-27):** A display image is a derived representation, not the scientific result. It may be cached later, but M0 must work without a cache or a stored image per date.
 
 ### [M0-E04] Minimal Backend & Mock Product Engine
 
@@ -199,28 +208,31 @@ Milestones have **no due dates**. M0–M4 are elaborated below as a first issue 
 
 - **Type:** implementation
 - **Outcome:** Produce a repeatable synthetic product with spatial scope and multiple observation periods.
-- **Research / decisions:** Design tiny fixtures with valid zeros, absent observations, masked samples and simple reference calculations; give the probe explicit synthetic/unvalidated metadata.
-- **Evidence to accept:** Identical inputs yield identical artifacts, tests cover validity semantics, and no remote provider is contacted.
+- **Research / decisions:** Design tiny fixtures with valid zeros, absent observations, masked samples, partial coverage and simple reference calculations; give the probe explicit synthetic/unvalidated metadata. Include native grid/resolution metadata and a representation descriptor so the fixture exercises the M0 contract rather than a storage-specific format.
+- **Evidence to accept:** Identical inputs yield identical results and representation metadata; tests cover validity semantics and partial coverage; no remote provider is contacted; no per-date image is produced.
 - **Dependencies:** M0-E02-T02
-- **Related requirements:** CORE-02, CORE-03, CORE-04, CORE-05, SYS-07
+- **Related requirements:** CORE-02, CORE-03, CORE-04, CORE-05, SYS-07, SYS-27
+- **Architecture note (2026-10-27):** Fixtures are synthetic source/result/representation examples, not a mini datacube. They must be swappable behind the access contract and must not assume Zarr, S3, H3 or a raster collection.
 
 #### [M0-E04-T02] Connect Catalogue and Request API to the Mock Core
 
 - **Type:** implementation
-- **Outcome:** Use meogap_api and the importable meogap_core library to serve the prototype through real HTTP.
-- **Research / decisions:** Choose minimal routes, input validation and request/result association; reuse existing worker only if it simplifies this bounded path.
-- **Evidence to accept:** A request submitted over HTTP produces a retrievable synthetic result through the Core boundary; contract and integration tests pass.
+- **Outcome:** Use meogap_api and the importable meogap_core library to serve the prototype through real HTTP, returning a display-ready representation and its metadata without exposing the physical storage.
+- **Research / decisions:** Choose minimal routes, input validation and request/result association; decide the storage-independent slice/representation endpoint (result ID + bounded period and AOI); reuse existing worker only if it simplifies this bounded path. An in-memory or temporary backend is acceptable in M0.
+- **Evidence to accept:** A request submitted over HTTP produces a retrievable synthetic result through the Core boundary; a bounded time/AOI slice and a display representation are retrievable through the same contract; no storage path leaks; contract and integration tests pass and a backend swap does not change the consumer.
 - **Dependencies:** M0-E02-T02, M0-E04-T01
-- **Related requirements:** BE-01, BE-03, BE-05, BE-12
+- **Related requirements:** BE-01, BE-03, BE-05, BE-12, SYS-26, SYS-27, SYS-28
+- **Architecture note (2026-10-27):** Endpoints may be minimal, but their shape must not encode a storage backend. Keep the logical selectors (result, period, spatial extent, representation kind) separate from any future Zarr/raster/S3 implementation.
 
 #### [M0-E04-T03] Implement Minimal Request States and Transparent Failure Semantics
 
 - **Type:** implementation
-- **Outcome:** Give the prototype enough lifecycle behavior to test successful, rejected and failed analyses.
-- **Research / decisions:** Choose simple state transitions and error codes; expose unavailable periods and synthetic provenance; keep storage/retry guarantees explicitly outside M0.
-- **Evidence to accept:** Users and tests can distinguish success, invalid submission, processing failure and missing scientific observations.
+- **Outcome:** Give the prototype enough lifecycle behavior to test successful, rejected and failed analyses, including partial scientific availability.
+- **Research / decisions:** Choose simple state transitions and error codes; expose unavailable periods and synthetic provenance; keep storage/retry guarantees explicitly outside M0. Distinguish `success`, `partial`, `unavailable`, `missing`, `masked` and `failed` semantics.
+- **Evidence to accept:** Users and tests can distinguish success, invalid submission, processing failure, partial results and missing scientific observations; a successful request with no valid period for some dates remains visibly partial rather than failing or showing zero.
 - **Dependencies:** M0-E04-T02
 - **Related requirements:** SYS-07, SYS-12, BE-07
+- **Architecture note (2026-10-27):** M0 does not guarantee durable immutability or version retention; it must not claim them. The states must remain compatible with the later immutable result/version model.
 
 ### [M0-E05] Local Docker Compose Integration
 
@@ -256,26 +268,26 @@ Milestones have **no due dates**. M0–M4 are elaborated below as a first issue 
 
 - **Type:** research/design
 - **Outcome:** Select an executable functional testing approach consistent with existing unit, regression and scientific validation policies.
-- **Research / decisions:** Review the Behave + Playwright Python proposal, tags and fixture approach; define smoke, negative and validity scenarios with requirement IDs and explicit partial/mock statuses.
-- **Evidence to accept:** Agreed scenarios and harness design cover the M0 reference journey with unambiguous expected outcomes.
+- **Research / decisions:** Review the Behave + Playwright Python proposal, tags and fixture approach; define smoke, negative and validity scenarios with requirement IDs and explicit partial/mock statuses. Include a bounded-slice retrieval scenario, a representation-metadata scenario and missing/masked/partial/zero scenarios.
+- **Evidence to accept:** Agreed scenarios and harness design cover the M0 reference journey with unambiguous expected outcomes, including storage-independent access and the absence of a per-date image requirement.
 - **Dependencies:** M0-E02-T01
-- **Related requirements:** ENG-07, SYS-03, SYS-05, SYS-07
+- **Related requirements:** ENG-07, SYS-03, SYS-05, SYS-07, SYS-26, SYS-27
 
 #### [M0-E06-T02] Run Local Browser E2E Smoke Against the Compose Stack
 
 - **Type:** implementation/verification
 - **Outcome:** Exercise catalogue → AOI/request → API/Core mock → Requests → map/time series with a browser-driven test.
-- **Research / decisions:** Decide fixtures, clean boot, screenshots/traces/logs, CI scope and failure policy; ensure calls are not replaced entirely by browser intercepts.
-- **Evidence to accept:** Clean runs pass repeatably, an intentionally failing path is observable, and CI runs an agreed smoke subset.
+- **Research / decisions:** Decide fixtures, clean boot, screenshots/traces/logs, CI scope and failure policy; ensure calls are not replaced entirely by browser intercepts. Exercise the logical result/representation contract rather than a storage-specific shape.
+- **Evidence to accept:** Clean runs pass repeatably, an intentionally failing path is observable, and CI runs an agreed smoke subset. The smoke demonstrates that the UI requests a bounded result slice/representation without knowing the storage backend and does not depend on a stored image per date.
 - **Dependencies:** M0-E06-T01, M0-E05-T02, M0-E03-T03
-- **Related requirements:** ENG-07, SYS-02, SYS-03, SYS-05, SYS-06
+- **Related requirements:** ENG-07, SYS-02, SYS-03, SYS-05, SYS-06, SYS-26, SYS-28
 
 ## 5. M1 — First L1 Scientific Products
 
-**Milestone objective:** Real EO observations yield one or more scientifically specified L1 products; an initial H3-based spatial alignment/aggregation strategy is tested and qualified.
+**Milestone objective:** Real EO observations yield one or more scientifically specified L1 products; an initial spatial harmonization strategy (H3 candidate) is tested and qualified.
 **Exit focus:** Native sensor data, quality masks and validation come before breadth.
 
-**Spatial-method guardrail:** An H3-based aggregation/alignment policy is an acceptable **V1 experiment** for selected products; it must be explicitly qualified. If a scientific operation requires native-grid calculations to preserve meaning, compute on the appropriate native/support grid and only then aggregate for SAU/display. The contract must not force a scientifically invalid operation.
+**Spatial-method guardrail:** An H3-based harmonization/aggregation policy is an acceptable **first experiment** for selected products; it must be explicitly qualified. If a scientific operation requires native-grid calculations to preserve meaning, compute on the appropriate native/support grid and only then aggregate for SAU/display. The contract must not force a scientifically invalid operation.
 
 **Exit demonstration:** At least two well-specified L1 products can be obtained through the common path from real EO inputs; each has reproducible scientific checks, validation documentation and explicit source/spatial-quality limitations.
 
@@ -321,44 +333,48 @@ Milestones have **no due dates**. M0–M4 are elaborated below as a first issue 
 #### [M1-E02-T02] Preserve Source Grids, QA Masks, Availability and Missing Data
 
 - **Type:** implementation
-- **Outcome:** Carry source acquisition identity, coordinate system, band resolution and quality flags into processing.
-- **Research / decisions:** Decide how to interpret cloud/no-data/invalid observations per provider; retain metadata needed by the spatial engine and scientific algorithms.
-- **Evidence to accept:** Source tests demonstrate correct mask propagation and distinguish measured zero from unobserved or invalid data.
+- **Outcome:** Carry source acquisition identity, coordinate system, band resolution, quality flags and native-grid context into processing and into the result/representation metadata.
+- **Research / decisions:** Decide how to interpret cloud/no-data/invalid observations per provider; retain metadata needed by the spatial engine, scientific algorithms and derived representations. Decide the source/result artifact boundary without committing to a physical datacube layout.
+- **Evidence to accept:** Source tests demonstrate correct mask propagation and distinguish measured zero from unobserved or invalid data; the native grid and resolution survive into the result/representation metadata.
 - **Dependencies:** M1-E02-T01, M1-E01-T02
-- **Related requirements:** SYS-07, SYS-20, CORE-05
+- **Related requirements:** SYS-07, SYS-20, CORE-05, CORE-03, SYS-27
+- **Architecture note (2026-10-27):** A Zarr / partial-read prototype is deliberately deferred until after the first real product, so that its schema is informed by actual access patterns. M1 must preserve enough native metadata to evaluate that later without recomputing sources.
 
-### [M1-E03] Spatial Alignment & Aggregation Engine — H3 V1
+### [M1-E03] Spatial Harmonization Engine — H3 Candidate Strategy
 
-**Objective:** Develop a replaceable spatial alignment/aggregation abstraction and use H3 as a deliberately simple, qualified first strategy.
-**Epic acceptance:** One real multi-band example is handled with an explicit target support, weighting/coverage assumptions, native resolution and validation against controlled cases.
-**Out of scope:** Do not present H3 indexing as exact pixel co-registration or claim that grid refinement increases observational resolution.
+**Objective:** Develop a replaceable Spatial Harmonization Engine and use H3 as a deliberately simple, qualified first candidate strategy.
+**Epic acceptance:** One real multi-band example is handled through an explicit harmonization contract with a declared target support, weighting/coverage assumptions, preserved native resolution and validation against controlled cases.
+**Out of scope:** Do not present H3 indexing as exact pixel co-registration, as a storage format, or as proof that grid refinement increases observational resolution. Do not decide the first backend by implication.
 
-#### [M1-E03-T01] Research H3 V1 Spatial Semantics and Define a Replaceable Interface
+**Architecture note (2026-10-27):** This epic owns the *explicit spatial harmonization* responsibility, not multi-product scientific comparison. Keep three levels separable: native grid, harmonization operation and SAU. The engine records the method, parameters, target support, aggregation, coverage, missing-data rules and native-resolution context. Product definitions must not depend on H3 or on a particular library. The first backend, H3 level and weighting method remain open decisions.
+
+#### [M1-E03-T01] Research the First Spatial Harmonization Strategy (H3 Candidate) and Define a Replaceable Interface
 
 - **Type:** research/design
-- **Outcome:** Specify the contract for mapping source pixels/bands to a common analysis support without locking the Core to H3.
-- **Research / decisions:** Explore H3 level selection, centroid versus area-weighted mapping, CRS transformations, source/target GSD, mask rules and whether index-before/after-aggregation is appropriate.
-- **Evidence to accept:** An ADR states the chosen V1 approximations, expected errors and alternative V2 raster-alignment implementations; examples are reproducible.
+- **Outcome:** Specify the contract for transforming a source representation onto a common analysis support without locking the Core to H3 or to one backend.
+- **Research / decisions:** Explore H3 level selection, centroid versus area-weighted mapping, CRS transformations, source/target GSD, mask rules, whether index-before/after-aggregation is appropriate, and how a common raster grid would compare. Define the input/output contract: source representation + target support + method + parameters → derived representation + metadata.
+- **Evidence to accept:** An ADR states the chosen first-strategy approximations, expected errors, alternative raster implementations and the open decisions; examples are reproducible; the contract can be exercised with a non-H3 test double.
 - **Dependencies:** M1-E01-T02, M1-E02-T02
-- **Related requirements:** CORE-03, CORE-08, SYS-07
+- **Related requirements:** CORE-03, CORE-08, SYS-07, SYS-27, SYS-29
+- **Open decisions (2026-10-27):** First backend; H3 resolution policy; centroid vs area-weighted assignment; whether to resample before or after index computation; how the engine reports coverage and information loss.
 
-#### [M1-E03-T02] Implement H3-based V1 Mapping, Aggregation and Coverage
+#### [M1-E03-T02] Implement the First Harmonization Strategy (H3 Candidate) with Mapping, Aggregation and Coverage
 
 - **Type:** implementation
-- **Outcome:** Provide a usable source-to-H3 grid path for the first products, including mixed native band resolutions if selected.
-- **Research / decisions:** Handle cell assignment, optional weighting, partial cells, quality masks and provenance of the spatial method; avoid hard-coding H3 into product formulas.
-- **Evidence to accept:** Small synthetic tests and one real example produce interpretable, reproducible aligned/aggregated observations with explicit coverage.
+- **Outcome:** Provide a usable, explicit source-to-common-support path for the first products, including mixed native band resolutions if selected.
+- **Research / decisions:** Handle cell assignment, optional weighting, partial cells, quality masks, native-resolution preservation and provenance of the spatial method; avoid hard-coding H3 into product formulas; keep the backend replaceable.
+- **Evidence to accept:** Small synthetic tests and one real example produce interpretable, reproducible aligned/aggregated observations with explicit coverage and transformation metadata; the same operation can be invoked through the abstract contract.
 - **Dependencies:** M1-E03-T01
-- **Related requirements:** CORE-03, CORE-08, SYS-06, SYS-20
+- **Related requirements:** CORE-03, CORE-08, SYS-06, SYS-20, SYS-27, SYS-29
 
-#### [M1-E03-T03] Quantify V1 Spatial Error and Define the V2 Improvement Threshold
+#### [M1-E03-T03] Quantify First-Strategy Spatial Error and Define the Improvement Threshold
 
 - **Type:** research/validation
 - **Outcome:** Measure how the initial strategy differs from an appropriate native-grid or raster-resampling reference.
-- **Research / decisions:** Study boundary cells, sub-cell variation, ratio-of-means versus mean-of-ratios, mixed-GSD inputs and conservation/coverage behavior.
-- **Evidence to accept:** A documented comparison explains where H3 V1 is acceptable, when it is not, and which future tests must guard improvement work.
+- **Research / decisions:** Study boundary cells, sub-cell variation, ratio-of-means versus mean-of-ratios, mixed-GSD inputs, conservation/coverage behavior and cases where several H3 cells reflect one source observation rather than independent measurements.
+- **Evidence to accept:** A documented comparison explains where the first strategy is acceptable, when it is not, which future tests must guard improvement work, and why H3 is or is not scientifically appropriate for each tested product family.
 - **Dependencies:** M1-E03-T02
-- **Related requirements:** SYS-07, SYS-20, CORE-08
+- **Related requirements:** SYS-07, SYS-20, CORE-08, SYS-29
 
 ### [M1-E04] First L1 Scientific Products
 
@@ -403,10 +419,10 @@ Milestones have **no due dates**. M0–M4 are elaborated below as a first issue 
 
 - **Type:** implementation
 - **Outcome:** Upgrade the minimal visualization to make actual observation periods and quality information understandable.
-- **Research / decisions:** Define coherent output units, spatial scope and time bins; show native GSD, aggregation support and periods lacking observations.
-- **Evidence to accept:** A bounded real analysis can be mapped and its time periods inspected without confusing masked, missing or zero data.
+- **Research / decisions:** Define coherent output units, spatial scope and time bins; show native GSD, aggregation support, representation method and periods lacking observations. Generate the map/series representation on demand from the scientific result.
+- **Evidence to accept:** A bounded real analysis can be mapped and its time periods inspected without confusing masked, missing or zero data; the displayed image is a derived representation, not a stored per-date artifact; native GSD and transformation context remain visible.
 - **Dependencies:** M1-E05-T01, M1-E03-T02
-- **Related requirements:** SYS-05, SYS-06, SYS-07, SYS-08a
+- **Related requirements:** SYS-05, SYS-06, SYS-07, SYS-08a, SYS-27, SYS-28
 
 ### [M1-E06] Scientific Verification & Product Documentation
 
@@ -492,11 +508,12 @@ Milestones have **no due dates**. M0–M4 are elaborated below as a first issue 
 #### [M2-E02-T03] Expose End-to-End Scientific Provenance and Lineage
 
 - **Type:** implementation
-- **Outcome:** Keep sufficient links to reproduce and interpret an L2 output, including the chosen L1 intermediate and EO observations.
-- **Research / decisions:** Determine minimum processing-run identity, source/algorithm versions, spatial method and validation/quality metadata across stages.
-- **Evidence to accept:** An L2 result can be traced backward to its exact L1 version and source inputs, with no ambiguous overwritten history.
+- **Outcome:** Keep sufficient links to reproduce and interpret an L2 output, including the chosen L1 intermediate, EO observations and any derived representation.
+- **Research / decisions:** Determine minimum processing-run identity, source/algorithm versions, spatial method, validation/quality metadata across stages and the link from each representation to its source result. Decide how provenance references the exact version of the method documentation.
+- **Evidence to accept:** An L2 result can be traced backward to its exact L1 version and source inputs, with no ambiguous overwritten history; every derived representation identifies its source result and transformation.
 - **Dependencies:** M2-E02-T02
-- **Related requirements:** SYS-10, BE-06, BE-19, BE-21
+- **Related requirements:** SYS-10, BE-06, BE-19, BE-21, SYS-27
+- **Architecture note (2026-10-27):** Lineage covers representations as well as products. A representation must not become an alternative provenance root.
 
 ### [M2-E03] First L2 Scientific Product — FVC Candidate
 
@@ -533,7 +550,7 @@ Milestones have **no due dates**. M0–M4 are elaborated below as a first issue 
 
 ### [M2-E04] SAU Generation & Reusable Spatial/Temporal Analysis
 
-**Objective:** Turn H3 V1 spatial supports into stable selectable analysis units and product time-series services.
+**Objective:** Turn harmonized spatial supports (H3 candidate) into stable selectable analysis units and product time-series services.
 **Epic acceptance:** An AOI can be partitioned into SAUs and each unit can return correctly qualified values through time.
 **Out of scope:** An advanced interactive map/plot experience comes in M3; H3 remains a replaceable strategy.
 
@@ -541,10 +558,11 @@ Milestones have **no due dates**. M0–M4 are elaborated below as a first issue 
 
 - **Type:** design/implementation
 - **Outcome:** Expose H3-backed SAUs with stable identifiers and explicit AOI overlap/coverage semantics.
-- **Research / decisions:** Define grid resolution policy, cell boundary behavior, polygon and raster intersection assumptions, null/quality rules and native resolution metadata.
-- **Evidence to accept:** Tests prove stable SAU identities, correct partial-coverage handling and reproducible summaries for sample products.
+- **Research / decisions:** Define grid resolution policy, cell boundary behavior, polygon and raster intersection assumptions, null/quality rules, native resolution metadata, assignment method, aggregation method, prior resampling and coverage. Record that several H3 cells may reflect one source observation and are not independent measurements.
+- **Evidence to accept:** Tests prove stable SAU identities, correct partial-coverage handling, reproducible summaries and complete spatial-method metadata for sample products; a smaller H3 cell is never presented as adding measured detail.
 - **Dependencies:** M1-E03-T03, M2-E01-T02
-- **Related requirements:** CORE-08, SYS-06, SYS-07
+- **Related requirements:** CORE-08, SYS-06, SYS-07, SYS-27, SYS-29
+- **Architecture note (2026-10-27):** H3 remains a candidate analysis support, not a storage or processing format. SAU identity and spatial metadata must survive a future change of harmonization backend.
 
 #### [M2-E04-T02] Provide SAU and AOI Temporal Series Across Product Levels
 
@@ -574,7 +592,7 @@ Milestones have **no due dates**. M0–M4 are elaborated below as a first issue 
 
 - **Type:** research/validation
 - **Outcome:** Turn M1–M2 scientific learnings into test coverage and prioritized potential improvements.
-- **Research / decisions:** Recheck provenance, quality masks, deterministic regression references, H3 V1 bias and situations needing precise raster co-registration.
+- **Research / decisions:** Recheck provenance, quality masks, deterministic regression references, first-strategy (H3 candidate) bias and situations needing precise raster co-registration.
 - **Evidence to accept:** Scientific, regression and integration checks cover demonstrated product levels; any spatial V2 work is explicitly justified and deferred or scoped.
 - **Dependencies:** M2-E05-T01, M2-E04-T02
 - **Related requirements:** SYS-07, SYS-10, SYS-20, ENG-07
@@ -597,20 +615,21 @@ Milestones have **no due dates**. M0–M4 are elaborated below as a first issue 
 #### [M3-E01-T01] Review M0–M2 Architecture with Real Scientific Workflows
 
 - **Type:** research/design
-- **Outcome:** Identify API/Core/worker/UI coupling, performance limits and duplication revealed by multiple scientific product levels.
-- **Research / decisions:** Inspect actual code paths, ownership boundaries, contract proliferation, storage and data exchange; prefer minimal incremental change.
-- **Evidence to accept:** A prioritized decision log distinguishes necessary refactors from optional architecture ideas, with justifications.
+- **Outcome:** Identify API/Core/worker/UI coupling, performance limits and duplication revealed by multiple scientific product levels, including whether the storage/access contract still fits real workflows.
+- **Research / decisions:** Inspect actual code paths, ownership boundaries, contract proliferation, storage and data exchange; prefer minimal incremental change. Reassess the result/representation access contract and decide whether a Zarr, versioned raster collection or other backend prototype is justified.
+- **Evidence to accept:** A prioritized decision log distinguishes necessary refactors from optional architecture ideas, with justifications; storage/representation decisions are supported by observed access patterns rather than speculative schemas.
 - **Dependencies:** M2-E05-T01
-- **Related requirements:** ENG-01, SYS-15
+- **Related requirements:** ENG-01, SYS-15, SYS-26, SYS-27, SYS-29
+- **Architecture note (2026-10-27):** This is the natural point to revisit the deferred physical-storage decision after the first real product. No backend is selected by default.
 
 #### [M3-E01-T02] Evolve Shared Contracts with Compatibility and Consumer Tests
 
 - **Type:** implementation
-- **Outcome:** Make product/request/result contracts robust enough for authentication, ownership, advanced UI and future Indicators.
-- **Research / decisions:** Define versioning policy, migration compatibility, API error conventions and who tests cross-language changes.
-- **Evidence to accept:** Contract upgrades have automated compatibility/consumer checks, without breaking existing L1/L2 reference journeys.
+- **Outcome:** Make product/request/result/representation contracts robust enough for authentication, ownership, advanced UI and future Indicators.
+- **Research / decisions:** Define versioning policy, migration compatibility, API error conventions, representation descriptor compatibility and who tests cross-language changes.
+- **Evidence to accept:** Contract upgrades have automated compatibility/consumer checks, including the representation/slice contract, without breaking existing L1/L2 reference journeys.
 - **Dependencies:** M3-E01-T01
-- **Related requirements:** ENG-01, SYS-17
+- **Related requirements:** ENG-01, SYS-17, SYS-26, SYS-27
 
 ### [M3-E02] Scientific Workspace UX Consolidation
 
@@ -738,11 +757,12 @@ Milestones have **no due dates**. M0–M4 are elaborated below as a first issue 
 #### [M3-E05-T02] Consolidate Immutable Result Artifacts and Provenance Downloads
 
 - **Type:** implementation
-- **Outcome:** Allow final-only download and an optional archive of intermediates/sources when permitted.
-- **Research / decisions:** Choose local artifact format, storage/versioning, source licensing, directory tree/provenance manifest and authorization enforcement.
-- **Evidence to accept:** A completed owner-scoped request downloads the expected immutable artifact and optional auditable archive; forbidden access fails.
+- **Outcome:** Allow final-only download and an optional archive of intermediates/sources when permitted, built from the actual lineage of the result.
+- **Research / decisions:** Choose local artifact format, storage/versioning, source licensing, directory tree/provenance manifest and authorization enforcement. Decide which source observations are copied and which are referenced unambiguously instead of being duplicated. Compare archive formats that preserve provenance.
+- **Evidence to accept:** A completed owner-scoped request downloads the expected immutable artifact and optional auditable archive; the archive contains only the real lineage (not every file associated with the product), forbidden access fails, and referenced sources remain resolvable.
 - **Dependencies:** M3-E03-T02, M2-E02-T03
-- **Related requirements:** SYS-10, SYS-13, SYS-23, BE-09, BE-21
+- **Related requirements:** SYS-10, SYS-13, SYS-23, BE-09, BE-21, SYS-27
+- **Open decisions (2026-10-27):** Archive format; manifest schema; copy-vs-reference rule for sources; how documentation versions are pinned in the archive.
 
 ### [M3-E06] Local Operations, Security & Integrated Verification
 
@@ -947,7 +967,7 @@ M6 is an open-ended rolling backlog (Minfinite), not a finite delivery milestone
 | **M6-E04 — External Access & MCP** | Expose controlled external access to existing services for agents and other consumers. | REST/MCP clients, authentication, authorization, audit, quotas, versioned contracts. | Reuse existing REST contracts; no arbitrary code execution; security review required. |
 | **M6-E05 — Advanced Scientific Products** | Add physically based or literature-derived scientific products once their prerequisites exist. | Land surface temperature (Ermida et al. physical retrieval candidate), local turbidity/water optics, nighttime radiance, additional non-ML or literature-derived products. | LST cannot be inferred from NDVI alone; explicit units, uncertainty and validation; no health or causal claims. ML-based product generation is handled in M6-E10. |
 | **M6-E06 — Monitoring Proxies & Change Detection** | Research indirect monitoring proxies and multi-source change detection without overstating evidence. | Mining-detection proxies, multi-source/cross-sensor change detection, anomalies, nighttime luminosity. | Indicators are not proof of cause, crime or illegal activity; document assumptions, sensitivity and limitations. |
-| **M6-E07 — Scientific Quality & Spatial Methods** | Improve spatial treatment, uncertainty handling and scientific quality beyond the H3 V1 baseline. | More precise raster alignment V2, uncertainty propagation, native-resolution preservation, validation improvements. | H3 V1 remains selectable; only pursue when demonstrated limitations justify it. |
+| **M6-E07 — Scientific Quality & Spatial Methods** | Improve spatial treatment, uncertainty handling and scientific quality beyond the first harmonization baseline. | More precise raster alignment, uncertainty propagation, native-resolution preservation, validation improvements. | H3 remains selectable; only pursue when demonstrated limitations justify it. |
 | **M6-E08 — Interoperability & Data Exchange** | Make products and provenance usable outside the original workflow. | Exports, metadata/provenance interchange, open formats, external consumers. | Align with versioned contracts; avoid format churn. |
 | **M6-E09 — Performance & Cost Optimization** | Improve throughput and cost efficiency against measured limitations. | Caching, result reuse, profiling, bounded processing, cost visibility. | No premature scaling; measure before optimizing. |
 | **M6-E10 — ML-Based Product Generation** | Generate scientific products using versioned machine-learning models and reproducible inference pipelines. | Land-cover classification; ground-level ozone estimation (e.g., He et al., 2024, XGBoost + SHAP); optional Prithvi-EO-2.0 (300M/600M) fine-tuning via TerraTorch/Hugging Face; model registry, provenance, spatial/temporal validation, uncertainty and interpretability. | Representative labels and ground-station data where required; spatial and temporal cross-validation; extreme-value bias; statistical proxy, not a direct measurement; no health or causal claims; GPU/compute, versioning, licensing and attribution; classical baselines first. |
@@ -962,8 +982,10 @@ M7+ remains an open horizon for ideas not yet scoped, including further scientif
 | Discipline | Working rule |
 |---|---|
 | Scientific integrity | Preserve provider processing level separately from MEOGAP L0–LN. Keep units, native GSD, masks, invalid/missing/zero semantics, coverage, assumptions and quality/validation statuses explicit. |
-| Spatial abstraction | Keep H3 a selectable V1 method and retain metadata sufficient to compare against a more precise raster V2 later. Never imply that finer H3 cells add source measurements. |
-| Contracts | Prefer the minimum shared, versioned contract needed at each milestone. Changes affecting Python/TS consumers get coordinated compatibility tests. |
+| Spatial abstraction | Separate native grid, explicit harmonization operation and SAU. Keep H3 a selectable method, not a storage format or a resampling algorithm. Retain metadata sufficient to compare against a raster implementation later. Never imply that finer H3 cells add source measurements. |
+| Storage & access | Keep the result access contract independent of the physical storage organization. Support bounded temporal/spatial slices. Defer Zarr, S3, datacube schema and precomputed representations until the first real product provides evidence; require an ADR before constraining the architecture. |
+| Representations | A representation is derived, never a result. Link it to its source result and record transformation, support, resolution, coverage, missing-data rules and known loss. Display images are generated on demand or cached; they are never the sole copy. |
+| Contracts | Prefer the minimum shared, versioned contract needed at each milestone. Changes affecting Python/TS consumers get coordinated compatibility tests. Any structuring decision not covered by an existing ADR requires a new ADR before becoming an architectural constraint. |
 | Test taxonomy | Respect existing unit, non-regression, external scientific validation and benchmark categories in `SOFTWARE_VALIDATION_PLAN.md`; introduce functional browser E2E tests separately. |
 | Local reproducibility | Prefer stable fixtures and bounded AOIs. The E2E Docker Compose stack is a development/test tool, not an operational service. |
 | Security | No secrets in repo, images or logs. M0 must not expose an unauthenticated local backend publicly; authenticated authorization and user isolation arrive in M3. |
@@ -971,7 +993,7 @@ M7+ remains an open horizon for ideas not yet scoped, including further scientif
 
 ## 12. Requirements migration notes
 
-The supplied `project_definition.md` v0.13 still treats **P0 = fully delivered in M0**, includes a functional **Proxy** placeholder in M0 and specifies early authentication/credits/advanced lifecycle. The changes below are **roadmap allocation decisions**, not silent edits to the underlying functional requirements. Before adopting this roadmap as the sole authority, revise the definition/requirements to align terminology and milestone allocation while preserving requirement identifiers and scientific intent.
+The current `project_definition.md` is **v0.15**. It now includes the representation, storage-independent access, bounded-slice, on-demand visualization and explicit-harmonization requirements (`SYS-26…30`, `CORE-16`, `BE-22` and related component clauses). The changes below remain **roadmap allocation decisions**, not silent edits to the functional requirements. Before adopting this roadmap as the sole authority, keep terminology and milestone allocation aligned while preserving requirement identifiers and scientific intent.
 
 | Requirement theme / existing IDs | New intended delivery allocation |
 |---|---|
@@ -979,6 +1001,10 @@ The supplied `project_definition.md` v0.13 still treats **P0 = fully delivered i
 | Real product computation/source/quality/validation (`SYS-04/14a/14b/20/22`, `CORE-01/02/05`) | M1 real L1 products and references; M2 generalized dependencies/quality. |
 | Versioned registry, DAG, lineage, intermediates, SAU (`SYS-10/15/19/21`, `CORE-06/07/08/15`) | M2 engine capability; M3 hardening and full user presentation. |
 | Requests, automatic updates, identity, downloads, credits (`SYS-12/13/16/17/18/23/24/25`) | M0 prototype only; full implementation and owner protection M3. |
+| Representation, storage-independent access, bounded slices (`SYS-26/27/30`, `CORE-16`, `BE-22`) | Logical contract and simulated slice in M0; physical storage and partial-read implementation after the first real product (M1/M3), with an ADR. |
+| On-demand visualization (`SYS-28`) | Principle in M0; real rendering and optional cache in M1/M3. No per-date image persistence. |
+| Explicit harmonization and H3 as analysis support (`SYS-29`, `CORE-08`, `CORE-14`) | M1 first harmonization strategy (H3 candidate) and M2 SAU work; multi-product comparison remains P2/M6. |
+| Archive from real lineage and reference-vs-copy sources (`SYS-23`) | M3 local archive implementation; format and manifest remain open decisions. |
 | Configurable monitoring (`SYS-11`, `FE-07`, `BE-13/14`, `CORE-11`) | Rename Proxy → Monitoring Indicator; **no functional M0 placeholder**; initial real engine and UX M4, advanced capability M5. Revise old P0 requirements accordingly without changing identifiers silently. |
 | Engineering (`ENG-01…14`) | Minimal contracts/CI/local Compose in M0; reliability, authorization, migrations, stronger gates in M3; advanced/remote operations only if justified later. |
 
@@ -991,6 +1017,7 @@ The supplied `project_definition.md` v0.13 still treats **P0 = fully delivered i
 3. Add, merge, split or retire issues freely when research changes the best path. Reflect accepted changes in the epic summary and requirement mapping without preserving an arbitrary ticket count.
 4. Keep the project-definition requirements and agent guidance synchronized as a separate, reviewed documentation task; never infer scientific validation from a passing software test.
 5. At each milestone exit, demonstrate the actual user/scientific outcome, record what is mocked/deferred, and update the next milestone based on what was learned.
+6. Record any structuring decision not covered by an existing ADR in a new ADR before it becomes an architectural constraint. Do not let an implementation detail (storage backend, cube schema, H3 usage, archive format) silently become a product-definition or frontend requirement.
 
 ---
 
