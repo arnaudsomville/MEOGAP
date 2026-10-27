@@ -2,16 +2,28 @@
 name: Test Lint Push
 on:
   push:
-    branches: [ '**' ] # Trigger on all push
+    branches: [ '**' ] # Trigger on all branches
     tags: [ '**' ] # Trigger on all tags
+    paths-ignore:
+      - 'agents/**'
+      - 'documentation/**'
+      - 'project_templates/**'
+      - '.sops.yaml'
+      - '.trivyignore'
+      - '**/*.md'
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test-lint-push:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -21,10 +33,26 @@ jobs:
         with:
           node-version: '24'
           cache: 'npm'
-          cache-dependency-path: projects/meogap_ui/package-lock.json
-      - name: Install tooling and projects
-        run: make install-dev-tooling && make install-modified-projects
-      - name: Quality checks
-        run: make code-quality-modified-projects
-      - name: Tests
-        run: make test-modified-projects
+          cache-dependency-path: '**/package-lock.json'
+      - name: Install tooling
+        run: make install-dev-tooling
+      # The age private key is provided through the SOPS_AGE_KEY repository secret.
+      - name: Configure SOPS age key
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: |
+          if [ -n "${SOPS_AGE_KEY:-}" ]; then
+            mkdir -p "$HOME/.config/sops/age"
+            printf '%s\n' "$SOPS_AGE_KEY" > "$HOME/.config/sops/age/keys.txt"
+            chmod 600 "$HOME/.config/sops/age/keys.txt"
+          fi
+      - name: Validate encrypted secrets
+        run: make sops-decrypt-all
+      - name: CI
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ] || \
+             [ "${{ github.ref_name }}" = "${{ github.event.repository.default_branch }}" ]; then
+            make ci-all
+          else
+            make ci-modified-projects
+          fi

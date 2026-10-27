@@ -102,12 +102,17 @@ implementation is not thread safe for a specific reason, stop and ask the user f
 writing it.
 
 ## Testing structure and naming
-Every module under `src/fds` must have a matching test module under `tests/unit` with the same relative path and
-`test_` prefix (for example, `src/fds/geometry/groundtrack.py` -> `tests/unit/geometry/test_groundtrack.py`). The
-`src/fds` and `tests/unit` directory trees must mirror each other so it is immediately obvious where each
-functionality is tested.
 
-**Exception:** `src/fds/__init__.py` does not require unit tests (it only delegates to `fds.utils.satkitdata`, which is fully covered).
+### Python
+Every Python module under a project's `src/` must have a matching test module under `tests/unit` with the same
+relative path and a `test_` prefix (for example, `src/product/ndvi.py` -> `tests/unit/product/test_ndvi.py` when
+the project layout mirrors it). Keep source and test trees aligned where practical so it is immediately obvious
+where each behavior is tested. `__init__.py` modules do not require a dedicated test.
+
+### TypeScript / React
+Component and module tests live under `tests/` and mirror `src/` (`src/App.tsx` -> `tests/App.test.tsx`,
+`src/api/client.ts` -> `tests/api/client.test.ts`). Bootstrap (`main.tsx`), declaration files and barrel modules
+are exempt. See `agents/UNIT_TEST_GUIDE.md` §18.
 
 ## Service pattern: Params, Inputs, Response
 Services are the core unit of computation. A service is the smallest independent unit of computation: it
@@ -212,6 +217,24 @@ Why no dataclasses here:
 - Params: none.
 - Inputs: only 2 fields (<4).
 - Response: single value.
+
+## Frontend conventions (TypeScript / React)
+
+- **Stack:** Vite, React, TypeScript, Vitest, React Testing Library, ESLint, Prettier. Use the UI project template
+  as the reference; do not introduce an alternative test runner without an explicit decision.
+- **Quality entry points:** `make code-quality <project>` runs Prettier, ESLint, `tsc --noEmit`, hadolint and the
+  source/test parity check.
+- **Typing:** `strict` TypeScript is mandatory. Avoid `any`; prefer explicit types and `import type` for
+  type-only imports.
+- **Naming:** components and their files use `PascalCase` (`App.tsx`); hooks, modules and functions use
+  `camelCase` (`api/client.ts`, `useHealth.ts`). Test files use `<Module>.test.ts(x)` under `tests/`.
+- **Constants:** move reused identifiers, status values and user-facing strings out of JSX into module-level
+  constants when they carry meaning or are reused.
+- **Tests and coverage:** every Node project MUST expose a `test:coverage` script. `make tests <project>` runs it
+  and forwards `MIN_TEST_COVERAGE`; coverage is written to `coverage/` (`cobertura-coverage.xml`, `lcov.info`).
+- **Adding a language:** extend the `lang` detection in the `Makefile`, then implement `tests-<lang>`,
+  `test-parity-<lang>` and the corresponding quality targets. Each adapter applies `MIN_TEST_COVERAGE` with its
+  own toolchain.
 
 ## CVE fragility management
 When addressing a vulnerability, follow this process:

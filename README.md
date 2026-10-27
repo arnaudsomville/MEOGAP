@@ -140,6 +140,23 @@ Run tests for one project:
 make tests <project>
 ```
 
+`make tests` always runs tests **with coverage** and fails below `MIN_TEST_COVERAGE` (default `85`). The threshold
+is shared by every language and can be overridden per run:
+
+```bash
+make tests meogap_ui MIN_TEST_COVERAGE=90
+```
+
+The language is detected from the project manifest:
+
+| Manifest | Language | Test command | Coverage artifact |
+| --- | --- | --- | --- |
+| `pyproject.toml` | Python | `pytest --cov=src --cov-fail-under` | `coverage.xml` |
+| `package.json` | Node / React | `npm run test:coverage` | `coverage/cobertura-coverage.xml` |
+
+Node projects must expose a `test:coverage` script. The frontend stack is Vitest + React Testing Library + jsdom,
+with V8 coverage; see `agents/UNIT_TEST_GUIDE.md` §18.
+
 Run tests for all projects, one by one:
 
 ```bash
@@ -170,7 +187,7 @@ make code-quality-dockerfile <project>
 make code-quality-test-files <project>
 ```
 
-Run code quality hooks only for modified projects:
+Run code quality hooks only for affected projects:
 
 ```bash
 make code-quality-modified-projects
@@ -184,7 +201,7 @@ Open a shell with the project's virtual environment activated:
 make shell <project>
 ```
 
-### Modified-project helpers
+### Affected-project helpers
 
 List projects modified compared with the base branch:
 
@@ -192,19 +209,71 @@ List projects modified compared with the base branch:
 make list-modified-projects
 ```
 
+List projects that must be validated, including dependents and root-change fan-out:
+
+```bash
+make list-affected-projects
+```
+
+Run the complete CI sequence (install, quality, tests) for affected projects, or for every project on a tag:
+
+```bash
+make ci-modified-projects
+make ci-all
+```
+
 Override the comparison base branch when needed:
 
 ```bash
-make list-modified-projects TARGET_BASE_BRANCH=origin/main
+make list-affected-projects TARGET_BASE_BRANCH=origin/main
 ```
 
-The same override is supported by other modified-project helpers:
+The same override is supported by the affected-project helpers:
 
 ```bash
 make install-modified-projects TARGET_BASE_BRANCH=origin/main
 make test-modified-projects TARGET_BASE_BRANCH=origin/main
 make code-quality-modified-projects TARGET_BASE_BRANCH=origin/main
+make ci-modified-projects TARGET_BASE_BRANCH=origin/main
 ```
+
+## Project templates
+
+Reference projects live in `project_templates/`:
+
+| Template | Stack | Tests |
+| --- | --- | --- |
+| `dummy_project` | Python / FastAPI | pytest |
+| `dummy_project_with_local_dependancy` | Python with a local dependency | pytest |
+| `dummy_ui_project` | React / TypeScript / Vite | Vitest + React Testing Library |
+
+To create a project, copy the relevant template into `projects/<name>`, update the manifest name, regenerate the
+lock with `make sync <name>`, then install it with `make install <name>`.
+
+The Makefile detects the language from the manifest and dispatches `make tests` to `tests-<lang>`. Adding another
+language means adding a detection branch and the matching `tests-<lang>` / `test-parity-<lang>` targets, each
+applying `MIN_TEST_COVERAGE` with its own toolchain.
+
+## Continuous integration
+
+CI runs on every branch push and on tags. Development branches install, quality-check and test the **affected
+projects** through a single entry point:
+
+```bash
+make ci-modified-projects
+```
+
+Project selection is based on the changed files:
+
+- a project change selects that project;
+- a `meogap_core` change also selects `meogap_api` and `meogap_worker`;
+- a root code or tooling change (`Makefile`, `docker-bake.hcl`, root `Dockerfile`, `compose.yaml`, workflows,
+  pre-commit configuration, …) selects every project;
+- documentation, `agents/`, `project_templates/`, `.sops.yaml`, `.trivyignore` and Markdown changes do not trigger
+  CI.
+
+The default branch (for example `main`) and tags run `make ci-all`, so every project is validated. CI does not
+build Docker images: image builds are reserved for the end-to-end tests introduced by the M0 functional epic.
 
 ## Notebooks
 
@@ -293,3 +362,13 @@ make sops-encrypt-all
 ```
 
 The required SOPS age key must be configured locally, as described in **Quick setup**. Keep decrypted files and private keys out of version control.
+
+`make sops-decrypt-all` is fail-fast: a missing or invalid key stops the command with a non-zero exit code. Python
+project installation and post-install hooks also require a successful decryption before using the Git SSH key.
+
+### CI secret
+
+CI requires a repository secret named `SOPS_AGE_KEY` containing the complete content of the local
+`~/.config/sops/age/keys.txt`. The workflow writes it to the runner when it is available, then validates the
+encrypted secrets with `make sops-decrypt-all`. If the key is absent or does not match the age recipient in
+`.sops.yaml`, the decryption itself fails and the CI job stops with a non-zero exit code.

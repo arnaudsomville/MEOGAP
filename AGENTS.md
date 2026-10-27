@@ -96,7 +96,9 @@ Do not run an individual execution task for more than **10 minutes**. Organize w
 
 ## Git policy — no autonomous changes to repository history
 
-**Never run `git add`, `git commit`, `git push`, or destructive Git operations without explicit instruction from the user for the current session.** Do not seek permission through an automatic plan-exit mechanism. When changes are ready, summarize them and, if useful, tell the user which Git commands to run.
+**Never run `git add`, `git commit`, `git push`, `gh pr merge`, or destructive Git operations without explicit instruction from the user for the current session.** Do not seek permission through an automatic plan-exit mechanism. When changes are ready, summarize them and, if useful, tell the user which Git commands to run.
+
+**Never close, reopen or change the status of a milestone, epic, ticket or issue without explicit instruction from the user for the current session.** Issue closure and status transitions are driven by the merge of the corresponding pull request (for example through `Closes #...` in the PR body), not by the agent. Creating a pull request and linking issues does not authorize closing them or changing their planning state. See `agents/REPOSITORY_RULES.md`.
 
 ## Final response expectations
 
