@@ -369,6 +369,6 @@ project installation and post-install hooks also require a successful decryption
 ### CI secret
 
 CI requires a repository secret named `SOPS_AGE_KEY` containing the complete content of the local
-`~/.config/sops/age/keys.txt`. The workflow writes it to the runner before validating the encrypted secrets. If the
-secret is missing or does not match the age recipient in `.sops.yaml`, the CI job fails at the
-**Configure SOPS age key** or **Validate encrypted secrets** step.
+`~/.config/sops/age/keys.txt`. The workflow writes it to the runner when it is available, then validates the
+encrypted secrets with `make sops-decrypt-all`. If the key is absent or does not match the age recipient in
+`.sops.yaml`, the decryption itself fails and the CI job stops with a non-zero exit code.
