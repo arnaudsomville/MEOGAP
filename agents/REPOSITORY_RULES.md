@@ -80,6 +80,10 @@ The roadmap provides direction; research determines the approach; implementation
 - Do not decompose work artificially to fill a ticket count.
 - Do not infer scientific validation from a passing software test.
 - Do not start implementation from a ticket alone.
+- **Never close, reopen or change the status of a milestone, epic, ticket or issue unless the maintainer explicitly
+  instructs it for the current session.** Issue closure and status transitions are produced by merging the
+  corresponding pull request (for example through `Closes #...` in the PR body), not by the agent. Creating a pull
+  request and linking issues does not authorize closing them or changing their planning state.
 - Record assumptions, provenance, quality and limitations explicitly.
 
 ## Applicability and migration
