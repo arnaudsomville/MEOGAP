@@ -353,3 +353,55 @@ prop = DummyNumericalPropagator(frozen_pvt=FROZEN_ORBIT_PVT)
 | Plain dataclass / Params / value object | `make_*` factory helper |
 | Class with methods tests want to stub | `Dummy*` subclass |
 | Both apply | Both, in the same toolbox module |
+
+---
+
+## 18) Frontend unit and component tests (TypeScript/React)
+
+### Scope
+Frontend tests in this repository are **unit and component tests**. Browser end-to-end tests belong to a
+separate validation activity and are not part of the default `make tests` workflow.
+
+### Stack
+- **Runner:** Vitest.
+- **DOM:** jsdom.
+- **Component testing:** React Testing Library, `@testing-library/user-event`.
+- **Assertions:** Vitest `expect` extended by `@testing-library/jest-dom`.
+- **Coverage:** V8 provider via `@vitest/coverage-v8`.
+
+Do not introduce a second runner (for example Jest) without an explicit decision, because Vitest reuses the Vite
+configuration (plugins, TypeScript, ESM) and keeps the template consistent.
+
+### Location and naming
+- Source modules live under `src/`.
+- Test modules live under `tests/` and mirror the source area:
+  - `src/App.tsx` -> `tests/App.test.tsx`
+  - `src/api/client.ts` -> `tests/api/client.test.ts`
+- The shared setup file is `tests/setup.ts` and is referenced from the test configuration.
+- `src/main.tsx` (bootstrap), `*.d.ts` files and barrel modules (`index.ts`) do not require a dedicated test file.
+
+`make code-quality-test-files <project>` checks this parity for every `src/**/*.ts(x)` module. Missing files are
+reported as **non-blocking warnings**, mirroring the Python heuristic.
+
+### Design rules
+- Assert **observable behavior**, not component internals or hook implementation details.
+- Query by role, accessible name, label or visible text; use `data-testid` only when no accessible query exists.
+- Prefer `userEvent` over `fireEvent` to exercise realistic interactions.
+- Keep tests deterministic: no real network, no real timers, no shared mutable module state.
+- Mock **at the boundary**: stub `fetch` with `vi.stubGlobal` and always restore globals in `afterEach`
+  (`vi.unstubAllGlobals()`). Do not mock internal components or hooks.
+- A snapshot test must never be the only assertion for a behavior.
+- Cover the nominal path, each meaningful branch (including error and unmount paths), and accessible states.
+
+### Coverage and thresholds
+- Run coverage with `npm run test:coverage` inside the project.
+- `make tests <project>` runs `test:coverage` for Node projects and forwards `MIN_TEST_COVERAGE` (single threshold
+  shared with Python; default `85` for lines, functions, branches and statements).
+- The coverage artifact is written to `coverage/` (`cobertura-coverage.xml`, `lcov.info`).
+- Do not degrade coverage without explicit approval, consistent with `agents/SOFTWARE_VALIDATION_PLAN.md`.
+
+### Adding another language
+`make tests` and `make code-quality-test-files` dispatch to `tests-<lang>` and `test-parity-<lang>` targets
+detected from the project manifest. To introduce a language (for example Rust), add a detection branch and the
+corresponding targets. Each language adapter is responsible for applying `MIN_TEST_COVERAGE` with its own
+toolchain and producing a per-project coverage artifact.
