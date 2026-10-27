@@ -27,7 +27,7 @@ BUILDX_BUILDER ?= mc-builder
 ifdef DOCKER_BUILD
 GIT_SSH_CMD :=
 else
-GIT_SSH_CMD = GIT_SSH_COMMAND="$(shell $(MAKE) --no-print-directory -s ssh-command)"
+GIT_SSH_CMD = GIT_SSH_COMMAND="ssh -i $(GIT_SSH_KEY) -o IdentitiesOnly=yes -o UserKnownHostsFile=$(GIT_KNOWN_HOSTS) -o StrictHostKeyChecking=yes"
 endif
 
 # Tests
@@ -52,7 +52,7 @@ NON_CODE_PATTERN ?= ^agents/|^documentation/|^project_templates/|^\.sops\.yaml$$
 # introducing a new language, then implement tests-<lang> and test-parity-<lang>.
 lang = $(if $(wildcard projects/$(1)/pyproject.toml),python,$(if $(wildcard projects/$(1)/package.json),node,$(if $(wildcard projects/$(1)/Cargo.toml),rust,unknown)))
 
-.PHONY: help install install-python install-python-project install-js install-js-project install-modified-projects install-tooling install-dev-tooling ensure-node sync tests tests-python tests-node tests-rust tests-unknown tests-all test-modified-projects ci-modified-projects ci-all code-quality code-quality-format code-quality-lint code-quality-type code-quality-dockerfile code-quality-test-files test-parity-python test-parity-node test-parity-rust test-parity-unknown code-quality-modified-projects code-quality-all build build_and_analyse_cve build-all-images build-all build-and-push build-and-push-all docker-builder-create docker-builder-rm docker-clean docker-clean-ci clean clean-all clean-python-artifacts clean-node-artifacts shell docker-push sops-encrypt-all sops-decrypt-all run-meogap stop-meogap free-ports kill-meogap list-projects list-modified-projects list-affected-projects ensure-target-base-branch ssh-command install-project ensure-project run-post-install
+.PHONY: help install install-python install-python-project install-js install-js-project install-modified-projects install-tooling install-dev-tooling ensure-node sync tests tests-python tests-node tests-rust tests-unknown tests-all test-modified-projects ci-modified-projects ci-all code-quality code-quality-format code-quality-lint code-quality-type code-quality-dockerfile code-quality-test-files test-parity-python test-parity-node test-parity-rust test-parity-unknown code-quality-modified-projects code-quality-all build build_and_analyse_cve build-all-images build-all build-and-push build-and-push-all docker-builder-create docker-builder-rm docker-clean docker-clean-ci clean clean-all clean-python-artifacts clean-node-artifacts shell docker-push sops-encrypt-all sops-decrypt-all run-meogap stop-meogap free-ports kill-meogap list-projects list-modified-projects list-affected-projects ensure-target-base-branch ssh-command ensure-git-ssh install-project ensure-project run-post-install
 
 help:
 	@echo "Usage:"
@@ -154,34 +154,50 @@ install-dev-tooling: install-tooling
 
 # ---------------------------- Secrets ----------------------------
 sops-encrypt-all:
-	@if [ ! -d "build_secrets_decrypted" ]; then \
-		echo "Missing build_secrets_decrypted directory"; \
+	@set -euo pipefail; \
+	if [ ! -d "build_secrets_decrypted" ]; then \
+		echo "Missing build_secrets_decrypted directory" >&2; \
 		exit 1; \
-	fi
-	@mkdir -p "build_secrets"
-	@for f in build_secrets_decrypted/*; do \
+	fi; \
+	mkdir -p "build_secrets"; \
+	for f in build_secrets_decrypted/*; do \
 		[ -f "$$f" ] || continue; \
+		out="build_secrets/$$(basename "$$f")"; \
+		tmp="$$out.tmp"; \
 		echo "Encrypt file $$f"; \
-		sops --encrypt "$$f" > "build_secrets/$$(basename "$$f")"; \
+		if ! sops --encrypt "$$f" > "$$tmp"; then \
+			rm -f "$$tmp"; \
+			echo "Failed to encrypt $$f" >&2; \
+			exit 1; \
+		fi; \
+		mv "$$tmp" "$$out"; \
 	done
 
 sops-decrypt-all:
-	@if [ ! -d "build_secrets" ]; then \
-		echo "Missing build_secrets directory"; \
+	@set -euo pipefail; \
+	if [ ! -d "build_secrets" ]; then \
+		echo "Missing build_secrets directory" >&2; \
 		exit 1; \
-	fi
-	@if [ -d ".git" ] && ! grep -Fx "build_secrets_decrypted" ".gitignore" >/dev/null 2>&1; then \
-		echo "build_secrets_decrypted must be added to .gitignore"; \
+	fi; \
+	if [ -d ".git" ] && ! grep -Fx "build_secrets_decrypted" ".gitignore" >/dev/null 2>&1; then \
+		echo "build_secrets_decrypted must be added to .gitignore" >&2; \
 		exit 1; \
-	fi
-	@mkdir -p "build_secrets_decrypted"
-	@for f in build_secrets/*; do \
+	fi; \
+	mkdir -p "build_secrets_decrypted"; \
+	for f in build_secrets/*; do \
 		[ -f "$$f" ] || continue; \
+		out="build_secrets_decrypted/$$(basename "$$f")"; \
+		tmp="$$out.tmp"; \
 		echo "Decrypt file $$f"; \
-		SOPS_AGE_KEY_FILE="$(SOPS_KEY)" sops --decrypt "$$f" > "build_secrets_decrypted/$$(basename "$$f")"; \
-		chmod --reference="$$f" "build_secrets_decrypted/$$(basename "$$f")"; \
-	done
-	@find build_secrets_decrypted/ -type f -exec chmod 600 {} \;
+		if ! SOPS_AGE_KEY_FILE="$(SOPS_KEY)" sops --decrypt "$$f" > "$$tmp"; then \
+			rm -f "$$tmp"; \
+			echo "Failed to decrypt $$f. Check that the SOPS key $(SOPS_KEY) exists and matches .sops.yaml." >&2; \
+			exit 1; \
+		fi; \
+		chmod 600 "$$tmp"; \
+		mv "$$tmp" "$$out"; \
+	done; \
+	find build_secrets_decrypted/ -type f -exec chmod 600 {} +
 
 # ---------------------------- Docker build & push ----------------------------
 build:
@@ -282,15 +298,19 @@ docker-clean-ci:
 
 # Sync the project lock (uv for Python, npm for Node)
 sync:
-	@$(MAKE) ensure-project PROJECT=$(PROJECT_NAME)
-	@if [ -f "projects/$(PROJECT_NAME)/pyproject.toml" ]; then \
+	@set -euo pipefail; \
+	$(MAKE) ensure-project PROJECT=$(PROJECT_NAME); \
+	if [ -f "projects/$(PROJECT_NAME)/pyproject.toml" ]; then \
+		if [ "$(DOCKER_BUILD)" != "1" ]; then \
+			$(MAKE) ensure-git-ssh; \
+		fi; \
 		cd "projects/$(PROJECT_NAME)" && \
 			UV_PYTHON_INSTALL_DIR="$(UV_PYTHON_INSTALL_DIR)" uv python pin $(PYTHON_VERSION) && \
 			$(GIT_SSH_CMD) UV_PYTHON_INSTALL_DIR="$(UV_PYTHON_INSTALL_DIR)" uv lock; \
 	elif [ -f "projects/$(PROJECT_NAME)/package.json" ]; then \
 		cd "projects/$(PROJECT_NAME)" && npm install --package-lock-only; \
 	else \
-		echo "No supported manifest found in projects/$(PROJECT_NAME)."; \
+		echo "No supported manifest found in projects/$(PROJECT_NAME)." >&2; \
 		exit 1; \
 	fi
 
@@ -559,9 +579,11 @@ clean-all:
 list-projects:
 	@echo "$(PROJECTS)"
 
-ssh-command:
+ensure-git-ssh:
 	@$(MAKE) --no-print-directory -s -C "$(REPO_ROOT)" sops-decrypt-all >/dev/null
-	@chmod 600 "$(GIT_SSH_KEY)"
+	@chmod 600 "$(GIT_SSH_KEY)" "$(GIT_KNOWN_HOSTS)"
+
+ssh-command: ensure-git-ssh
 	@echo "ssh -i $(GIT_SSH_KEY) -o IdentitiesOnly=yes -o UserKnownHostsFile=$(GIT_KNOWN_HOSTS) -o StrictHostKeyChecking=yes"
 
 install-project:
@@ -599,6 +621,7 @@ ensure-node:
 
 run-post-install:
 	@$(MAKE) ensure-project PROJECT=$(PROJECT_NAME)
+	@if [ "$(DOCKER_BUILD)" != "1" ]; then $(MAKE) ensure-git-ssh; fi
 	@cd "projects/$(PROJECT_NAME)" && \
 		post_install_module="$$(find src -path '*/post_install.py' -print -quit | tr '/' '.' | sed 's/^src\.//; s/\.py$$//')"; \
 		if [ -z "$$post_install_module" ]; then \

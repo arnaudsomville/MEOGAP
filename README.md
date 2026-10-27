@@ -362,3 +362,13 @@ make sops-encrypt-all
 ```
 
 The required SOPS age key must be configured locally, as described in **Quick setup**. Keep decrypted files and private keys out of version control.
+
+`make sops-decrypt-all` is fail-fast: a missing or invalid key stops the command with a non-zero exit code. Python
+project installation and post-install hooks also require a successful decryption before using the Git SSH key.
+
+### CI secret
+
+CI requires a repository secret named `SOPS_AGE_KEY` containing the complete content of the local
+`~/.config/sops/age/keys.txt`. The workflow writes it to the runner before validating the encrypted secrets. If the
+secret is missing or does not match the age recipient in `.sops.yaml`, the CI job fails at the
+**Configure SOPS age key** or **Validate encrypted secrets** step.

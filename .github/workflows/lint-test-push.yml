@@ -36,6 +36,19 @@ jobs:
           cache-dependency-path: '**/package-lock.json'
       - name: Install tooling
         run: make install-dev-tooling
+      - name: Configure SOPS age key
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: |
+          if [ -z "$SOPS_AGE_KEY" ]; then
+            echo "::error::Missing SOPS_AGE_KEY repository secret"
+            exit 1
+          fi
+          mkdir -p "$HOME/.config/sops/age"
+          printf '%s\n' "$SOPS_AGE_KEY" > "$HOME/.config/sops/age/keys.txt"
+          chmod 600 "$HOME/.config/sops/age/keys.txt"
+      - name: Validate encrypted secrets
+        run: make sops-decrypt-all
       - name: CI for affected projects
         if: github.ref_type != 'tag'
         run: make ci-modified-projects
