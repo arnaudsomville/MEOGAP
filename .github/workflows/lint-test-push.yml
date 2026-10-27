@@ -36,6 +36,7 @@ jobs:
           cache-dependency-path: '**/package-lock.json'
       - name: Install tooling
         run: make install-dev-tooling
+      # The age private key is provided through the SOPS_AGE_KEY repository secret.
       - name: Configure SOPS age key
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
