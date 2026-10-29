@@ -24,7 +24,7 @@ This file is the **source of project intent and scientific concepts**, not a sec
 | Asset discovery and registration | [CAT specification](specifications/components/cat.md) | Asset catalogue and availability responsibilities |
 | Scientific products, feasibility, processing and provenance | [SCI specification](specifications/components/sci.md) | Scientific semantics and processing responsibilities |
 | Cross-component boundaries and component-spec index | [Component specifications index](specifications/components/README.md) | Navigation and boundary summary |
-| Milestones and delivery sequencing | [ROADMAP.md](../ROADMAP.md) | Delivery order and milestone/epic planning |
+| Delivery sequencing, scope and implementation readiness | [GitHub issues and project tickets](https://github.com/arnaudsomville/MEOGAP/issues) | Tickets and their acceptance criteria are the source of truth for planned work and delivery order |
 
 GitHub's standard Markdown renderer does not include another Markdown file inline. These links are therefore intentional; do not copy component-level requirement tables into this document. If inline assembly becomes valuable, introduce a documentation-generation step as a separate, justified change rather than maintaining two manually edited copies.
 
@@ -214,7 +214,7 @@ This section records the **conceptual architecture only**. Detailed component re
 
 **Implementation mapping (provisional):** `meogap_api` implements most GTW responsibilities; `meogap_core` is a reusable software library for scientific logic, adapters and shared abstractions, and is not synonymous with the SCI responsibility; `meogap_worker` executes tasks using those capabilities. CAT's software boundary and persistence mechanism remain to be designed. Do not create a separate service solely because CAT is a distinct logical responsibility.
 
-**M0 boundary:** Demonstrate one deterministic browser-driven request journey through UI → REST API → mocked/simulated processing → result → UI. M0 must exercise versioned contracts, deterministic identity propagation and owner-scoped authorization behavior, while not claiming production authentication or hardened multi-account isolation. Real EO acquisition and scientific computation, robust persistence, and a production credit ledger remain allocated according to the roadmap. Contracts and observable states may be real while scientific data and selected services are mocked.
+**M0 boundary:** Demonstrate one deterministic browser-driven request journey through UI → REST API → mocked/simulated processing → result → UI. M0 must exercise versioned contracts, deterministic identity propagation and owner-scoped authorization behavior, while not claiming production authentication or hardened multi-account isolation. Real EO acquisition and scientific computation, robust persistence, and a production credit ledger are scheduled and tracked in the corresponding GitHub tickets. Contracts and observable states may be real while scientific data and selected services are mocked.
 
 **Notifications:** NATS is internal and remains an implementation-level transport. Notifications only signal that state may have changed; clients retrieve authoritative state and results through REST, including after reconnection. The specific browser-facing update mechanism is a separate implementation decision and must not create a second source of truth.
 
@@ -230,7 +230,7 @@ Requirements are described at these levels:
 
 The logical responsibilities **GTW/CON/CAT/SCI** are not package names. Do not silently rename or delete existing requirement IDs; keep an explicit traceability/migration map when the component inventory is reallocated.
 
-**Priorities and delivery scope:** `P0` = required to be represented in the M0 end-to-end demonstration, which may mean a real contract with mocked data/behavior or a deliberately partial implementation; it does **not** imply that the full capability is implemented in M0. `P1` = later foundational capability, generally M1–M3; `P2` = later extension. The requirement's full intended behavior and its M0 demonstration scope must be distinguished explicitly. The allocation matrix and roadmap define when full behavior is delivered.
+**Priorities and delivery scope:** `P0` = required to be represented in the M0 end-to-end demonstration, which may mean a real contract with mocked data/behavior or a deliberately partial implementation; it does **not** imply that the full capability is implemented in M0. `P1` = later foundational capability, generally M1–M3; `P2` = later extension. The requirement's full intended behavior and its M0 demonstration scope must be distinguished explicitly. The relevant GitHub tickets and their acceptance criteria define when full behavior is delivered.
 
 ### 5.1 System / Service Requirements
 
@@ -371,23 +371,13 @@ After signing in, a user sees a multi-resolution satellite basemap, selects a su
 
 ---
 
-## 7. Development Roadmap
+## 7. Delivery Planning and Source of Truth
 
-The roadmap describes **learning-enabled capabilities**, not mandated scientific domains or deadlines. The order may evolve as technical discoveries and personal research interests change. Scientific understanding matters more than completing a predefined feature list.
+**GitHub issues and project tickets are the sole source of truth for planned implementation work, milestone sequencing, acceptance criteria and readiness.** There is intentionally no separate roadmap document: duplicating ticket plans in a Markdown file would create competing sources of truth.
 
-| Stage | Main objective | Tangible deliverable |
-|---|---|---|
-| **0 — Scientific feasibility** | Demonstrate access to one EO dataset and calculation or extraction of one meaningful value. | Small reproducible scientific experiment. |
-| **1 — First end-to-end exploration (M0)** | Establish the backend architecture, versioned shared contracts, mock-backed Data Retrieval and Resampling/Rescaling engines, and an MVP UI; then connect product selection, an AOI, POI, or LOI spatial input, a multi-resolution satellite basemap, request submission with cost visibility, automatic request-status updates, final and intermediate downloads, a Requests tab, **Display on map**, a basic SAU/AOI time series with missing-data handling, multi-account-capable authentication, a real credit ledger, and a minimal indicator placeholder. | A usable authenticated spatial-input-driven, single-product exploration flow built on stable interfaces, with automatic status updates, credit accounting, downloadable provenance, an early UI foundation, and a minimal indicator placeholder. |
-| **2 — First real scientific product and analysis baseline (M1)** | Replace the technical probe with one real EO product, real source access, real resampling, a first validation record, and basic spatial and temporal analysis. | One real product is computed, analysed spatially and temporally, documented, and compared with a reference or an explicitly justified alternative. |
-| **3 — Reusable Product Engine and richer analysis (M2)** | Introduce a reusable product registry, explicit dependencies and repeatable results, a second product, and richer spatial, temporal, multi-source, and quality analysis. | A second product can be introduced with limited impact; dependencies, intermediates, comparisons, and quality are addressed coherently. |
-| **4 — First configurable Indicator Engine (M3)** | Replace the indicator placeholder with a first configurable indicator engine built on mature products. | A first monitoring indicator can be configured and evaluated from existing products. |
-| **5 — Advanced Indicator Engine (M4)** | Extend indicator rules, temporal conditions, monitoring outputs, and optional alerts. | One or more understandable monitoring indicators using already developed products, with monitoring and notification support where justified. |
-| **6 — Optional advanced capabilities (M5)** | Add sophisticated scientific methods, export/interoperability, external API/MCP access, performance work, or automation as interest and needs justify. | Individually documented experiments or platform improvements that do not redefine the Product Engine foundations. |
+This definition describes project intent, scientific concepts, architecture principles and the intended capability boundaries. It does not authorize implementation or override ticket-level scope. Before implementation, use the relevant ticket to confirm scope, dependencies, acceptance criteria and the explicitly reviewed implementation/test plan. If a requirement and a ticket appear inconsistent, surface the discrepancy and resolve it in the relevant issue rather than silently reconciling the documents.
 
-Detailed epics are maintained in `ROADMAP.md`; ticket breakdowns are added as each milestone is refined. This table defines the capability order, and the roadmap document defines milestone and epic sequencing.
-
-Advanced scientific products, including LST, **can be explored at any suitable point once their prerequisites exist**. They are not contingent on completing the Indicator Engine, and no specific one is required to finish the roadmap.
+Scientific exploration remains flexible: advanced products, including LST, can be investigated whenever their scientific prerequisites and the current project priorities make sense. No specific scientific domain is mandatory simply because it appears in this definition.
 
 ## 8. Scientific Exploration Backlog
 
@@ -417,7 +407,7 @@ A comparison with an existing satellite product is a useful **preliminary check*
 | **Over-engineering** | Premature technical decisions can make experimentation harder. | Let the template govern implementation; document only essential responsibilities here. |
 | **Datacube over-engineering** | Persisting a generic multidimensional cube before a demonstrated product need may freeze speculative schemas and heavy infrastructure. | Stabilize contracts first; prototype storage and partial reads only after the first real product. |
 | **Representation mistaken for result** | A display image or aggregated grid may hide native resolution and uncertainty. | Keep representations explicitly derived and linked; never treat them as the sole result. |
-| **Changing personal interests** | A rigid use-case roadmap would make the project feel like an obligation. | Keep scientific investigations optional and interchangeable. |
+| **Changing personal interests** | A rigid use-case roadmap would make the project feel like an obligation. | Keep scientific investigations optional and interchangeable; tickets, not a separate roadmap file, govern implementation sequencing. |
 
 ## 10. Future Directions and Success Criteria
 
@@ -444,4 +434,4 @@ An agent reading the proposal should distinguish **required capabilities**, **la
 
 ---
 
-**End of proposal — v0.16.**
+**End of proposal — v0.17.**
