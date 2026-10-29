@@ -11,7 +11,7 @@ This does not assume a separate package, process, container, service or database
 ## In scope
 - Create and maintain the authoritative lifecycle of analysis requests.
 - Request scientific feasibility and complexity estimates from SCI through explicit versioned interfaces; CON does not resolve scientific dependencies or decide scientific compatibility.
-- Coordinate request admission and lifecycle using the response from SCI Gateway and CON-owned business policies.
+- Coordinate request admission and lifecycle using the response from SCI and CON-owned business policies.
 - Track execution tasks, retries, failure reasons and links between requests, tasks and results.
 - Apply admission rules such as supported-request checks and, later, credit availability.
 - Carry trusted caller identity/context through internal operations from M0, using a deterministic demo identity where production authentication is not yet implemented.
