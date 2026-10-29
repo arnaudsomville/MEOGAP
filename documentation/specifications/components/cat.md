@@ -18,7 +18,7 @@ CAT makes source observations and generated assets discoverable through stable r
 - CAT does not calculate scientific products or define their methods.
 - CAT is not a second analysis-request orchestrator.
 - CAT does not decide product-level scientific validation.
-- CAT does not own the public REST API.
+- CAT does not own the public REST API. CON owns resource ownership and access-rights decisions; CAT provides asset metadata/references and applies any required access mechanism through a defined contract, without becoming the policy owner.
 - Whether CAT owns physical-file lifecycle as well as catalog metadata remains open. PostgreSQL catalog metadata and S3-compatible storage (RustFS) have been proposed, but are not yet an approved implementation decision.
 
 ## Component requirements
@@ -43,6 +43,6 @@ CAT makes source observations and generated assets discoverable through stable r
 ## Open questions
 1. Does CAT own only catalog metadata, or also physical-file creation, deletion, retention and orphan cleanup?
 2. Is PostgreSQL plus RustFS intended for M0, or is persistence a logical requirement pending an ADR?
-3. Does CAT evaluate access rights, receive an authorization decision from GTW/CON, or enforce an access token/capability?
+3. How does CAT enforce or facilitate access to stored assets after CON has decided whether a caller is authorized?
 4. Who decides that an existing asset/result is compatible with a new request?
 5. How are partial acquisition, expired assets, missing objects and failed registration represented?
