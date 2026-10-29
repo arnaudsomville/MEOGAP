@@ -11,6 +11,23 @@
 
 ---
 
+## Documentation ownership and navigation
+
+This file is the **source of project intent and scientific concepts**, not a second copy of the detailed technical specifications. Use the following documents for the authoritative detail in each area:
+
+| Topic | Reference document | Authority |
+|---|---|---|
+| System requirements and their M0 treatment (SYS-*) | [System requirements baseline](specifications/sys.md) | Requirement statements remain defined in §5.1 of this document for now; sys.md is their navigational and traceability view. |
+| UI responsibilities and requirements | [UI specification](specifications/components/ui.md) | Component boundary and UI-specific requirements |
+| Public REST boundary | [GTW specification](specifications/components/gtw.md) | Public API and routing responsibilities |
+| Request lifecycle, identity, access and credits | [CON specification](specifications/components/con.md) | Request ownership, authorization decisions, admission and cost lifecycle |
+| Asset discovery and registration | [CAT specification](specifications/components/cat.md) | Asset catalogue and availability responsibilities |
+| Scientific products, feasibility, processing and provenance | [SCI specification](specifications/components/sci.md) | Scientific semantics and processing responsibilities |
+| Cross-component boundaries and component-spec index | [Component specifications index](specifications/components/README.md) | Navigation and boundary summary |
+| Milestones and delivery sequencing | [ROADMAP.md](../ROADMAP.md) | Delivery order and milestone/epic planning |
+
+GitHub's standard Markdown renderer does not include another Markdown file inline. These links are therefore intentional; do not copy component-level requirement tables into this document. If inline assembly becomes valuable, introduce a documentation-generation step as a separate, justified change rather than maintaining two manually edited copies.
+
 ## 1. Project Rationale and Value Proposition
 
 ### 1.1 Personal motivation — the primary purpose
@@ -181,29 +198,27 @@ The choice of a physical datacube organization (versioned raster collection, mul
 
 ## 4. Logical System Architecture
 
-This section defines **logical responsibilities**, not a one-to-one mapping to packages, processes or deployed services. The same implementation package may support more than one responsibility, and a responsibility does not automatically require a separate microservice.
+This section records the **conceptual architecture only**. Detailed component responsibilities and requirements belong to the linked specifications, not duplicated tables here.
 
-**High-level flow:** **UI → unique public REST Gateway (GTW) → CON for request lifecycle and SCI for scientific feasibility/orchestration → NATS → Workers/ingestion → CAT and scientific results → GTW REST → UI**. GTW is the only public REST API. SCI Gateway is a subcomponent within SCI, not a peer component at this architecture level. The UI never accesses NATS directly. REST is the public source of truth for request state and result access; NATS is internal messaging infrastructure.
+**High-level flow:** **UI → unique public REST Gateway (GTW) → CON for request lifecycle and SCI for scientific feasibility/orchestration → internal NATS/Workers → CAT and scientific results → GTW REST → UI**. GTW is the only public REST API. SCI Gateway is a subcomponent within SCI, not a peer component at this architecture level. The UI never accesses NATS directly. REST is the public source of truth for request state and result access; NATS is internal messaging infrastructure.
 
-| Logical responsibility / mechanism | Responsibility | Explicit boundary |
-|---|---|---|
-| **UI** | Product and spatial-input selection, request submission, Requests view, status display, result visualization and time-series exploration. | Communicates with the public REST Gateway only; never publishes to or consumes from NATS directly. |
-| **GTW — Gateway** | The unique public REST API; validate external/UI requests and route them to backend components through internal contracts. | Owns the public API contract and routing boundary; does not own request lifecycle/access policy, scientific algorithms or physical asset management. |
-| **CON — Request Management** | Own analysis-request lifecycle/status, request ownership and access rights, admission and cost tracking; ask SCI for scientific feasibility and complexity estimates. | Owns authoritative request state and business policy; has no scientific knowledge and does not resolve product dependencies or plan scientific calculations. It does not expose the public API. |
-| **CAT — Data Catalog** | Discover and register available data assets; expose asset metadata, references, availability and persistence location; support lookup of source and derived assets. | Owns asset discoverability and registration, not scientific calculations or a second analysis orchestration engine. A separate CAT service is not mandated. |
-| **SCI — Scientific Processing** | Own product semantics, methods, scientific feasibility, dependency resolution, computation planning/orchestration, quality interpretation and provenance. Its internal SCI Gateway subcomponent orchestrates dependencies and publishes ingestion/calculation needs to NATS. | Owns scientific responsibilities, not user-request lifecycle, ownership/access rights, credit policy or the public REST API. Heavy calculations run in Workers. |
-| **Workers — execution mechanism** | Execute asynchronous acquisition or scientific tasks and report outcomes. | Runtime mechanism rather than a separate logical business responsibility. Acquisition and scientific tasks may initially share worker code/pool; split pools only if justified by workload or isolation needs. |
-| **NATS — internal messaging** | Carry internal task messages and/or state-change events between backend processes. | Never a public API or a browser-facing source of truth. Exact message contracts are specified separately. |
+| Logical responsibility | Specification |
+|---|---|
+| UI — interaction and presentation | [UI specification](specifications/components/ui.md) |
+| GTW — unique public REST API and routing | [GTW specification](specifications/components/gtw.md) |
+| CON — request lifecycle, ownership/access decisions, admission and cost tracking | [CON specification](specifications/components/con.md) |
+| CAT — asset discovery, registration and availability | [CAT specification](specifications/components/cat.md) |
+| SCI — scientific semantics, feasibility, processing, quality and provenance; SCI Gateway is internal to SCI | [SCI specification](specifications/components/sci.md) |
+| System-level requirements and interfaces | [SYS baseline](specifications/sys.md) |
+| Cross-cutting architecture and component index | [Component specifications index](specifications/components/README.md) |
 
 **Implementation mapping (provisional):** `meogap_api` implements most GTW responsibilities; `meogap_core` is a reusable software library for scientific logic, adapters and shared abstractions, and is not synonymous with the SCI responsibility; `meogap_worker` executes tasks using those capabilities. CAT's software boundary and persistence mechanism remain to be designed. Do not create a separate service solely because CAT is a distinct logical responsibility.
 
-**Data and result lifecycle:** SCI defines scientific transformations; its SCI Gateway subcomponent plans and orchestrates dependencies and publishes ingestion/calculation needs to NATS. Workers execute long-running tasks. CAT registers and makes source and derived assets discoverable. The hand-off for derived results must link scientific result/provenance to the stored asset without conflating scientific lineage with physical storage metadata. Acquisition/task status and analysis-request status are distinct. CON owns only the global request lifecycle and consumes scientific feasibility/complexity/execution outcomes through contracts; it must not inspect scientific plans.
-
-**M0 boundary:** Demonstrate one deterministic browser-driven request journey through UI → REST API → mocked/simulated processing → result → UI. This is not evidence of a production data catalog, real EO acquisition, scientific computation, authentication, owner isolation, credit ledger or robust persistence. Contracts and observable states may be real while scientific data and selected services are mocked. Full capabilities are allocated to later milestones in the roadmap.
+**M0 boundary:** Demonstrate one deterministic browser-driven request journey through UI → REST API → mocked/simulated processing → result → UI. M0 must exercise versioned contracts, deterministic identity propagation and owner-scoped authorization behavior, while not claiming production authentication or hardened multi-account isolation. Real EO acquisition and scientific computation, robust persistence, and a production credit ledger remain allocated according to the roadmap. Contracts and observable states may be real while scientific data and selected services are mocked.
 
 **Notifications:** NATS is internal and remains an implementation-level transport. Notifications only signal that state may have changed; clients retrieve authoritative state and results through REST, including after reconnection. The specific browser-facing update mechanism is a separate implementation decision and must not create a second source of truth.
 
-**Key architectural constraint:** GTW is the unique public REST API. Keep public routing (GTW), request lifecycle/ownership/access/admission/cost (CON), scientific processing (SCI), asset discovery/registration (CAT), heavy execution (Workers), internal transport (NATS), and presentation (UI) conceptually distinct. CON and SCI are coupled only through explicit versioned interfaces, not through shared internal responsibilities. SCI Gateway is an internal subcomponent of SCI, not a peer responsibility at this level. These boundaries do not prescribe deployment topology.
+**Key architectural constraint:** GTW, CON, CAT and SCI have distinct responsibilities and communicate through explicit contracts. CON and SCI are coupled only through versioned interfaces, not shared responsibilities. SCI Gateway remains an internal SCI subcomponent. These logical boundaries do not prescribe deployment topology.
 
 ## 5. Functional Requirements
 
@@ -255,81 +270,18 @@ The logical responsibilities **GTW/CON/CAT/SCI** are not package names. Do not s
 | **SYS-30** | P0 | The platform shall enforce explicit analysis-request limits covering spatial extent, temporal period, pixel count, memory and response size, and shall reject requests outside supported bounds with explicit feedback. | M0: enforce a small, deterministic set of request limits in the demo API. Full resource-aware limits as real data and processing are introduced. |
 | **SYS-31** | P0 | The system architecture shall define and preserve distinct responsibilities for the unique public REST Gateway (GTW), request lifecycle/ownership/access/admission/cost management (CON), scientific processing (SCI), Data Catalog (CAT), UI, asynchronous execution (Workers), and internal messaging (NATS). CON shall have no scientific knowledge; SCI shall not own request lifecycle, ownership/access rights or credit policy. CON and SCI shall interact only through explicit versioned interfaces. SCI may contain internal subcomponents such as SCI Gateway for scientific orchestration; these are not peer system components by default. GTW shall be the only public REST API and route external/UI requests through internal contracts. The UI shall use GTW and shall not access NATS directly. These responsibilities shall have explicit ownership boundaries and contracts, without requiring a one-to-one mapping to packages, processes or deployed services. | M0: document the responsibility/interface model and demonstrate UI→GTW REST→CON/SCI interface flow→simulated NATS/worker processing→GTW REST result retrieval; real ingestion and heavy scientific processing arrive incrementally. |
 
-### 5.2 Frontend Requirements
+### 5.2 Component Requirements — authoritative specifications
 
-**Alignment note:** The `FE`, `BE`, `CORE`, and `ENG` requirements remain aligned with the system requirements. This revision updates the development roadmap to introduce backend architecture, mock-backed core engines, and an MVP UI earlier in M0, and to sequence the first real product and analysis baseline before the reusable Product Engine and the first configurable Indicator Engine.
+The detailed FE-*, CORE-*, and BE-* inventories are maintained in the component specifications, where ownership and boundaries can be reviewed alongside each requirement. They are intentionally not reproduced here.
 
-| ID | Priority | Requirement | Linked system requirements |
-|---|---|---|---|
-| **FE-01** | P0 | Present the catalogue of supported products with the information needed to understand each product: purpose, scientific context, processing level, inputs and outputs, spatial and temporal characteristics, units, known limitations, an openable documentation reference and status, and scientific validation status. Catalogue availability shall remain distinct from result availability. | SYS-01, SYS-14a, SYS-19, SYS-22 |
-| **FE-02** | P0 | Let the authenticated user define or select a supported spatial input (AOI, POI, or LOI) within the selected product's constraints, choose a product, set a UTC time range `[start, end]`, and provide all required parameters. | SYS-02, SYS-03, SYS-18 |
-| **FE-03** | P0 | Provide **Display on map** for the authenticated user's successful requests in the Requests view and render only the final product, cropped to the request's spatial input and appropriate to its geometry (raster, point, or line), with legend, units, quality, and scientific validation context. The frontend shall request a display representation through a storage-independent contract and shall not depend on physical storage paths or formats. | SYS-05, SYS-12, SYS-14a, SYS-18, SYS-20, SYS-26, SYS-28 |
-| **FE-04** | P0 | Display a time-series chart for a selected SAU or AOI summary, using inclusive UTC filters at the granularities supported by the product, and allow selecting the SAU or AOI summary from the map or a list. Extracted values shall be requested through a bounded, storage-independent contract and shall retain their missing, masked and genuine-zero semantics. | SYS-06, SYS-08a, SYS-18, SYS-21, SYS-26, SYS-27 |
-| **FE-05** | P0 | Clearly represent missing, masked, invalid, and genuine zero values, and expose units, quality status and index, method and version, scientific validation status, and known limitations. | SYS-07, SYS-10, SYS-14a, SYS-18, SYS-20 |
-| **FE-06** | P0 | Provide a dedicated Requests tab listing the authenticated user's own requests, with processing and quality statuses, estimated and actual cost, failure reasons, and access to available results and downloads. | SYS-12, SYS-16, SYS-18, SYS-20, SYS-25 |
-| **FE-07** | P0 | Provide a minimal indicator placeholder view to create an indicator definition, list indicators, trigger a stub evaluation, and see the placeholder result in the indicator view. The placeholder result is not a map layer. | SYS-11, SYS-18 |
-| **FE-08** | P0 | Automatically reflect request-state changes for the authenticated user's requests in the Requests view without a page reload, provide a manual refresh fallback, show the live-update connection state, and retrieve the latest state through REST after reconnection. | SYS-16, SYS-18 |
-| **FE-09** | P0 | Allow the authenticated user to download a successful result as a final product, with its units and essential context; this is the default download action. | SYS-12, SYS-13, SYS-18 |
-| **FE-10** | P0 | Provide sign-in and sign-out, show the authenticated identity, and protect authenticated views. | SYS-18 |
-| **FE-11** | P0 | Show the estimated credit cost before submission, the actual cost after processing, and any admission rejection due to insufficient credits. | SYS-24, SYS-25 |
-| **FE-12** | P0 | Offer an optional secondary action to download an archive containing the final product, intermediate products, and source observations in a directory tree; the default action remains final product only. | SYS-18, SYS-23 |
-| **FE-13** | P2 | Support viewing and comparing compatible products on common spatial and temporal supports, with explicit harmonization context. | SYS-09 |
-| **FE-14** | P0 | Always display the authenticated user's current credit balance in the persistent application shell, and update it when admission or processing changes it. If the balance is unavailable, show an explicit unavailable state, never zero. | SYS-18, SYS-24, SYS-25 |
-| **FE-15** | P0 | Allow the authenticated user to show or hide each request's final product layer on the map. Toggling visibility is a front-end display preference: it must not delete the request, affect processing, or change the stored result. Intermediate products and source observations are never displayed as map layers. | SYS-05, SYS-12, SYS-18, SYS-23 |
-| **FE-16** | P0 | Allow the user to draw or select an AOI, POI, or LOI on the map as the request's region of interest, validate it against the selected product's constraints with explicit feedback, and display the selected spatial input geometry on the map. | SYS-02, SYS-03, SYS-18 |
-| **FE-17** | P0 | Expose explicit loading, empty, unavailable, partial-result, and failure states across the catalogue, requests, map, time series, balance, and downloads; show request failure reasons and download errors. | SYS-07, SYS-10, SYS-16, SYS-18, SYS-24, SYS-25 |
-| **FE-18** | P0 | Handle expired or invalid sessions by redirecting to sign-in and preserving the intended destination. | SYS-18 |
-| **FE-19** | P1 | Provide filtering, sorting, and pagination for the authenticated user's requests. | SYS-12, SYS-18 |
-| **FE-20** | P1 | Provide search and filtering in the product catalogue. | SYS-01 |
-| **FE-21** | P0 | Provide a multi-resolution satellite basemap with zoom-dependent visible imagery at multiple scales, usable as the spatial context for AOI, POI, and LOI selection. The basemap is context only, not an analysis result; attribution and licensing shall be respected. Automated tests use deterministic local tile fixtures or a local mock tile endpoint, not the live provider. Offline mode uses only cached tiles permitted by provider terms; if none are available, the UI clearly indicates that satellite imagery is unavailable while keeping supported geometry interaction and other UI states usable. | SYS-02, SYS-05, SYS-18 |
+- **UI / former FE requirements:** [UI specification](specifications/components/ui.md)
+- **GTW:** [GTW specification](specifications/components/gtw.md)
+- **CON:** [CON specification](specifications/components/con.md)
+- **CAT:** [CAT specification](specifications/components/cat.md)
+- **SCI / scientific processing and former CORE requirements:** [SCI specification](specifications/components/sci.md)
+- **Cross-component contracts and system traceability:** [SYS baseline](specifications/sys.md) and [component index](specifications/components/README.md)
 
-### 5.3 Core / Product Engine Requirements
-
-| ID | Priority | Requirement | Linked system requirements |
-|---|---|---|---|
-| **CORE-01** | P0 | Acquire or access the source observations needed by a product, select sources according to documented quality and availability criteria, and record source dataset identifiers and versions. | SYS-03, SYS-04, SYS-20 |
-| **CORE-02** | P0 | Calculate the pinned product version from its defined inputs and parameters, reproducibly for identical versions, inputs, and parameters. | SYS-04, SYS-19 |
-| **CORE-03** | P0 | Produce geographically interpretable results and values, cropped to the requested AOI, POI, or LOI and appropriate to the output geometry, while preserving native-resolution metadata and the spatial context needed by derived representations. | SYS-02, SYS-05, SYS-06, SYS-27 |
-| **CORE-04** | P0 | Provide temporal filtering and analysis-ready series over inclusive UTC windows at product-supported frequencies and maximum periods, with per-period availability. | SYS-06, SYS-08a, SYS-21 |
-| **CORE-05** | P0 | Handle source quality information, masks, missing observations, genuine zeros, quality status, and a quality index that may be `unknown`, without substituting misleading values. | SYS-07, SYS-20 |
-| **CORE-06** | P0 | Produce immutable, versioned result artifacts with provenance and lineage: source datasets, intermediate products, method and version, product and dependency versions, parameters, time window, spatial scope, quality, limitations, validation status, processing run, and links from derived representations to their source result. | SYS-10, SYS-19, SYS-27 |
-| **CORE-07** | P0 | Resolve and execute the product dependency graph/tree, produce required intermediate products, and reuse compatible intermediates with their provenance. | SYS-04, SYS-10, SYS-19 |
-| **CORE-08** | P0 | Aggregate into a selected SAU or AOI summary with explicit resampling or averaging, coverage, and missing-data rules. Harmonization and aggregation shall remain explicit, replaceable operations recorded with their method, target support and native-resolution context. | SYS-06, SYS-07, SYS-15, SYS-27, SYS-29 |
-| **CORE-09** | P1 | Enable scientific comparisons against documented reference data or methods. | SYS-14b |
-| **CORE-10** | P2 | Harmonize and combine compatible products with different native grids, resolutions, or temporal characteristics. | SYS-09 |
-| **CORE-11** | P2 | Evaluate the scientific inputs and analytical operations needed by configured monitoring indicators. | SYS-11 |
-| **CORE-12** | P0 | Expose each product's validation record with its reference, metric, tolerance, observed result, and status. | SYS-14a |
-| **CORE-13** | P1 | Provide seasonal and richer temporal aggregations. | SYS-08b |
-| **CORE-14** | P1 | Support alternative spatial aggregation strategies without changing product definitions. | SYS-15 |
-| **CORE-15** | P0 | Maintain reusable product definitions, parameter schemas, versioned documentation, and validation records. | SYS-01, SYS-14a, SYS-15, SYS-19, SYS-22 |
-| **CORE-16** | P0 | Expose bounded spatial and temporal slices of a result without requiring the whole result to be loaded. | SYS-10, SYS-26 |
-
-### 5.4 Backend Requirements
-
-| ID | Priority | Requirement | Linked system requirements |
-|---|---|---|---|
-| **BE-01** | P0 | Expose the versioned product catalogue with definitions, parameter schemas and constraints, documentation reference or content and its status, scientific validation, supported spatial input types and constraints, temporal frequencies and maximum periods, and availability distinct from result availability. | SYS-01, SYS-14a, SYS-19, SYS-21, SYS-22 |
-| **BE-02** | P0 | Accept, validate, store, and retrieve AOI, POI, and LOI spatial inputs according to product constraints and configured limits, and snapshot the spatial input used by each request. | SYS-02, SYS-03, SYS-18 |
-| **BE-03** | P0 | Accept analysis requests with all required inputs and parameters, pin the exact product definition version, validate completeness and validity, reject invalid or incomplete requests with explicit errors, and record the caller identity and origin channel. | SYS-03, SYS-17, SYS-18, SYS-19 |
-| **BE-04** | P0 | Reuse only results that satisfy explicit product-version, parameter, spatial and temporal coverage, quality, and access-control criteria; otherwise coordinate computation. Associate the outcome with the originating request and owner and record the request lifecycle. | SYS-04, SYS-10, SYS-12, SYS-18, SYS-20 |
-| **BE-05** | P0 | Make available the final product cropped to the request's spatial input, SAU/AOI time series, inclusive UTC time filters, per-period availability, and missing or masked values with associated quality information, through a contract independent of the physical storage organization. | SYS-05, SYS-06, SYS-07, SYS-08a, SYS-18, SYS-20, SYS-26 |
-| **BE-06** | P0 | Preserve and expose source datasets, selected source criteria, method and version, parameters, time window, spatial scope, quality status and index for results and source observations, limitations, validation status, and lineage links to the request, product version, dependency graph/tree, intermediate products, processing run, and derived representations. | SYS-07, SYS-10, SYS-14a, SYS-20, SYS-27 |
-| **BE-07** | P0 | Persist requests, owner, origin channel, state transitions, failure reasons, result availability, estimated and actual costs, and access them independently of notifications; scope access to the caller. | SYS-12, SYS-16, SYS-17, SYS-18, SYS-24, SYS-25 |
-| **BE-08** | P0 | Publish owner-scoped request-state change events only to the authenticated owner without replacing REST-based status and result retrieval. | SYS-16, SYS-17, SYS-18 |
-| **BE-09** | P0 | Provide owner-scoped final-product download by default and an optional archive containing intermediate products and source observations in a directory tree with provenance; record download access for audit. | SYS-13, SYS-17, SYS-18, SYS-23 |
-| **BE-10** | P0 | Estimate cost before admission, atomically verify sufficient credits and record the admission decision, and post idempotent ledger transactions for the actual cost and balance according to a versioned credit policy, including failed or cancelled requests. Unlimited credits may be configured. | SYS-24, SYS-25 |
-| **BE-11** | P0 | Authenticate users, manage sessions, support multiple accounts, enforce ownership, and propagate a trusted server-side identity to every component involved in processing; components shall not accept client-supplied identity as authoritative. | SYS-12, SYS-17, SYS-18 |
-| **BE-12** | P0 | Provide a REST interface for submitting and listing requests, consulting statuses, retrieving results, downloading outputs, reading costs and balances, and exposing the current authenticated identity, with a stable error model, for authenticated users and authorized future consumers, scoped to the caller and recording the origin channel. | SYS-03, SYS-12, SYS-13, SYS-17, SYS-18, SYS-24, SYS-25 |
-| **BE-13** | P0 | Persist owner-scoped indicator definitions and stub evaluations, and provide an indicator placeholder to create and list definitions, trigger a stub evaluation, and expose the placeholder result outside the map layer. | SYS-11, SYS-18 |
-| **BE-14** | P1 | Manage indicator configurations and rules and expose their evaluations. | SYS-11 |
-| **BE-15** | P1 | Expose documented reference comparisons for scientific methods. | SYS-14b |
-| **BE-16** | P1 | Accommodate additions to the product catalogue without coupling the user interface to specific algorithms. | SYS-15 |
-| **BE-17** | P2 | Expose harmonized multi-product results. | SYS-09 |
-| **BE-18** | P1 | Provide seasonal and richer temporal aggregations. | SYS-08b |
-| **BE-19** | P0 | Persist each product version's dependency graph/tree, including dependencies, intermediate products, and ordering, and expose it with the product definition and result provenance. | SYS-04, SYS-10, SYS-19 |
-| **BE-20** | P1 | Provide filtering, sorting, and pagination for requests and search and filtering in the product catalogue. | SYS-01, SYS-12, SYS-18 |
-| **BE-21** | P0 | Persist completed results as immutable versions linked to the request, product definition version, dependency graph/tree version, and processing run; recomputation shall create a new result version rather than overwrite an existing one. Derived representations shall not overwrite or replace the scientific result they reference. | SYS-04, SYS-10, SYS-19, SYS-27 |
-| **BE-22** | P0 | Expose representation descriptors and bounded result slices independently of the physical storage organization, including transformation, native-resolution context, coverage, missing-data rules and limitations. | SYS-26, SYS-27, SYS-28 |
+When allocating an existing FE, CORE, or BE requirement to a logical component, preserve its identifier or maintain an explicit migration/traceability mapping. Do not create a second independently maintained copy of the same requirement. System-level requirements in §5.1 remain the baseline against which component requirements are traced.
 
 ### 5.5 Engineering Requirements
 
@@ -492,4 +444,4 @@ An agent reading the proposal should distinguish **required capabilities**, **la
 
 ---
 
-**End of proposal — v0.15.**
+**End of proposal — v0.16.**
