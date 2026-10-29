@@ -1,10 +1,10 @@
-# SCI Gateway — Scientific Processing and Orchestration Specification
+# SCI — Scientific Processing Component Specification
 
 **Status:** Proposed first draft  
-**Responsibility:** Scientific feasibility, dependency resolution, computation planning/orchestration, scientific product semantics and result characterization.
+**Responsibility:** Scientific product semantics, processing, scientific feasibility and result characterization. SCI Gateway is an internal subcomponent for scientific planning and orchestration.
 
 ## Purpose
-SCI Gateway is the internal scientific orchestration boundary. It answers whether a requested analysis is scientifically supported, resolves the product's dependency graph, identifies required source ingestion and derived calculations, looks for reusable compatible products using scientific criteria and CAT metadata, estimates scientific complexity for CON, and publishes ingestion/calculation needs to NATS. It owns product definitions and versions, scientific transformations, dependency semantics, scientific quality interpretation, and scientific provenance. Workers execute the heavy acquisition/calculation tasks; SCI Gateway plans and coordinates them rather than performing long-running work in the request path. Its implementation may use meogap_core and need not be a separate deployable.
+SCI defines product semantics, versions, methods, scientific quality interpretation and provenance. Within SCI, the SCI Gateway subcomponent answers whether a requested analysis is scientifically supported, resolves the product dependency graph, identifies required source ingestion and derived calculations, assesses reuse using scientific criteria and CAT metadata, estimates scientific complexity for CON, and publishes ingestion/calculation needs to NATS. Workers execute heavy acquisition/calculation tasks; SCI Gateway plans and coordinates them rather than performing long-running work in the request path. SCI and its subcomponents are logical responsibilities and do not mandate separate deployables; implementation may use meogap_core.
 
 ## In scope
 - Product definitions, versions, supported inputs, parameters, outputs and documentation.
@@ -15,12 +15,12 @@ SCI Gateway is the internal scientific orchestration boundary. It answers whethe
 - Temporal/value extraction semantics needed by supported products, coordinated with result-access contracts.
 
 ## Boundaries
-- SCI Gateway does not expose a public REST API; GTW is the unique public REST entry point. SCI may expose internal interfaces to GTW/CON and publish internal task messages to NATS.
+- SCI does not expose a public REST API; GTW is the unique public REST entry point. SCI exposes internal interfaces to GTW/CON as required and publishes internal task messages to NATS through its SCI Gateway subcomponent.
 - SCI does not own physical asset lifecycle or discoverability; CAT is the proposed owner of asset registration and references.
 - SCI does not own user-facing request history, request ownership/access rights, authentication sessions, request lifecycle, or credit ledger/admission policy.
 - SCI does not infer scientific validity from successful technical execution.
 - meogap_core is an implementation/library boundary, not the complete definition of SCI.
-- SCI Gateway owns scientific feasibility and planning contracts from M0; dependency execution may be deterministic/mock in M0, with real source ingestion and reusable dependency graphs introduced incrementally.
+- SCI owns the scientific feasibility contract from M0; its SCI Gateway subcomponent provides a deterministic/mock plan initially, with real source ingestion and reusable dependency graphs introduced incrementally.
 
 ## Component requirements
 
@@ -36,7 +36,7 @@ SCI Gateway is the internal scientific orchestration boundary. It answers whethe
 | SCI-008 | P1 | SCI shall distinguish missing observations, masked values, genuine zeros and processing failures in outputs and time series. | Synthetic contract M0; real masks M1 | SYS-07, SYS-20 | Proposed |
 | SCI-009 | P1 | SCI shall define product-specific temporal support, UTC windows/frequencies and rules for producing values or series for supported analysis units. | M1–M2 | SYS-06, SYS-08a, SYS-21 | Proposed |
 | SCI-010 | P1 | SCI shall expose product-level scientific validation separately from the quality status of each result. | M1 | SYS-14a, SYS-14b, SYS-20 | Proposed |
-| SCI-011 | P0 | SCI Gateway shall expose a versioned feasibility and complexity-estimation contract and a deterministic mock plan in M0. As the Product Engine matures, it shall resolve versioned product dependencies, assess reusable results using scientific compatibility criteria and CAT metadata, and publish required ingestion/calculation tasks to NATS; CON consumes only feasibility/complexity and lifecycle-relevant outcomes, never the scientific dependency graph. Retained/reused intermediates must preserve lineage. | M0 feasibility/complexity contract and mock plan; full dependency resolution and result reuse M2 | SYS-04, SYS-10, SYS-19, SYS-31 | Proposed |
+| SCI-011 | P0 | SCI shall expose a versioned feasibility and complexity-estimation contract and a deterministic mock plan in M0. Its SCI Gateway subcomponent resolves product dependencies, assesses reusable results using scientific compatibility criteria and CAT metadata, and publishes required ingestion/calculation tasks to NATS as the Product Engine matures. CON consumes only feasibility/complexity and lifecycle-relevant outcomes, never the scientific dependency graph. Retained/reused intermediates must preserve lineage. | M0 feasibility/complexity contract and mock plan; full dependency resolution and result reuse M2 | SYS-04, SYS-10, SYS-19, SYS-31 | Proposed |
 | SCI-012 | P2 | SCI shall define scientific compatibility criteria for product comparison and may implement the spatial/temporal harmonization or combination required by those criteria, preserving methods, units, resolution, coverage and limitations. | Later extension | SYS-09 | Proposed |
 | SCI-013 | P2 | SCI may provide scientific inputs and evaluation logic to the Indicator Engine; monitoring indicators remain distinct from product definitions. | M4 | SYS-11 | Proposed |
 
@@ -56,6 +56,6 @@ SCI Gateway is the internal scientific orchestration boundary. It answers whethe
 ## Open questions
 1. What minimum product descriptor is needed in M0 without freezing the full Product Engine schema?
 2. Should product-definition source files live in the repository while meogap_core implements reusable calculation primitives? Proposed: yes.
-3. SCI Gateway initiates source-ingestion needs by publishing the corresponding request to NATS; which component consumes and executes each ingestion message remains an implementation/interface decision.
-4. Does SCI Gateway report scientific outcome/quality before asset registration, or does CAT acknowledge registration first? The interface must preserve the distinction between scientific result metadata and physical asset registration.
+3. The SCI Gateway subcomponent initiates source-ingestion needs by publishing the corresponding request to NATS; which component consumes and executes each ingestion message remains an implementation/interface decision.
+4. Does SCI report scientific outcome/quality before asset registration, or does CAT acknowledge registration first? The interface must preserve the distinction between scientific result metadata and physical asset registration.
 5. Which first real product is selected for M1? NDVI is a candidate; NDTI, FVC and LST remain scientific planning, not requirements fixed here.
