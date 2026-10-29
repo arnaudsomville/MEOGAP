@@ -38,7 +38,7 @@ UI enables a user to discover supported products, configure an analysis request,
 | UI-009 | P0 | UI shall display estimated cost and credit balance before submission and actual cost when available, clearly identifying simulated values in M0. | M0 demo values; real ledger M3 | SYS-24, SYS-25 | Proposed |
 | UI-010 | P1 | UI shall offer final-product download and, when supported, optional archive download containing intermediates and source observations with provenance. | Final download M0/M1 to confirm; archive M3 | SYS-13, SYS-23 | Open |
 | UI-011 | P1 | UI shall provide sign-in/sign-out views and protect authenticated views when authentication is implemented. | M3 | SYS-18 | Proposed |
-| UI-012 | P2 | UI may support comparison of compatible products only when backend responses expose explicit spatial/temporal harmonization context. | Later extension | SYS-09 | Proposed |
+| UI-012 | P2 | UI may display side-by-side or overlaid maps and compare time series for products that the backend explicitly identifies as scientifically comparable, presenting the supplied units, spatial/temporal context and limitations without determining compatibility itself. | Later extension | SYS-09 | Proposed |
 | UI-013 | P0 | UI shall expose loading, empty, unavailable, partial-result and failure states for catalogue, requests, map, time series, balance and downloads. | M0 | SYS-07, SYS-16, SYS-25, SYS-30 | Proposed |
 | UI-014 | P0 | UI shall provide a multi-resolution satellite basemap suitable for spatial orientation and AOI selection, respecting attribution and licensing. | M0 | SYS-02 | Proposed |
 
