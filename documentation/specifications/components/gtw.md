@@ -45,8 +45,7 @@ GTW is MEOGAP's global gateway and public REST entry point. It validates externa
 - Not specified yet: endpoints, schemas, HTTP status mapping, authentication mechanism, notification transport and internal call protocol.
 
 ## Open questions
-1. Is GTW a thin API boundary, or does it own request orchestration initially?
-2. If CON is accepted, does GTW store request state or expose CON-owned state?
-3. Who decides whether an existing result satisfies a new request: CON, SCI, CAT, or coordinated policy?
+2. What internal contract should GTW use to expose CON-owned request state?
+3. How should GTW route result-reuse decisions made by CON using compatibility information from SCI and availability candidates from CAT?
 4. How is caller identity represented in M0 without claiming real authentication?
 5. Are downloads served/streamed by GTW or provided through short-lived object references? Public behavior can be defined before choosing the mechanism.
