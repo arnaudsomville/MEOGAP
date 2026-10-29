@@ -36,7 +36,7 @@ SCI defines what scientific products mean and how they are calculated. It owns p
 | SCI-008 | P1 | SCI shall distinguish missing observations, masked values, genuine zeros and processing failures in outputs and time series. | Synthetic contract M0; real masks M1 | SYS-07, SYS-20 | Proposed |
 | SCI-009 | P1 | SCI shall define product-specific temporal support, UTC windows/frequencies and rules for producing values or series for supported analysis units. | M1–M2 | SYS-06, SYS-08a, SYS-21 | Proposed |
 | SCI-010 | P1 | SCI shall expose product-level scientific validation separately from the quality status of each result. | M1 | SYS-14a, SYS-14b, SYS-20 | Proposed |
-| SCI-011 | P1 | SCI shall resolve and execute versioned product dependencies and retain/reuse compatible intermediate products with lineage. | M2 | SYS-04, SYS-10, SYS-19 | Proposed |
+| SCI-011 | P1 | SCI shall resolve and execute versioned product dependencies and provide explicit scientific compatibility criteria to CON for deciding whether an existing result can satisfy a request; retained/reused intermediates must preserve lineage. | M2 | SYS-04, SYS-10, SYS-19 | Proposed |
 | SCI-012 | P2 | SCI may support explicit harmonization/combination of compatible products while preserving method and limitation information. | Later extension | SYS-09 | Proposed |
 | SCI-013 | P2 | SCI may provide scientific inputs and evaluation logic to the Indicator Engine; monitoring indicators remain distinct from product definitions. | M4 | SYS-11 | Proposed |
 
