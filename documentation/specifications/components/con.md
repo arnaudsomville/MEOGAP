@@ -13,7 +13,7 @@ This does not assume a separate package, process, container, service or database
 - Decide whether a request can reuse an existing compatible result or requires new work, in collaboration with SCI and CAT.
 - Track execution tasks, retries, failure reasons and links between requests, tasks and results.
 - Apply admission rules such as supported-request checks and, later, credit availability.
-- Carry trusted caller identity/context into internal operations when authentication is implemented.
+- Carry trusted caller identity/context through internal operations from M0, using a deterministic demo identity where production authentication is not yet implemented.
 - Expose internal lifecycle operations to GTW through a defined contract.
 
 ## Boundaries
@@ -32,7 +32,7 @@ This does not assume a separate package, process, container, service or database
 | CON-003 | P1 | CON shall coordinate execution tasks and associate outcomes/retries with the originating request without conflating task state, acquisition state, asset availability and result quality. | M1–M3; state concepts represented in M0 | SYS-04, SYS-10, SYS-12, SYS-20 | Proposed |
 | CON-004 | P1 | CON shall decide whether a request may reuse an existing result, using scientific compatibility criteria provided by SCI and available candidate assets and metadata provided by CAT. | M2 | SYS-04, SYS-10, SYS-19, SYS-20 | Proposed |
 | CON-005 | P1 | CON shall provide idempotent request-state transitions and recoverable execution tracking so retries do not create duplicate requests or result associations. | M3; design constraints considered from M0 | SYS-12, SYS-16, SYS-17 | Proposed |
-| CON-006 | P1 | CON shall associate each request and computed resource with its owner and decide whether a caller may access that resource, using trusted identity rather than client-supplied ownership claims. | M3 owner-scoped authorization; M0 deterministic demo identity only | SYS-17, SYS-18 | Proposed |
+| CON-006 | P0 | CON shall associate each request and computed resource with a caller identity and make the authoritative access decision using trusted identity, never client-supplied ownership claims. M0 shall exercise this contract with deterministic demo identity/ownership data; production multi-account authentication and isolation are hardened in M3. | M0 identity/ownership contract and deterministic authorization behavior; production multi-account isolation M3 | SYS-17, SYS-18, SYS-31 | Proposed |
 | CON-007 | P1 | CON shall apply the authoritative credit/admission policy before scheduling work and record the decision and associated request context when credit accounting is implemented. | M3; M0 values may be simulated | SYS-24, SYS-25 | Open |
 
 ## Potential interfaces
@@ -48,4 +48,4 @@ These interfaces remain proposed and should be refined as the component contract
 1. How must internal components and workers enforce CON's access decision when accessing assets directly, without creating an alternate authorization authority?
 2. Which request/task lifecycle state must be persisted in M0 to support the agreed reference journey and recovery requirements?
 3. Should credit admission remain within CON or become a separate accounting responsibility as the credit model grows?
-4. How are trusted caller identity and service-to-service identity represented and propagated?
+4. Which identity transport contract should M0 use (e.g. bearer token), and how will service-to-service identity be represented without allowing clients to assert ownership?
