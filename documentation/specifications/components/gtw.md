@@ -33,7 +33,7 @@ GTW is MEOGAP's global gateway and public REST entry point. It validates externa
 | GTW-005 | P0 | GTW shall enforce configured request limits and return explicit feedback when spatial, temporal or other supported limits are exceeded. | M0 deterministic limits | SYS-30 | Proposed |
 | GTW-006 | P0 | GTW shall consult/enforce CON's authoritative access decision before exposing result retrieval or downloads to a caller. | M0 single demo identity; real owner isolation M3 | SYS-13, SYS-17, SYS-18, SYS-23 | Proposed |
 | GTW-007 | P0 | GTW shall provide REST retrieval of current request state and results after client reconnection, regardless of live-update delivery. | M0 | SYS-16, SYS-17 | Proposed |
-| GTW-008 | P1 | GTW shall establish or receive trusted caller identity, pass it to CON for request/resource authorization, and enforce CON's access decision at the public API boundary when authentication is enabled. | M3 | SYS-17, SYS-18 | Proposed |
+| GTW-008 | P0 | GTW shall establish or receive a trusted caller identity and propagate it to CON on every request/resource operation; it shall enforce CON's access decision at the public API boundary. M0 must exercise this identity-propagation and authorization contract with a deterministic demo identity/token, without claiming production authentication. The mechanism may use a bearer token or another explicitly documented contract. | M0 identity propagation and owner-scoped authorization contract; production authentication/hardening M3 | SYS-17, SYS-18, SYS-31 | Proposed |
 | GTW-009 | P1 | GTW shall expose cost estimate, admission outcome, actual cost and balance from the responsible business capability without presenting simulated values as authoritative ledger entries. | M0 display contract; authoritative values M3 | SYS-24, SYS-25 | Proposed |
 | GTW-010 | P1 | GTW shall expose final-product and optional archive downloads through a stable contract with appropriate errors and metadata. | Final download M0/M1 to confirm; archive M3 | SYS-13, SYS-23 | Open |
 | GTW-011 | P1 | GTW shall return explicit dependency-failure responses without fabricating request/result state. | M0 deterministic failure; persistence/recovery later | SYS-16, SYS-17 | Proposed |
@@ -46,5 +46,5 @@ GTW is MEOGAP's global gateway and public REST entry point. It validates externa
 
 ## Open questions
 1. What internal contract should GTW use to expose CON-owned request state and authorization decisions?
-2. How is caller identity represented in M0 without claiming real authentication?
+2. Which identity transport contract should M0 use (e.g. bearer token), while keeping the demo identity deterministic and clearly distinct from production authentication?
 3. Are downloads served/streamed by GTW or provided through short-lived object references? Public behavior can be defined before choosing the mechanism?
