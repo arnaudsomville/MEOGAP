@@ -4,15 +4,15 @@
 **Responsibility:** Public REST interface and entry point to MEOGAP.
 
 ## Purpose
-GTW exposes the versioned public REST contract used by UI and future authorized clients. It validates incoming API requests, delegates to the appropriate logical owner, and exposes catalogue information, request state, results and downloads without leaking internal implementation or storage details.
+GTW is MEOGAP's global gateway and public REST entry point. It validates external/UI requests and routes them to the appropriate backend component, or to a Worker for specific use cases, using internal REST or NATS according to the relevant interface contract. It exposes public catalogue, request, status, result and download operations without leaking internal implementation or storage details. CON remains the owner of request lifecycle, resource ownership and access rights; GTW routes and exposes those capabilities rather than owning them.
 
 ## In scope
 - Public REST API and its versioning/error conventions.
 - Validation of request shape and API-level constraints.
 - Public access to product catalogue descriptors.
-- Analysis-request submission and query operations, subject to final ownership decision with CON.
+- Routing analysis-request submission and query operations to CON.
 - Public access to request status, result metadata and supported representations.
-- Identity context and access-control enforcement when authentication is introduced.
+- Establishing/propagating caller identity and enforcing the access decision returned by the responsible authorization/ownership logic when authentication is introduced.
 - Stable behavior when downstream components are unavailable or fail.
 
 ## Boundaries
@@ -20,15 +20,15 @@ GTW exposes the versioned public REST contract used by UI and future authorized 
 - GTW does not own physical asset storage or asset registration.
 - GTW does not expose NATS or worker messages to UI clients.
 - Notifications are not authoritative request state; clients can retrieve current state through REST.
-- Whether GTW owns request lifecycle state or delegates it to CON remains unresolved.
+- GTW does not own the authoritative request lifecycle, request ownership or access-rights policy; those are CON responsibilities.
 
 ## Component requirements
 
 | ID | Priority | Requirement | Target milestone | Parent SYS | Status |
 |---|---|---|---|---|---|
-| GTW-001 | P0 | GTW shall expose a versioned REST interface for product discovery, request submission, request status, result metadata and supported result access. | M0 demo contract with mocks; extend as capabilities arrive | SYS-01, SYS-03, SYS-05, SYS-12, SYS-17, SYS-31 | Proposed |
+| GTW-001 | P0 | GTW shall expose a versioned public REST interface and route product discovery, request submission/status, result metadata and result access to their responsible backend components. | M0 demo contract with mocks; extend as capabilities arrive | SYS-01, SYS-03, SYS-05, SYS-12, SYS-17, SYS-31 | Proposed |
 | GTW-002 | P0 | GTW shall validate request structure and required fields and return explicit, stable errors for invalid or unsupported requests. | M0 | SYS-03, SYS-30 | Proposed |
-| GTW-003 | P0 | GTW shall expose current request state and available result references through REST independently of internal notifications. | M0 mocked lifecycle; persistent state milestone depends on CON decision | SYS-12, SYS-16, SYS-17 | Open |
+| GTW-003 | P0 | GTW shall expose CON-owned current request state and available result references through REST independently of internal notifications. | M0 mocked lifecycle; persistent state owned by CON; delivery milestone to align with M0 plan | SYS-12, SYS-16, SYS-17 | Open |
 | GTW-004 | P0 | GTW shall expose product/result metadata without requiring clients to know physical storage layout or paths. | M0 synthetic descriptors; full metadata M1–M2 | SYS-01, SYS-10, SYS-26, SYS-27, SYS-28 | Proposed |
 | GTW-005 | P0 | GTW shall enforce configured request limits and return explicit feedback when spatial, temporal or other supported limits are exceeded. | M0 deterministic limits | SYS-30 | Proposed |
 | GTW-006 | P0 | GTW shall expose result retrieval and downloads only for results available to the requesting caller under the active access-control policy. | M0 single demo identity; real owner isolation M3 | SYS-13, SYS-17, SYS-18, SYS-23 | Proposed |
@@ -40,7 +40,7 @@ GTW exposes the versioned public REST contract used by UI and future authorized 
 
 ## Interfaces
 - Public input: REST requests from UI and future authorized consumers.
-- Internal dependencies: CAT for catalogue/asset metadata; SCI for product-related operations; CON if accepted for request lifecycle/admission/authorization.
+- Internal routing/dependencies: CAT for catalogue/asset metadata; SCI for product-related operations; CON for request lifecycle, ownership and access rights; Workers for use cases that require asynchronous execution. Internal REST or NATS is selected per contract.
 - Output: versioned REST resources and stable error responses.
 - Not specified yet: endpoints, schemas, HTTP status mapping, authentication mechanism, notification transport and internal call protocol.
 
