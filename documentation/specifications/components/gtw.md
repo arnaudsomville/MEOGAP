@@ -4,13 +4,13 @@
 **Responsibility:** Public REST interface and entry point to MEOGAP.
 
 ## Purpose
-GTW is MEOGAP's global gateway and public REST entry point. It validates external/UI requests and routes them to the appropriate backend component, or to a Worker for specific use cases, using internal REST or NATS according to the relevant interface contract. It exposes public catalogue, request, status, result and download operations without leaking internal implementation or storage details. CON remains the owner of request lifecycle, resource ownership and access rights; GTW routes and exposes those capabilities rather than owning them.
+GTW is MEOGAP's unique public REST entry point. It validates external/UI requests and routes them to backend components through their internal contracts. It exposes public catalogue, request, status, result and download operations without leaking internal implementation or storage details. CON owns request lifecycle, ownership/access rights, admission and cost tracking; SCI Gateway owns scientific feasibility and computation orchestration. GTW routes and exposes their capabilities but owns neither responsibility.
 
 ## In scope
 - Public REST API and its versioning/error conventions.
 - Validation of request shape and API-level constraints.
 - Public access to product catalogue descriptors.
-- Routing analysis-request submission and query operations to CON.
+- Routing analysis-request submission and query operations to CON, and product/scientific discovery or other scientific operations to SCI Gateway as defined by the public API contract.
 - Public access to request status, result metadata and supported representations.
 - Establishing/propagating caller identity and enforcing the access decision returned by the responsible authorization/ownership logic when authentication is introduced.
 - Stable behavior when downstream components are unavailable or fail.
@@ -40,11 +40,11 @@ GTW is MEOGAP's global gateway and public REST entry point. It validates externa
 
 ## Interfaces
 - Public input: REST requests from UI and future authorized consumers.
-- Internal routing/dependencies: CAT for catalogue/asset metadata; SCI for product-related operations; CON for request lifecycle, ownership and access rights; Workers for use cases that require asynchronous execution. Internal REST or NATS is selected per contract.
+- Internal routing/dependencies: CON for request lifecycle, ownership/access rights, admission and cost; SCI Gateway for scientific feasibility, complexity estimates and computation planning; CAT for asset metadata; Workers/NATS remain internal execution and messaging mechanisms. GTW never exposes NATS directly.
 - Output: versioned REST resources and stable error responses.
 - Not specified yet: endpoints, schemas, HTTP status mapping, authentication mechanism, notification transport and internal call protocol.
 
 ## Open questions
-1. What internal contract should GTW use to expose CON-owned request state and authorization decisions?
+1. What internal contracts should GTW use for CON-owned request state/access decisions and SCI Gateway-owned scientific feasibility/product operations?
 2. Which identity transport contract should M0 use (e.g. bearer token), while keeping the demo identity deterministic and clearly distinct from production authentication?
 3. Are downloads served/streamed by GTW or provided through short-lived object references? Public behavior can be defined before choosing the mechanism?
