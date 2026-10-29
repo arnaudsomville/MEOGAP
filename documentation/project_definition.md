@@ -272,7 +272,7 @@ The logical responsibilities **GTW/CON/CAT/SCI** are not package names. Do not s
 
 ### 5.2 Component Requirements — authoritative specifications
 
-The detailed FE-*, CORE-*, and BE-* inventories are maintained in the component specifications, where ownership and boundaries can be reviewed alongside each requirement. They are intentionally not reproduced here.
+The component specifications now hold the owner-oriented requirement sets (UI-*, GTW-*, CON-*, CAT-* and SCI-*). They are the working references for component boundaries and proposed behavior. The earlier FE-*, CORE-* and BE-* inventories have not yet been fully reconciled against these component-specific IDs; do not assume a one-to-one migration or silently discard an unmapped requirement. Complete that traceability review as a follow-up before treating the migration as closed.
 
 - **UI / former FE requirements:** [UI specification](specifications/components/ui.md)
 - **GTW:** [GTW specification](specifications/components/gtw.md)
@@ -281,7 +281,7 @@ The detailed FE-*, CORE-*, and BE-* inventories are maintained in the component 
 - **SCI / scientific processing and former CORE requirements:** [SCI specification](specifications/components/sci.md)
 - **Cross-component contracts and system traceability:** [SYS baseline](specifications/sys.md) and [component index](specifications/components/README.md)
 
-When allocating an existing FE, CORE, or BE requirement to a logical component, preserve its identifier or maintain an explicit migration/traceability mapping. Do not create a second independently maintained copy of the same requirement. System-level requirements in §5.1 remain the baseline against which component requirements are traced.
+Next documentation step: create an explicit mapping from each legacy FE-*, CORE-* and BE-* requirement to one or more component-specific requirements or record it as intentionally retired with rationale. Until that review is complete, the component specifications are a working draft, not proof that every legacy requirement has been carried forward. System-level requirements in §5.1 remain the baseline against which component requirements are traced.
 
 ### 5.5 Engineering Requirements
 
