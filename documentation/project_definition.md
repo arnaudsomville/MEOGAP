@@ -195,7 +195,7 @@ This section defines **logical responsibilities**, not a one-to-one mapping to p
 | **Workers — execution mechanism** | Execute asynchronous acquisition or scientific tasks and report outcomes. | Runtime mechanism rather than a separate logical business responsibility. Acquisition and scientific tasks may initially share worker code/pool; split pools only if justified by workload or isolation needs. |
 | **NATS — internal messaging** | Carry internal task messages and/or state-change events between backend processes. | Never a public API or a browser-facing source of truth. Exact message contracts are specified separately. |
 
-**Implementation mapping (provisional):** `meogap_api` implements most GAT responsibilities; `meogap_core` is a reusable software library for scientific logic, adapters and shared abstractions, and is not synonymous with the SCI responsibility; `meogap_worker` executes tasks using those capabilities. CAT's software boundary and persistence mechanism remain to be designed. Do not create a separate service solely because CAT is a distinct logical responsibility.
+**Implementation mapping (provisional):** `meogap_api` implements most GTW responsibilities; `meogap_core` is a reusable software library for scientific logic, adapters and shared abstractions, and is not synonymous with the SCI responsibility; `meogap_worker` executes tasks using those capabilities. CAT's software boundary and persistence mechanism remain to be designed. Do not create a separate service solely because CAT is a distinct logical responsibility.
 
 **Data and result lifecycle:** SCI defines and executes scientific transformations. CAT registers and makes source and derived assets discoverable. The hand-off for derived results must link the scientific result and its provenance to the stored asset without conflating scientific lineage with physical storage metadata. Acquisition status and analysis-request status are distinct. Avoid duplicate download/orchestration logic between CAT and Workers.
 
@@ -210,10 +210,10 @@ This section defines **logical responsibilities**, not a one-to-one mapping to p
 Requirements are described at these levels:
 
 - **System/Service (`SYS`)**: what the platform must make possible, independently of implementation. System requirements may also establish logical responsibility boundaries where these are necessary to keep public access, data assets and scientific computation distinct.
-- **Component (`FE`, `CORE`, `BE`)**: the current component-level requirement inventory. During refinement, each item must be mapped to its actual logical owner: UI, GAT, CAT, SCI, or a cross-cutting/system concern. `BE` and `CORE` are existing requirement prefixes, not final logical component names.
+- **Component (`FE`, `CORE`, `BE`)**: the current component-level requirement inventory. During refinement, each item must be mapped to its actual logical owner: UI, GTW, CON, CAT, SCI, or a cross-cutting/system concern. `BE` and `CORE` are existing requirement prefixes, not final logical component names.
 - **Engineering (`ENG`)**: capabilities required to build, operate, and validate the platform, independent of user-facing features. Engineering requirements state outcomes, not implementation choices.
 
-The logical responsibilities **GAT/CAT/SCI** are not package names. Do not silently rename or delete existing requirement IDs; keep an explicit traceability/migration map when the component inventory is reallocated.
+The logical responsibilities **GTW/CON/CAT/SCI** are not package names. Do not silently rename or delete existing requirement IDs; keep an explicit traceability/migration map when the component inventory is reallocated.
 
 **Priorities and delivery scope:** `P0` = required to be represented in the M0 end-to-end demonstration, which may mean a real contract with mocked data/behavior or a deliberately partial implementation; it does **not** imply that the full capability is implemented in M0. `P1` = later foundational capability, generally M1–M3; `P2` = later extension. The requirement's full intended behavior and its M0 demonstration scope must be distinguished explicitly. The allocation matrix and roadmap define when full behavior is delivered.
 
