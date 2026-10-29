@@ -3,7 +3,7 @@
 **Status:** Proposed first draft — logical component confirmed; detailed boundaries remain under review.  
 **Responsibility:** Authoritative request lifecycle, request ownership and access rights for computed resources.
 
-## Why this candidate exists
+## Purpose
 CON is a distinct logical component. It owns analysis requests, including their authoritative lifecycle, the identity/ownership association, and decisions about who may access computed resources. It also tracks execution tasks and outcomes. GTW is the global gateway: it routes external/UI requests to CON and other backend components through internal REST or NATS/Workers as appropriate.
 
 This does not assume a separate package, process, container, service or database.
@@ -27,7 +27,7 @@ This does not assume a separate package, process, container, service or database
 
 | Candidate ID | Priority | Candidate behavior | Target milestone | Parent SYS | Status |
 |---|---|---|---|---|---|
-| CON-001 | P0 | A submitted request receives a stable identifier and observable lifecycle state retrievable through GTW. | M0 deterministic mock; authoritative state owner TBD | SYS-03, SYS-12, SYS-16, SYS-17, SYS-31 | Proposed |
+| CON-001 | P0 | A submitted request receives a stable identifier and observable lifecycle state retrievable through GTW. | M0 deterministic mock; CON-owned authoritative state; persistence milestone to confirm | SYS-03, SYS-12, SYS-16, SYS-17, SYS-31 | Proposed |
 | CON-002 | P0 | Request state distinguishes accepted, queued/running, succeeded and failed outcomes, with failure reason and result reference where applicable. | M0 synthetic transitions; durable recovery TBD | SYS-12, SYS-16, SYS-17 | Needs decision |
 | CON-003 | P1 | Request management coordinates tasks and associates outcomes/retries with the originating request without conflating task state, acquisition state and result quality. | M1–M3 | SYS-04, SYS-10, SYS-12, SYS-20 | Needs decision |
 | CON-004 | P1 | Request management determines whether an existing result may satisfy a request using compatibility and access criteria provided by scientific/catalog logic. | M2 | SYS-04, SYS-10, SYS-19, SYS-20 | Needs decision |
@@ -41,9 +41,9 @@ This does not assume a separate package, process, container, service or database
 - CON ↔ SCI: obtain product constraints/compatibility information and initiate processing.
 - CON → GTW: request state and result availability exposed through REST.
 
-These are hypotheses and must be revised if CON is not accepted.
+These interfaces remain proposed and should be refined as the component contracts are specified.
 
-## Decision questions
+## Open questions
 1. Does CON own the final authorization decision for every computed resource, while GTW enforces the decision at the public boundary? What enforcement is required for internal component/worker access?
 2. Does CON own request admission and result-reuse decisions, or does it coordinate with SCI for scientific compatibility and CAT for available candidates?
 3. Which request/task lifecycle transitions must be persisted in M0 versus introduced in M1–M3?
