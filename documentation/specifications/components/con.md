@@ -1,23 +1,24 @@
 # CON — Request Management Component Specification
 
 **Status:** Proposed first draft — logical component confirmed; detailed boundaries remain under review.  
-**Responsibility:** Authoritative request lifecycle, request ownership and access rights for computed resources.
+**Responsibility:** Authoritative user-request lifecycle, request ownership/access rights, admission and cost tracking, independent of scientific implementation details.
 
 ## Purpose
-CON is a distinct logical component. It owns analysis requests, including their authoritative lifecycle, the identity/ownership association, and decisions about who may access computed resources. It also tracks execution tasks and outcomes. GTW is the global gateway: it routes external/UI requests to CON and other backend components through internal REST or NATS/Workers as appropriate.
+CON is a distinct logical component. It owns analysis requests, including their authoritative lifecycle, caller/ownership association, access decisions, request status, admission and cost tracking. CON coordinates the user request but has no scientific knowledge: it asks SCI Gateway through a versioned interface whether a request is feasible and for its estimated complexity/cost, then coordinates the request lifecycle using the returned contract. GTW is the unique public REST entry point; it routes external/UI requests to backend components. SCI Gateway independently orchestrates scientific dependencies and publishes ingestion/calculation needs to NATS.
 
 This does not assume a separate package, process, container, service or database.
 
 ## In scope
 - Create and maintain the authoritative lifecycle of analysis requests.
-- Decide whether a request can reuse an existing compatible result or requires new work, in collaboration with SCI and CAT.
+- Request scientific feasibility and complexity/cost estimates from SCI Gateway through explicit versioned interfaces; CON does not resolve scientific dependencies or decide scientific compatibility.
+- Coordinate request admission and lifecycle using the response from SCI Gateway and CON-owned business policies.
 - Track execution tasks, retries, failure reasons and links between requests, tasks and results.
 - Apply admission rules such as supported-request checks and, later, credit availability.
 - Carry trusted caller identity/context through internal operations from M0, using a deterministic demo identity where production authentication is not yet implemented.
 - Expose internal lifecycle operations to GTW through a defined contract.
 
 ## Boundaries
-- No scientific algorithms or scientific-validity decisions.
+- No scientific algorithms, dependency resolution, product compatibility decisions or scientific execution planning; these belong to SCI Gateway.
 - No ownership of asset catalog records or physical file storage.
 - No public REST API; GTW remains the public entry point.
 - No replacement for NATS as internal message transport.
@@ -39,7 +40,7 @@ This does not assume a separate package, process, container, service or database
 - GTW → CON: create request, retrieve request, list caller-scoped requests, and later cancel if supported.
 - CON ↔ Workers: dispatch tasks and receive outcomes through internal contracts and messaging.
 - CON ↔ CAT: query candidate assets/results and metadata; CAT does not decide request ownership or scientific compatibility.
-- CON ↔ SCI: obtain scientific compatibility criteria/product constraints and initiate processing.
+- CON ↔ SCI Gateway: request feasibility/complexity estimates and submit/coordinate a scientific plan through versioned contracts; CON does not inspect scientific dependency graphs. SCI Gateway publishes ingestion and calculation needs to NATS.
 - CON → GTW: request state and result availability exposed through REST.
 
 These interfaces remain proposed and should be refined as the component contracts are specified.
@@ -48,4 +49,5 @@ These interfaces remain proposed and should be refined as the component contract
 1. How must internal components and workers enforce CON's access decision when accessing assets directly, without creating an alternate authorization authority?
 2. Which request/task lifecycle state must be persisted in M0 to support the agreed reference journey and recovery requirements?
 3. Should credit admission remain within CON or become a separate accounting responsibility as the credit model grows?
+4. What exact versioned interface should SCI Gateway expose for feasibility, complexity/cost estimation, plan acceptance and execution outcomes?
 4. Which identity transport contract should M0 use (e.g. bearer token), and how will service-to-service identity be represented without allowing clients to assert ownership?
