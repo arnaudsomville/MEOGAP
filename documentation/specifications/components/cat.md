@@ -29,7 +29,7 @@ CAT makes source observations and generated assets discoverable through stable r
 | CAT-002 | P0 | CAT shall distinguish asset registration/availability from product support, request status and scientific validation. | M0 synthetic states; real acquisition states M1 | SYS-01, SYS-04, SYS-10, SYS-20 | Proposed |
 | CAT-003 | P0 | CAT shall register a generated asset with a stable reference and link it to associated result/request identifiers without owning scientific method semantics. | M0 synthetic asset reference; real assets M1–M2 | SYS-10, SYS-26, SYS-27 | Proposed |
 | CAT-004 | P1 | CAT shall maintain source/derived asset metadata, including provider/source identifiers, spatial and temporal coverage, representation references, availability and quality metadata when supplied. | M1–M2 | SYS-01, SYS-10, SYS-20, SYS-27 | Proposed |
-| CAT-005 | P1 | CAT shall support lookup by source/product identity, spatial/temporal coverage and access eligibility, returning explicit availability rather than implying processing succeeded. | M1–M2 | SYS-04, SYS-12, SYS-20 | Proposed |
+| CAT-005 | P1 | CAT shall return candidate assets and their metadata for source/product identity and spatial/temporal coverage queries, including availability; it shall not decide scientific compatibility or request ownership. | M1–M2 | SYS-04, SYS-12, SYS-20 | Proposed |
 | CAT-006 | P1 | CAT shall maintain storage-location references and support retrieval through a storage-independent interface without exposing physical paths in the public API. | M1–M2; storage decision requires ADR | SYS-26, SYS-27, SYS-28 | Proposed |
 | CAT-007 | P1 | CAT shall preserve registered asset references and metadata across application restarts once persistent catalog behavior is delivered. | M3 unless M0 architecture decision requires earlier persistence | SYS-10, SYS-12, SYS-17 | Open |
 | CAT-008 | P1 | CAT shall report acquisition/asset outcomes distinctly from request lifecycle and scientific result quality. | M1–M3 | SYS-04, SYS-07, SYS-10, SYS-20 | Proposed |
@@ -44,5 +44,5 @@ CAT makes source observations and generated assets discoverable through stable r
 1. Does CAT own only catalog metadata, or also physical-file creation, deletion, retention and orphan cleanup?
 2. Is PostgreSQL plus RustFS intended for M0, or is persistence a logical requirement pending an ADR?
 3. How does CAT enforce or facilitate access to stored assets after CON has decided whether a caller is authorized?
-4. Who decides that an existing asset/result is compatible with a new request?
+4. What metadata must CAT provide so CON can apply access rules and SCI can evaluate scientific compatibility?
 5. How are partial acquisition, expired assets, missing objects and failed registration represented?
