@@ -3,7 +3,7 @@
 Status: Working draft for review  
 Scope: UI, GTW, SCI, CAT, and CON as a candidate responsibility.
 
-These documents establish initial component boundaries and derive first-pass component requirements from the current SYS baseline. They are not implementation authorization and do not settle every architecture decision.
+These documents establish the system baseline and initial component boundaries. They are not implementation authorization and do not settle every architecture decision. The system requirements are summarized in [sys.md](../sys.md), which points back to the authoritative requirements in `documentation/project_definition.md`.
 
 ## Documents
 - [UI](ui.md) — user interaction and presentation.
