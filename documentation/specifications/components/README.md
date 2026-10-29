@@ -8,7 +8,7 @@ These documents establish the system baseline and initial component boundaries. 
 ## Documents
 - [UI](ui.md) — user interaction and presentation.
 - [GTW](gtw.md) — public REST gateway.
-- [SCI](sci.md) — scientific product definitions and processing.
+- [SCI Gateway](sci.md) — scientific feasibility, dependency resolution and computation orchestration.
 - [CAT](cat.md) — data and asset catalog.
 - [CON](con.md) — request management, ownership and access decisions.
 
@@ -25,16 +25,16 @@ Each component has its own requirement table. IDs are newly proposed and may cha
 Detailed REST/JSON schemas, message contracts and E2E test cases will be defined in follow-up work.
 
 ## Current assumptions
-1. UI, GTW, CAT and SCI are the confirmed starting decomposition. Workers are an execution mechanism; NATS is internal software infrastructure, not a system-level component.
-2. GTW is the preferred name for the public Gateway.
-3. CON is a distinct logical component responsible for request lifecycle, ownership and access rights for computed resources. It need not be a separate process or deployment.
+1. UI, GTW, CON, CAT and SCI Gateway are distinct logical responsibilities. Workers are an execution mechanism; NATS is internal messaging infrastructure, not a public API or a business component.
+2. GTW is the unique public REST API. No other component exposes a public REST API.
+3. CON is responsible for request lifecycle/status, ownership/access rights, admission and cost tracking. It has no scientific knowledge and requests feasibility/complexity estimates from SCI Gateway through versioned interfaces. It need not be a separate process or deployment.
 4. Logical responsibilities do not imply separate processes, packages, containers or services.
 5. M0 should provide broad, deterministic end-to-end foundations: real UI and interface contracts, with selected scientific and contract behavior mocked.
 6. SYS requirements remain the system baseline. Any SYS change is a maintainer decision and must be discussed and traced.
 7. GitHub issues are the work-tracking authority. These documents describe intended behavior, not implementation tickets.
 
 ## Open decisions
-- Who decides whether an existing result satisfies a new request?
+- Which versioned interfaces connect CON's request lifecycle and cost/admission policy to SCI Gateway's feasibility and complexity estimates? SCI Gateway decides scientific compatibility/reusability; CON does not inspect scientific dependency graphs.
 - How is trusted caller identity established and propagated to CON for ownership/access decisions?
 - How are acquisition status, request status, task status and scientific result quality distinguished?
 - Which cross-cutting constraints should be specified outside component tables?
