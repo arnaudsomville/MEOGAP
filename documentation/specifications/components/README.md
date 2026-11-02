@@ -29,16 +29,23 @@ Detailed REST/JSON schemas, message contracts and E2E test cases will be defined
 2. GTW is the unique public REST API. No other component exposes a public REST API.
 3. CON is responsible for request lifecycle/status, ownership/access rights, admission and cost tracking. It has no scientific knowledge and requests feasibility/complexity estimates from SCI through versioned interfaces. SCI internally uses its SCI Gateway subcomponent to orchestrate scientific dependencies. Logical components need not be separate processes or deployments.
 4. Logical responsibilities do not imply separate processes, packages, containers or services.
-5. M0 should provide broad, deterministic end-to-end foundations: real UI and interface contracts, with selected scientific and contract behavior mocked.
+5. M0 should provide broad, deterministic end-to-end foundations: real UI and explicit interfaces, with selected scientific behavior mocked.
+6. Product-definition source files live in the repository; `meogap_core` implements reusable calculation primitives. The first real M1 product is NDVI.
+7. SCI owns scientific result characterization and quality assessment. CAT registers physical assets and stores/exposes associated metadata, including quality metadata supplied by SCI. Asset-registration status remains distinct from scientific outcome/quality. CON consumes the relevant catalog metadata through an explicit interface and does not interpret scientific quality.
+8. SCI Gateway publishes required source-ingestion requests to NATS. The consumer and execution mechanism are specified through the relevant internal contract rather than fixed by the component specification.
 6. SYS requirements remain the system baseline. Any SYS change is a maintainer decision and must be discussed and traced.
 7. GitHub issues are the work-tracking authority. These documents describe intended behavior, not implementation tickets.
 
-## Open decisions
-- Which versioned interfaces connect CON's request lifecycle and cost/admission policy to SCI's feasibility and complexity estimates? SCI (through its SCI Gateway subcomponent) decides scientific compatibility/reusability; CON does not inspect scientific dependency graphs.
-- How is trusted caller identity established and propagated to CON for ownership/access decisions?
-- How are acquisition status, request status, task status and scientific result quality distinguished?
-- Which cross-cutting constraints should be specified outside component tables?
-- Are SYS priorities and target milestones consistent with the desired M0 scope?
+## Decisions deferred to the M0 contract ticket
+The following are intentionally not resolved in these component specifications. They are in scope for [M0-E02-T02 — Define Cross-Component Interfaces and Data Models](https://github.com/arnaudsomville/MEOGAP/issues/38):
+- Product-definition descriptor and versioned data models.
+- Internal GTW/CON/SCI interfaces, including CON-owned request/access decisions and SCI-owned scientific feasibility/product operations.
+- Deterministic M0 identity transport and propagation, explicitly distinct from production authentication.
+- Public result-download behavior and its internal delivery mechanism.
+- SCI-to-CAT hand-off for scientific result metadata, quality metadata and physical asset registration.
+- SCI Gateway ingestion messages published to NATS and the consumer/execution interface.
+
+These are contract-design tasks, not unresolved defects in the component responsibility model. The ticket may decide which questions need an ADR; do not pre-emptively freeze implementation details here.
 
 ## Review rule
 Review each component with the user before treating its requirements as agreed. Resolve responsibility boundaries first. Create implementation tickets only after the relevant design is accepted.
