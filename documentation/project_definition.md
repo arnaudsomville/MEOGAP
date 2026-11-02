@@ -1,6 +1,6 @@
 # MEOGAP — Modular Earth Observation & Geospatial Analytics Platform
 
-**Project Definition — v0.16 (Concept and Requirements)**
+**Project Definition — v0.18 (Concept and Requirements)**
 
 **Status:** Living draft · **Date:** 28 October 2026
 
@@ -244,7 +244,7 @@ The logical responsibilities **GTW/CON/CAT/SCI** are not package names. Do not s
 | **SYS-06** | P0 | A user shall be able to select a Spatial Analysis Unit (or an AOI summary) and inspect a product's evolution over time. | M0: demonstrate a synthetic SAU-like selection or AOI summary and time series without requiring a physical H3 grid. Real SAU aggregation is developed in M1–M2. |
 | **SYS-07** | P0 | The platform shall distinguish valid values (including genuine zeros), missing observations, masked/cloud-affected values, and processing failures. | M0: fixtures and UI/API contracts distinguish zero, missing/masked data and processing failure. Real sensor masks and source-specific quality handling in M1. |
 | **SYS-08a** | P0 | A user shall be able to filter results by a UTC time window `[start, end]`, with both bounds inclusive, at date or month granularity. | M0: support an inclusive UTC range at the demo's fixed granularity. Product-specific supported frequencies and bounded windows are defined in M1–M2. |
-| **SYS-08b** | P1 | A user shall be able to obtain configurable seasonal or richer temporal aggregations and summaries. | M0: not required. Rich seasonal/time aggregations remain a later extension. |
+| **SYS-08b** | P1 | A user shall be able to select recurring temporal subsets of an existing product dataset (for example, the summer observations for each of the last ten years) without implying that new scientific observations or temporal aggregates are being calculated. SCI shall apply the product-supported temporal selection and create an appropriate result representation for visualization or analysis. | M0: demonstrate the filter/representation contract with deterministic data if included in the reference journey. Real product-specific seasonal selection and representation generation follow the first real product in M1. Temporal aggregation/statistical synthesis is not implied by this requirement. |
 | **SYS-09** | P2 | The platform shall support meaningful comparison or combination of products with different spatial and temporal characteristics through explicit harmonization. | Deferred extension. Do not implement multi-product comparison in M0; first explicit harmonization operation is targeted for M1, with broader multi-product comparison later. |
 | **SYS-10** | P0 | Each calculated result shall be immutable and versioned when recomputed, and shall expose its lineage: source datasets, intermediate products, method and version, parameters, time window, spatial scope, quality status and limitations, and scientific validation status. | M0: minimal synthetic result contract with stable result identity, request/product reference, parameters, spatial/time scope and status. Full scientific lineage, dependency/intermediate provenance and persistent immutable versions in M2, with platform hardening in M3. |
 | **SYS-11** | P2 | A user shall be able to define a monitoring indicator that combines existing products and monitoring rules. | M0: no functional indicator engine or stub evaluation is required; a non-functional/visual placeholder may communicate future scope. Initial real engine and UX in M4; advanced rules later. |
@@ -434,4 +434,4 @@ An agent reading the proposal should distinguish **required capabilities**, **la
 
 ---
 
-**End of proposal — v0.17.**
+**End of proposal — v0.18.**
