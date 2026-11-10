@@ -4,7 +4,7 @@
 **Companion design note:** [Component Interaction Design](./component-interaction-design.md)  
 **Last updated:** 10 November 2026
 
-> This document records the logical interactions validated during the M0-E02-T02 design discussion. It is an interaction inventory, not an API specification: routes, payload schemas, authentication mechanisms, protocols and implementation details remain outside its scope.
+> This document records the logical interactions validated during the component architecture design discussion. It is an interaction inventory, not an API specification: routes, payload schemas, authentication mechanisms, protocols and implementation details remain outside its scope.
 
 ## 1. Reading the matrix
 
@@ -236,4 +236,4 @@ REST remains the source of truth for request state. Notifications are optional U
 - Temporary archive storage, access security, TTL and cleanup.
 - Reconciliation of the GAT/GTW naming used by current discussion and existing drafts.
 
-This matrix is the validated logical interaction inventory for the current component architecture design. The next design step is to derive the required sequence diagrams from it without changing ownership boundaries implicitly.
+This matrix is the validated logical interaction inventory for the current component architecture design. The next design step is to derive the sequence diagrams from it without changing ownership boundaries implicitly.
