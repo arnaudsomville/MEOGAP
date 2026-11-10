@@ -1,10 +1,10 @@
 # M0 Component Interaction Flows — Working Design Note
 
-**Status:** Working draft — decisions captured during refinement of M0-E02-T02  
+**Status:** Working design note — responsibilities and architecture decisions captured during refinement of M0-E02-T02  
 **Related ticket:** [#39 — M0-E02-T02 Define M0 Component Interaction Flows](https://github.com/arnaudsomville/MEOGAP/issues/39)  
 **Last updated:** 10 November 2026
 
-> This document records the current logical interaction model discussed for M0. It is a design working note, not an implementation specification, an API contract, or an ADR. Open questions are deliberately kept open. The component specifications in this directory are earlier drafts and have not yet been reconciled with every decision below.
+> This document records the responsibility model, architecture decisions and open design questions for M0. The detailed, user-validated interaction inventory is maintained separately in [M0 Component Interaction Matrix](./m0-e02-t02-interaction-matrix.md). This note is not an implementation specification, an API contract, or an ADR. The component specifications in this directory are earlier drafts and have not yet been reconciled with every decision below.
 
 ## 1. Modelling boundary
 
@@ -53,21 +53,21 @@ CAT also preserves the **actual lineage** of each generated product: the exact p
 
 The internal L0–LN levels are conceptual. The lineage model should preserve exact direct input references and must not assume that every product dependency is necessarily one level lower if a product definition legitimately skips a level.
 
-## 3. Agreed interaction relationships
+## 3. Validated interaction inventory
 
-The following relationships are the current logical interaction candidates. Their precise contracts and transports are not defined here.
+The detailed interaction inventory is maintained in the companion [M0 Component Interaction Matrix](./m0-e02-t02-interaction-matrix.md). That document records the producer/consumer direction, purpose and validated route of each interaction.
 
-| Interface | Main interactions |
-|---|---|
-| **UI ↔ GAT** | Browse product catalogue and metadata; request feasibility/cost; submit/confirm an analysis request; list requests and retrieve status; request map visualization and plots; download a final product or request a dependency archive; retrieve balance/cost information; receive request-state updates. |
-| **GAT ↔ CON** | Evaluate feasibility/cost; submit and confirm requests; retrieve request state/list; retrieve cost/admission information; authorize result access; request and track deliveries. |
-| **GAT ↔ SCI** | Route scientific product representation requests, including map visualization and plots/time-series, and expose the resulting representation through REST. CON remains authoritative for access/ownership decisions. |
-| **CON ↔ SCI** | Request scientific feasibility and input requirements; obtain computation-complexity information needed for estimation; request computation of a planned product; receive progress/outcome information. |
-| **CON ↔ CAT** | Resolve concrete dependencies; check availability; identify missing intermediate products and missing L0 acquisitions; obtain L0 acquisition/download pricing; request L0 ingestion; retrieve actual lineage and asset references for delivery. |
-| **SCI ↔ CAT** | SCI supplies scientific input criteria and accesses required assets; SCI registers generated products and reports the actual inputs used; CAT returns asset references/access and records the resulting product-to-input lineage. |
-| **CAT ↔ EO providers** | Provider-specific search/acquisition and ingestion of missing L0 source data. This is an external dependency, not another MEOGAP logical component. |
+The key interface boundaries are:
 
-No direct GAT ↔ CAT operation is required in the current model: GAT exposes user-facing behavior, while CON coordinates delivery and queries CAT for the required assets. This boundary remains subject to confirmation in the interaction diagrams.
+- **UI ↔ GAT:** all user-facing operations use the single public REST Gateway.
+- **GAT ↔ CON:** request lifecycle, feasibility/cost coordination, result-access authorization and Delivery Management.
+- **CON ↔ SCI:** scientific evaluation (including input requirements), computation-complexity estimation and product computation/outcome.
+- **CON ↔ CAT:** concrete dependency resolution, itemized L0 acquisition costs, ingestion, asset references and actual lineage.
+- **SCI ↔ CAT:** generated-product metadata/lineage registration and registration confirmation only.
+- **GAT ↔ SCI:** scientific product catalogue and theoretical input requirements only. Requests to visualize or analyze a specific computed result pass through CON for access authorization.
+- **GAT ↔ CAT:** no direct interface in the validated model.
+
+The matrix is the reference for the interaction list. This note explains the responsibilities and the reasoning behind those boundaries.
 
 ## 4. Feasibility, dependency resolution and cost estimation
 
@@ -104,7 +104,8 @@ The current request lifecycle decision is:
 - Once the required source assets are available, CON dispatches the missing product computations to SCI in dependency order.
 - SCI computes each product and registers the generated asset with CAT, reporting the actual inputs used.
 - CAT records the exact actual lineage for each generated product.
-- SCI reports computation progress/outcome to CON. CON owns the authoritative request state and updates it when the required execution is complete or has failed.
+- SCI reports the computation outcome to CON. On success, the outcome includes the canonical CAT reference of the registered product. CON owns the authoritative request state and updates it when the required execution is complete or has failed.
+- Computation progress is handled through technical observability (for example traces or a workflow visualizer); it is not a required business notification from SCI to CON.
 
 The persisted request plan must identify the products that CON intends to generate. It is not a substitute for CAT's actual asset lineage.
 
@@ -130,7 +131,7 @@ Archive contents must be based on the **actual lineage** of the result, not mere
 
 ## 7. Visualization and multiple layers
 
-SCI provides product representations for map visualization and analytical plots/time series; GAT exposes them to UI through REST.
+SCI provides product representations for map visualization and analytical plots/time series. For a specific computed result, the route is GAT → CON → SCI: CON verifies access rights before requesting the representation, then the result returns through CON and GAT to UI. The direct GAT ↔ SCI interface is limited to the scientific product catalogue and its theoretical input requirements.
 
 The user should be able to display and overlay multiple product layers. Visual overlay is not equivalent to scientific harmonization or proof that products are directly comparable. Native resolution, spatial support, temporal support and any representation transformations remain explicit.
 
@@ -138,8 +139,9 @@ The user should be able to display and overlay multiple product layers. Visual o
 
 - Workers may execute long-running L0 ingestion, scientific computation and archive-generation tasks. They are mechanisms, not logical components.
 - NATS is a candidate internal messaging transport, not a logical component and never a UI-facing interface.
-- CON is expected to dispatch scientific computation to SCI through an asynchronous messaging interaction.
-- The SCI → CON completion/outcome notification mechanism is **not decided**. REST callback versus NATS/event notification remains open. A key concern is avoiding lost completion notifications if CON is unavailable; durability, acknowledgement, correlation, idempotency and recovery must be examined in the contract/execution design.
+- CON is expected to dispatch scientific computation to SCI through an asynchronous interaction.
+- SCI reports one business outcome to CON: success or failure, including the canonical CAT product reference after successful registration. Completion transport (for example a durable NATS event) remains undecided. A key concern is avoiding lost completion notifications if CON is unavailable; durability, acknowledgement, correlation, idempotency and recovery must be examined in the contract/execution design.
+- Computation progress is not a required SCI → CON business notification. Use technical observability (traces or a workflow visualizer) to inspect execution progress.
 - The precise CAT ingestion dispatch and outcome-notification mechanism also remains to be specified.
 
 ## 9. Decisions still open
@@ -151,7 +153,7 @@ The user should be able to display and overlay multiple product layers. Visual o
 5. **Actual lineage semantics:** the exact metadata/version references CAT records for each generated product, including direct inputs actually consumed.
 6. **Delivery implementation:** which execution mechanism assembles the ZIP, how CAT provides asset access, where the temporary archive is held, and its TTL/cleanup behavior.
 7. **Storage backend:** S3-compatible object storage has been considered, but is not selected by this note.
-8. **Visualization access:** the exact GAT/CON/SCI authorization flow for representation and plot retrieval.
+8. **Visualization representations:** supported map/plot representations, bounded spatial/temporal retrieval and overlay limitations. The access route is established: GAT → CON for authorization, then CON → SCI for representation retrieval.
 9. **Representation and overlay contracts:** the supported map/plot representations, bounded spatial/temporal retrieval and overlay limitations.
 10. **Product and asset catalogue interfaces:** the criteria model, catalogue queries, product metadata and stable asset-reference/access contract.
 
@@ -189,4 +191,4 @@ flowchart LR
     CAT <--> STORAGE
 ```
 
-The diagram shows logical interaction boundaries, not protocols or call directions for every operation. Those are refined in the sequence diagrams and interface inventory.
+The diagram shows logical interaction boundaries, not protocols or call directions for every operation. Detailed directions and purposes are recorded in the companion interaction matrix; sequence diagrams will refine the end-to-end scenarios.
