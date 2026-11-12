@@ -163,7 +163,7 @@ SCI writes computed output objects directly to the object-storage bucket. It the
 
 **Validated rules**
 
-- SCI accesses input objects directly through references supplied to CON; there is no direct CAT → SCI input-reference exchange.
+- SCI accesses input objects directly through references and locations supplied by CON; there is no direct CAT → SCI input-reference exchange.
 - The input references follow the route **CAT → CON → SCI**.
 - SCI writes generated result objects to storage and sends metadata to CAT; CAT owns catalogue registration, actual lineage, canonical asset references and current storage locations.
 - CAT may subsequently reorganize the asset in storage without changing the logical identity exposed to consumers. Consumers must ask CAT for the current location when they need to access it.
