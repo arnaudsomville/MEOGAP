@@ -32,31 +32,34 @@ sequenceDiagram
 
     CON->>CON: Update execution plan with available L0 references
 
-    loop Until all requested output products are registered
+    loop Until the execution plan is complete
         CON->>CON: Evaluate task dependencies and identify READY tasks
 
         alt One or more tasks are READY
-            loop For each READY task selected for dispatch
-                CON->>SCI: Request product computation with canonical input references
-                SCI->>S3: Read input objects
-                S3-->>SCI: Return input data
-                SCI->>SCI: Execute scientific computation
-                SCI->>S3: Write generated product object
-                S3-->>SCI: Return initial object location
-                SCI->>CAT: Register product metadata, initial location and actual input references
-
-                opt CAT reorganizes the stored asset
-                    CAT->>S3: Move or reorganize product object
-                    S3-->>CAT: Confirm new object location
-                end
-
-                CAT->>CAT: Register product and actual lineage
-                CAT-->>SCI: Confirm registration and return canonical asset reference
-                SCI-->>CON: Return successful computation outcome and canonical product reference
-                CON->>CON: Mark task SUCCEEDED and record canonical output reference
+            loop For each READY task
+                CON->>SCI: Dispatch product computation with canonical input references
             end
+            Note over SCI: SCI executes dispatched computations using workers. Independent READY tasks may run concurrently. Workers are execution mechanisms, not logical components.
         else No task is currently READY
             CON->>CON: Wait for an outstanding acquisition or computation outcome
+        end
+
+        opt A dispatched computation completes
+            SCI->>SCI: Execute scientific computation in worker
+            SCI->>S3: Write generated product object
+            S3-->>SCI: Return initial object location
+            SCI->>CAT: Register product metadata, initial location and actual input references
+
+            opt CAT reorganizes the stored asset
+                CAT->>S3: Move or reorganize product object
+                S3-->>CAT: Confirm new object location
+            end
+
+            CAT->>CAT: Register product and actual lineage
+            CAT-->>SCI: Confirm registration and return canonical asset reference
+            SCI-->>CON: Return successful computation outcome and canonical product reference
+            CON->>CON: Mark task SUCCEEDED and record canonical output reference
+            CON->>CON: Reevaluate dependencies; newly unblocked tasks become READY
         end
     end
 
@@ -68,10 +71,10 @@ sequenceDiagram
 
 1. **L0 acquisition precedes dependent calculations.** CON asks CAT to acquire and ingest missing L0 sources. CAT interacts with EO providers, stores the source objects and registers the L0 assets before returning canonical references to CON.
 2. **CON owns dependency-aware scheduling.** CON evaluates the persisted execution plan and dispatches only tasks whose required input assets/products are available.
-3. **Workers do not resolve scientific dependencies.** Workers are execution mechanisms, not logical components. They receive work selected by CON; they do not independently traverse the dependency plan or repeatedly requeue tasks whose dependencies are not ready.
-4. **Independent READY tasks may execute concurrently.** The sequence shows a scheduling loop, not a required serial execution policy. CON may dispatch several independent eligible tasks in the same scheduling pass.
+3. **Workers do not resolve scientific dependencies.** Workers are execution mechanisms, not logical components. CON dispatches eligible tasks to SCI for execution by workers; workers do not independently traverse the dependency plan or repeatedly requeue tasks whose dependencies are not ready.
+4. **Independent READY tasks may execute concurrently.** CON dispatches all tasks currently eligible for execution without waiting for each task to finish before dispatching the next. Completion outcomes are received later; the diagram does not prescribe the internal transport.
 5. **A generated intermediate product becomes available to dependent tasks only after CAT registration succeeds.** SCI writes the object to storage, sends CAT the computation metadata, initial location and exact input references actually consumed. CAT registers the product and actual lineage, may reorganize the stored object, and returns the canonical asset reference to SCI. SCI then reports the successful outcome and canonical reference to CON.
-6. **CON reevaluates dependencies after outcomes.** When a task succeeds and its output reference is recorded, CON reevaluates the execution plan. Tasks that were previously blocked may become READY and be dispatched.
+6. **CON reevaluates dependencies after outcomes.** When a task succeeds and its output reference is recorded, CON reevaluates the execution plan. Tasks that were previously blocked may become READY and be dispatched in the next scheduling pass.
 7. **A task is considered SUCCEEDED only after successful asset registration.** Scientific computation success alone is insufficient to make the product available to downstream tasks.
 8. **Request completion is verified.** CON moves the request to COMPLETED only when every requested output product has been successfully generated or otherwise satisfied by an already available asset, and the corresponding canonical CAT references are recorded. No required task may remain blocked, pending or running.
 
