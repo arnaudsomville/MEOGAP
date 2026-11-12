@@ -255,7 +255,7 @@ Any user-facing operation expected to take more than **5 seconds** is exposed as
 
 These are logical responsibility boundaries, not a required one-to-one mapping to packages, processes, containers or deployed services. The architecture is a design target, not a claim that all listed capabilities are already implemented. The current repository remains a scaffold; M0 demonstrates a deterministic end-to-end journey with selected mocked behavior, while real EO acquisition, scientific products and reusable processing capabilities arrive incrementally under their respective tickets.
 
-**Legacy terminology:** early component drafts use `GTW` for the public Gateway and refer to an internal `SCI Gateway`. The current logical architecture uses **GAT** as the single Gateway and has no separate peer component named SCI Gateway. These legacy drafts are not authoritative until reconciled; do not model GTW and GAT as two components.
+**Legacy component drafts:** some first-draft specifications still use earlier component names or responsibility allocations. They are not authoritative where they conflict with the five-component model above and must be reconciled before being used to define contracts or implementation.
 
 ---
 
@@ -287,7 +287,7 @@ Engineering requirements state outcomes, not implementation choices.
 |---|---|---|
 | **ENG-01** | P0 | Shared contracts shall have a single versioned source, explicit compatibility rules, contract tests, and an external API versioning policy; breaking changes shall require a version bump and coordinated consumer updates. |
 | **ENG-02** | P0 | Request and execution state shall be persisted and recoverable after interruption. State-changing operations shall be idempotent so that retries do not duplicate requests, results, ledger entries, or notifications. |
-| **ENG-03** | P0 | Long-running work shall execute outside the request-response cycle with progress, bounded retries, failure isolation, and observable terminal states; a failed job shall not corrupt request state. |
+| **ENG-03** | P0 | User-facing operations expected to take more than 5 seconds shall be exposed asynchronously from the start, with a persistent request reference and retrievable state/outcome. Long-running work shall execute outside the request-response cycle, with bounded retries, failure isolation and observable terminal states; a failed job shall not corrupt request state. Detailed execution progress belongs to technical observability and does not require business progress notifications. |
 | **ENG-04** | P0 | Liveness and readiness shall be distinct; readiness shall reflect required dependencies, and degraded operation shall be explicit. |
 | **ENG-05** | P0 | Structured logs and durable audit events shall carry request, result, and processing-run correlation; they shall be sufficient to diagnose failures and shall never contain secrets or sensitive user data. |
 | **ENG-06** | P0 | Configuration shall be external, validated at startup, fail fast when invalid, and separate non-secret configuration from injected secrets. |
