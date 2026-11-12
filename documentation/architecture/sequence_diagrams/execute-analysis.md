@@ -31,7 +31,9 @@ sequenceDiagram
     CON->>CON: Update plan with available L0 references
     CON->>CON: Evaluate dependencies
     CON->>CON: Identify READY tasks
-    CON->>SCI: Dispatch READY computations with input references
+    CON->>CAT: Request canonical references and locations for task inputs
+    CAT-->>CON: Return canonical references and current locations
+    CON->>SCI: Dispatch READY computations with input references and locations
 
     SCI->>S3: Read input objects
     S3-->>SCI: Return input data
@@ -41,8 +43,8 @@ sequenceDiagram
     SCI->>CAT: Register product metadata and actual input references
     CAT->>CAT: Register products and actual lineage
     CAT-->>SCI: Confirm registration and return canonical references
-    SCI-->>CON: Return computation outcomes and canonical references
-    CON->>CON: Record task outcomes and output references
+    SCI-->>CON: Return computation outcomes and registered product identifiers
+    CON->>CON: Record task outcomes
     CON->>CON: Reevaluate dependencies
     CON->>CON: Identify newly READY tasks
 
@@ -56,10 +58,10 @@ sequenceDiagram
 2. **CON owns dependency-aware scheduling.** CON evaluates the persisted execution plan and dispatches only tasks whose required input assets/products are available.
 3. **Workers do not resolve scientific dependencies.** Workers are execution mechanisms, not logical components. CON dispatches eligible tasks to SCI for execution by workers; workers do not independently traverse the dependency plan or repeatedly requeue tasks whose dependencies are not ready.
 4. **Independent READY tasks may execute concurrently.** CON dispatches all tasks currently eligible for execution without waiting for each task to finish before dispatching the next. Completion outcomes are received later; the diagram does not prescribe the internal transport.
-5. **A generated intermediate product becomes available to dependent tasks only after CAT registration succeeds.** SCI writes the object to storage, sends CAT the computation metadata, initial location and exact input references actually consumed. CAT registers the product and actual lineage, may reorganize the stored object, and returns the canonical asset reference to SCI. SCI then reports the successful outcome and canonical reference to CON.
-6. **CON reevaluates dependencies after outcomes.** When a task succeeds and its output reference is recorded, CON reevaluates the execution plan. Tasks that were previously blocked may become READY and be dispatched in the next scheduling pass.
+5. **A generated intermediate product becomes available to dependent tasks only after CAT registration succeeds.** SCI writes the object to storage, sends CAT the computation metadata, initial location and exact input references actually consumed. CAT registers the product and actual lineage, may reorganize the stored object, and confirms registration to SCI. SCI reports the computation outcome to CON. CON does not maintain a duplicate product-to-asset or asset-to-location mapping.
+6. **CON reevaluates dependencies after outcomes.** When a task succeeds, CON reevaluates the execution plan. For newly READY tasks, CON asks CAT for the canonical references and current locations of their input assets before dispatching the computations.
 7. **A task is considered SUCCEEDED only after successful asset registration.** Scientific computation success alone is insufficient to make the product available to downstream tasks.
-8. **Request completion is verified.** CON moves the request to COMPLETED only when every requested output product has been successfully generated or otherwise satisfied by an already available asset, and the corresponding canonical CAT references are recorded. No required task may remain blocked, pending or running.
+8. **Request completion is verified.** CON moves the request to COMPLETED only when every requested output product has been successfully generated and registered in CAT, or otherwise satisfied by an already available asset. No required task may remain blocked, pending or running. CAT remains the source of truth for the resulting asset references and locations.
 
 ## Conceptual task states
 
@@ -70,7 +72,7 @@ The following state names illustrate the dependency scheduler's logical distinct
 | BLOCKED | One or more dependencies are not yet available. |
 | READY | All required input references are available; the task can be dispatched. |
 | RUNNING | The computation has been dispatched and is in progress. |
-| SUCCEEDED | Computation and CAT asset registration succeeded; a canonical output reference is recorded. |
+| SUCCEEDED | Computation and CAT asset registration succeeded; the product is available in CAT. |
 | FAILED | Computation or asset registration failed. |
 | CANCELLED | The task will not be executed because the request was cancelled. |
 
@@ -83,4 +85,4 @@ The request can remain IN_EXECUTION while some tasks are BLOCKED and others are 
 - The exact granularity of CAT's L0 ingestion outcome is still open: CAT may report each acquisition independently or return a consolidated outcome. The sequence only requires CON to receive canonical references for each successfully registered L0 asset before dispatching dependent tasks.
 - The sequence does not prescribe whether internal dispatch and completion use NATS, REST or another transport. It does not model workers as logical components.
 - The precise concurrency limit, retry/backoff policy, duplicate-task prevention, idempotency and scheduler recovery behavior belong to interface/execution contract design.
-- Object storage is infrastructure. SCI accesses input objects and writes output objects directly; CAT owns catalogue registration and canonical asset references. CON uses those canonical references to orchestrate dependencies.
+- Object storage is infrastructure. SCI accesses input objects and writes output objects directly; CAT owns catalogue registration, actual lineage, canonical asset references and current storage locations. CON requests those references and locations from CAT when it needs to dispatch a dependent computation or deliver a result; it does not maintain a duplicate catalogue or storage mapping.
