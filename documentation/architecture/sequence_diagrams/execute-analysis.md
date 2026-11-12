@@ -16,37 +16,39 @@ The request is assumed to be in IN_EXECUTION state, with an accepted execution p
 sequenceDiagram
     participant CON
     participant CAT
-    participant EO as EO Data Provider
+    participant EO as EO Provider
     participant SCI
     participant S3 as Object Storage
 
-    CON->>CAT: Request ingestion of missing L0 sources, if any
-    CAT->>EO: Acquire missing source observations
+    CON->>CAT: Request missing source ingestion
+    CAT->>EO: Acquire source observations
     EO-->>CAT: Return source observations
     CAT->>S3: Store source objects
-    S3-->>CAT: Return initial object locations
+    S3-->>CAT: Return object locations
     CAT->>CAT: Register L0 assets
-    CAT-->>CON: Return ingestion outcome and canonical L0 references
+    CAT-->>CON: Return ingestion outcome and L0 references
 
-    CON->>CON: Update execution plan with available L0 references
-    CON->>CON: Evaluate dependencies and identify READY tasks
-    CON->>SCI: Dispatch batch of READY product computations with canonical input references
+    CON->>CON: Update plan with available L0 references
+    CON->>CON: Evaluate dependencies
+    CON->>CON: Identify READY tasks
+    CON->>SCI: Dispatch READY computations with input references
 
-    SCI->>S3: Read input objects for dispatched computations
+    SCI->>S3: Read input objects
     S3-->>SCI: Return input data
-    SCI->>SCI: Execute dispatched scientific computations
-    SCI->>S3: Write generated product objects
-    S3-->>SCI: Return initial object locations
-    SCI->>CAT: Register product metadata, location and actual input references
-    CAT->>S3: Resolve canonical storage location; reorganize objects if needed
-    S3-->>CAT: Confirm canonical object locations
+    SCI->>SCI: Execute scientific computations
+    SCI->>S3: Write generated products
+    S3-->>SCI: Return initial product locations
+    SCI->>CAT: Register product metadata and actual input references
+    CAT->>S3: Set canonical object location
+    S3-->>CAT: Confirm object location
     CAT->>CAT: Register products and actual lineage
-    CAT-->>SCI: Confirm registration and return canonical asset references
-    SCI-->>CON: Return computation outcomes and canonical product references
-    CON->>CON: Record task outcomes and canonical output references
-    CON->>CON: Reevaluate dependencies; identify newly READY tasks
+    CAT-->>SCI: Confirm registration and return canonical references
+    SCI-->>CON: Return computation outcomes and canonical references
+    CON->>CON: Record task outcomes and output references
+    CON->>CON: Reevaluate dependencies
+    CON->>CON: Identify newly READY tasks
 
-    CON->>CON: Verify all requested outputs have successful tasks and canonical registered references
+    CON->>CON: Verify all requested outputs are registered
     CON->>CON: Set request state to COMPLETED
 ```
 
