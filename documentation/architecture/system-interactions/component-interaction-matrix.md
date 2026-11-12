@@ -113,7 +113,7 @@ SCI owns scientific product definitions and methods, scientific feasibility, inp
 | CS-03 | CON → SCI | Request computation-complexity estimate | Request information about the computational effort/resources required for a product computation. |
 | CS-04 | SCI → CON | Return computation-complexity estimate | Return technical complexity/resource information. CON applies its pricing policy and calculates the user-facing computation cost. |
 | CS-05 | CON → SCI | Request product computation | Dispatch a computation with the product definition/version, parameters and concrete input references already resolved by CON through CAT. |
-| CS-06 | SCI → CON | Return computation outcome | Report success or failure. On success, include the canonical CAT reference for the registered product. On failure, report whether computation failed or computation succeeded but product registration did not complete. |
+| CS-06 | SCI → CON | Return computation outcome | Report success or failure, distinguishing scientific computation failure from asset-registration failure. A successful outcome confirms that CAT registration completed; CON queries CAT separately when it needs the canonical asset reference or storage location. |
 
 **Validated rules**
 
@@ -122,7 +122,7 @@ SCI owns scientific product definitions and methods, scientific feasibility, inp
 - Computation progress belongs to technical observability (for example traces or a workflow visualizer), not to a mandatory SCI → CON business interaction.
 - CON remains responsible for request state and cost policy.
 - For a missing intermediate product, CON repeats the scientific evaluation and CAT resolution process recursively, then orchestrates its computation in dependency order.
-- A computation is not considered a successfully deliverable product until CAT has registered it and SCI can return the resulting canonical reference to CON.
+- A computation is not considered a successfully available product until CAT has registered it and SCI has received registration confirmation. SCI reports the outcome to CON; CON does not receive or persist a duplicate canonical asset-to-location mapping.
 
 ## 5. CON ↔ CAT — Concrete dependency resolution, acquisition and asset references
 
@@ -137,9 +137,9 @@ CAT knows concrete source acquisitions and product assets, resolves scientific i
 | CC-05 | CON → CAT | Request detailed L0 acquisition costs | Request pricing for each missing source acquisition. |
 | CC-06 | CAT → CON | Return itemized L0 acquisition costs | Return a cost per missing acquisition, not only an aggregate. CON may choose how to consolidate or apply its own pricing policy. |
 | CC-07 | CON → CAT | Request L0 ingestion | Ask CAT to acquire and ingest the missing source acquisitions. |
-| CC-08 | CAT → CON | Return L0 ingestion outcome | Report success/failure and, on success, the references of the registered source assets. |
-| CC-09 | CON → CAT | Request asset references/locations | Ask for references or locations of assets needed for execution or delivery. |
-| CC-10 | CAT → CON | Return asset references/locations | Return the canonical references and access information needed to retrieve assets from storage. |
+| CC-08 | CAT → CON | Return L0 ingestion outcome | Report success/failure and identify which logical L0 acquisition assets were registered. CON queries CAT separately for canonical asset references and current locations when it needs to use those assets. |
+| CC-09 | CON → CAT | Resolve asset references and locations | Given a logical product/asset identifier from the request or execution plan, ask CAT for its canonical asset reference and current storage location. |
+| CC-10 | CAT → CON | Return canonical asset references and locations | Return the canonical asset reference and current storage location for each requested asset. CAT remains the source of truth; CON uses the returned information for the immediate operation and does not maintain a duplicate asset catalogue or storage mapping. |
 | CC-11 | CON → CAT | Request actual result lineage | Ask for the actual dependencies used by a specific generated result. |
 | CC-12 | CAT → CON | Return actual result lineage | Return the exact product/acquisition instances and versions used to generate the result. |
 
@@ -159,15 +159,16 @@ SCI writes computed output objects directly to the object-storage bucket. It the
 | ID | Producer → Consumer | Interaction | Purpose / information |
 |---|---|---|---|
 | SC-01 | SCI → CAT | Declare/register a generated product | Supply computation metadata, the initial object-storage location and the exact input asset references actually consumed. SCI has already written the result object to the bucket. |
-| SC-02 | CAT → SCI | Confirm product registration | Confirm catalogue registration and return the canonical product/asset reference. CAT may have moved or reorganized the object, so the canonical reference may differ from SCI's initial location. |
+| SC-02 | CAT → SCI | Confirm product registration | Confirm that the generated product and its actual lineage have been registered successfully. CAT remains the source of truth for the canonical asset reference and current location; CON queries CAT when those are needed. |
 
 **Validated rules**
 
 - SCI accesses input objects directly through references supplied to CON; there is no direct CAT → SCI input-reference exchange.
 - The input references follow the route **CAT → CON → SCI**.
-- SCI writes generated result objects to storage and sends metadata to CAT; CAT owns catalogue registration and canonical asset reference management.
-- CAT may subsequently reorganize the asset in storage without changing the logical identity exposed to consumers.
+- SCI writes generated result objects to storage and sends metadata to CAT; CAT owns catalogue registration, actual lineage, canonical asset references and current storage locations.
+- CAT may subsequently reorganize the asset in storage without changing the logical identity exposed to consumers. Consumers must ask CAT for the current location when they need to access it.
 - CON must distinguish successful computation from successful asset registration. A failed registration means there is not yet a successfully registered product available for downstream execution or delivery.
+- CON stores execution/task outcomes and the logical product/task identifiers from its execution plan, but does not duplicate CAT's canonical asset references or asset-to-location mapping.
 
 ## 7. GAT ↔ SCI — Public scientific catalogue only
 
@@ -211,8 +212,8 @@ The SCI ↔ CAT interface is limited to generated-product registration and confi
 | Submit then explicitly confirm a request | UI → GAT → CON (submission and proposal preparation); later UI → GAT → CON (confirmation) |
 | Resolve a missing intermediate product | CON ↔ SCI for its requirements; CON ↔ CAT for concrete dependencies; CON recursively repeats as needed |
 | Acquire missing L0 data | CON → CAT → external provider/storage; CAT → CON reports outcome |
-| Execute a computation | CON → SCI; SCI reads object storage directly using references passed by CON |
-| Register a generated product | SCI writes result to object storage; SCI → CAT registers metadata/lineage; CAT → SCI confirms; SCI → CON reports outcome/reference |
+| Execute a computation | CON → CAT for canonical input references/locations; CON → SCI with those references/locations; SCI reads object storage directly |
+| Register a generated product | SCI writes result to object storage; SCI → CAT registers metadata/lineage; CAT → SCI confirms; SCI → CON reports computation/registration outcome; CON queries CAT later when it needs the canonical asset reference/location |
 | View a computed result | UI → GAT → CON (authorization) → SCI (representation); result returns via CON → GAT → UI |
 | Inspect actual lineage | UI → GAT → CON → CAT; lineage returns via CON → GAT → UI |
 | Download final product only | UI → GAT → CON → CAT (canonical asset reference) → object storage; delivery access returns through CON → GAT → UI |
