@@ -105,14 +105,14 @@ The current request lifecycle decisions are:
 - The user may request cancellation in any request state except **COMPLETED**. GAT forwards the cancellation request to CON. CON owns the request lifecycle, records the cancellation and stops further orchestration. How already-running ingestion or computation is interrupted or reconciled is addressed in the execution and failure/recovery flows.
 - CON asks CAT to acquire/ingest the missing L0 source data.
 - Once the required source assets are available, CON evaluates the persisted dependency plan and dispatches only computations whose required inputs are available. Independent eligible tasks may be dispatched concurrently; workers execute the tasks but do not resolve dependencies or repeatedly requeue blocked tasks.
-- After each successful product registration, CON records the canonical output reference and reevaluates the plan. Newly unblocked tasks become eligible for dispatch.
-- The request enters **COMPLETED** only after all requested outputs are available and registered in CAT with canonical references.
+- After each successful product registration, CON records the task outcome and reevaluates the plan. It does not store CAT's canonical asset reference or storage location. When a newly eligible task needs an input asset, CON queries CAT for that asset's current canonical reference and location before dispatch.
+- The request enters **COMPLETED** only after all requested outputs are available and registered in CAT. CON verifies completion using the logical output identifiers in its execution plan and CAT's authoritative catalogue state; it does not maintain a duplicate asset-reference/location mapping.
 - SCI computes each product and registers the generated asset with CAT, reporting the actual inputs used.
 - CAT records the exact actual lineage for each generated product.
-- SCI reports the computation outcome to CON. On success, the outcome includes the canonical CAT reference of the registered product. CON owns the authoritative request state and updates it when the required execution is complete or has failed.
+- SCI reports the computation and registration outcome to CON. On success, SCI confirms that CAT registration succeeded. CON owns the authoritative request/task state; when it needs the canonical asset reference or current storage location, it queries CAT using the logical product/task identifier in its execution plan.
 - Computation progress is handled through technical observability (for example traces or a workflow visualizer); it is not a required business notification from SCI to CON.
 
-The persisted request plan must identify the products that CON intends to generate. It is not a substitute for CAT's actual asset lineage.
+The persisted request plan identifies the logical products/tasks that CON intends to generate. It is not a substitute for CAT's actual asset lineage and does not duplicate CAT's canonical asset references or storage locations.
 
 The exact task-state model, proposal-preparation and infeasibility states, cancellation outcome semantics, partial-failure behavior, retries and replanning rules remain open.
 
@@ -124,13 +124,13 @@ For a request to download a product together with its dependencies:
 
 1. GAT forwards the delivery request to CON.
 2. CON checks the caller's access rights.
-3. CON asks CAT for the actual dependency lineage of the requested result and the references/access information for the assets in that lineage.
+3. CON asks CAT for the actual dependency lineage of the requested result, then requests the canonical asset references and current storage locations for the assets in that lineage.
 4. CON coordinates archive generation from those actual assets.
 5. GAT exposes the resulting download access to UI.
 
 The archive is generated **on demand**, rather than pre-generated for every product, to avoid unnecessary storage consumption. It is temporary and must expire/ be cleaned up according to a retention policy.
 
-CON owns the delivery lifecycle. The mechanism that physically assembles the ZIP (for example, a worker executing a CON-orchestrated task), temporary archive registration/location, secure asset access references and the exact TTL/cleanup policy remain open. Physical storage paths must not leak into the public UI contract.
+CON owns the delivery lifecycle. CAT remains the sole authority for canonical asset references, current storage locations and actual lineage. CON queries CAT when required and uses the returned information for the current delivery operation; it does not maintain a duplicate product/asset catalogue or persistent storage mapping. The mechanism that physically assembles the ZIP (for example, a worker executing a CON-orchestrated task), temporary archive registration/location, secure asset access references and the exact TTL/cleanup policy remain open. Physical storage paths must not leak into the public UI contract.
 
 Archive contents must be based on the **actual lineage** of the result, not merely the planned execution graph.
 
@@ -197,7 +197,7 @@ flowchart LR
     CAT -->|Resolved assets, itemized costs, ingestion outcomes and lineage| CON
 
     SCI -->|Generated-product metadata and actual input lineage| CAT
-    CAT -->|Registration confirmation and canonical asset reference| SCI
+    CAT -->|Product registration confirmation| SCI
 ```
 
 ### Important interpretation rules
@@ -206,7 +206,8 @@ flowchart LR
 - **GAT ↔ CAT does not exist** in the validated model. User-facing asset and lineage operations are routed through CON.
 - **CON ↔ SCI** covers scientific evaluation, computation-complexity estimation, computation dispatch and computation outcome. Progress monitoring is handled by observability, not by a required business notification.
 - **CON ↔ CAT** covers concrete dependency resolution, itemized L0 acquisition pricing, ingestion coordination, canonical asset references and actual lineage.
-- **SCI ↔ CAT** is limited to registering generated-product metadata and actual inputs, then returning registration confirmation and the canonical asset reference. CAT does not supply input references directly to SCI; the path is **CAT → CON → SCI**.
+- **SCI ↔ CAT** is limited to registering generated-product metadata and actual inputs, then returning registration confirmation. CAT does not supply input references directly to SCI; the path is **CAT → CON → SCI**.
+- CON stores logical product/task identifiers and execution outcomes, not a duplicate mapping of products to canonical asset references or storage locations. When CON needs to use a product, it queries CAT for the current canonical reference and location.
 - SCI writes generated outputs directly to object storage. CON reads objects directly from storage for delivery. Object storage is infrastructure, not a logical component in this diagram.
 
 Workers, NATS, EO data providers and object storage are deliberately excluded from the component diagram. They may be shown as supporting mechanisms or external infrastructure in the relevant sequence diagrams, without being represented as peer logical components.
