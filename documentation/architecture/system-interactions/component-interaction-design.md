@@ -108,7 +108,7 @@ The current request lifecycle decision is:
 
 The persisted request plan must identify the products that CON intends to generate. It is not a substitute for CAT's actual asset lineage.
 
-The exact task-state model, partial-failure behavior, retries and replanning rules remain open.
+The exact task-state model, proposal-preparation and infeasibility states, cancellation outcome semantics, partial-failure behavior, retries and replanning rules remain open.
 
 ## 6. Delivery orchestration and dependency archive
 
@@ -137,7 +137,7 @@ The user should be able to display and overlay multiple product layers. Visual o
 ## 8. Execution and messaging mechanisms
 
 - Workers may execute long-running L0 ingestion, scientific computation and archive-generation tasks. They are mechanisms, not logical components.
-- NATS is a candidate internal messaging transport, not a logical component and never a UI-facing interface.
+- NATS is a candidate internal messaging transport, not a logical component and never a UI-facing interface.\n- User-facing API policy: an operation expected to take more than **5 seconds** is exposed asynchronously from the start. GAT returns a request reference and current state; UI retrieves progress/outcome through REST. Notifications are optional refresh mechanisms, while REST remains the source of truth. This policy does not determine whether the internal work uses a worker, NATS or another mechanism.
 - CON is expected to dispatch scientific computation to SCI through an asynchronous interaction.
 - SCI reports one business outcome to CON: success or failure, including the canonical CAT product reference after successful registration. Completion transport (for example a durable NATS event) remains undecided. A key concern is avoiding lost completion notifications if CON is unavailable; durability, acknowledgement, correlation, idempotency and recovery must be examined in the contract/execution design.
 - Computation progress is not a required SCI → CON business notification. Use technical observability (traces or a workflow visualizer) to inspect execution progress.
@@ -145,14 +145,14 @@ The user should be able to display and overlay multiple product layers. Visual o
 
 ## 9. Decisions still open
 
-1. **Computation pricing:** how SCI's complexity information is converted into a computation cost, how CON aggregates it with CAT's L0 acquisition costs, and how actual cost is recorded.
-2. **Messaging and reliability:** whether CON → SCI dispatch and SCI → CON completion use NATS or another mechanism; how durable delivery, retries, acknowledgement, correlation and idempotency are handled.
-3. **CAT ingestion workflow:** how CON requests missing L0 ingestion, how partial/failed acquisition is reported, and how CON resumes the planned execution.
-4. **Execution-plan representation:** whether CON stores a DAG, an ordered task plan or another representation; how shared dependencies are deduplicated and costed.
-5. **Actual lineage semantics:** the exact metadata/version references CAT records for each generated product, including direct inputs actually consumed.
-6. **Delivery implementation:** which execution mechanism assembles the ZIP, how CAT provides asset access, where the temporary archive is held, and its TTL/cleanup behavior.
-7. **Storage backend:** S3-compatible object storage has been considered, but is not selected by this note.
-8. **Visualization representations:** supported map/plot representations, bounded spatial/temporal retrieval and overlay limitations. The access route is established: GAT → CON for authorization, then CON → SCI for representation retrieval.
+1. **Request state and cancellation:** exact proposal-preparation/infeasibility states, cancellation outcome semantics, and how CON reconciles cancellation with already-running ingestion or computation.\n2. **Computation pricing:** how SCI's complexity information is converted into a computation cost, how CON aggregates it with CAT's L0 acquisition costs, and how actual cost is recorded.
+3. **Messaging and reliability:** whether CON → SCI dispatch and SCI → CON completion use NATS or another mechanism; how durable delivery, retries, acknowledgement, correlation and idempotency are handled.
+4. **CAT ingestion workflow:** how CON requests missing L0 ingestion, how partial/failed acquisition is reported, and how CON resumes the planned execution.
+5. **Execution-plan representation:** whether CON stores a DAG, an ordered task plan or another representation; how shared dependencies are deduplicated and costed.
+6. **Actual lineage semantics:** the exact metadata/version references CAT records for each generated product, including direct inputs actually consumed.
+7. **Delivery implementation:** which execution mechanism assembles the ZIP, how CAT provides asset access, where the temporary archive is held, and its TTL/cleanup behavior.
+8. **Storage backend:** S3-compatible object storage has been considered, but is not selected by this note.
+9. **Visualization representations:** supported map/plot representations, bounded spatial/temporal retrieval and overlay limitations. The access route is established: GAT → CON for authorization, then CON → SCI for representation retrieval.
 10. **Product and asset catalogue interfaces:** the criteria model, catalogue queries, product metadata and stable asset-reference/access contract.
 
 ## 10. Reconciliation with existing component drafts
