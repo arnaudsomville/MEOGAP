@@ -36,29 +36,21 @@ sequenceDiagram
         CON->>CON: Evaluate task dependencies and identify READY tasks
 
         alt One or more tasks are READY
-            loop For each READY task
-                CON->>SCI: Dispatch product computation with canonical input references
-            end
+            CON->>SCI: Dispatch batch of READY product computations with canonical input references
+            SCI->>S3: Read input objects for dispatched computations
+            S3-->>SCI: Return input data
+            SCI->>SCI: Execute dispatched scientific computations
+            SCI->>S3: Write generated product objects
+            S3-->>SCI: Return initial object locations
+            SCI->>CAT: Register each product's metadata, location and actual input references
+            CAT->>S3: Resolve canonical storage location, reorganizing objects if needed
+            S3-->>CAT: Confirm canonical object locations
+            CAT->>CAT: Register products and actual lineage
+            CAT-->>SCI: Confirm registrations and return canonical asset references
+            SCI-->>CON: Return computation outcomes and canonical product references
+            CON->>CON: Record task outcomes and canonical output references
         else No task is currently READY
             CON->>CON: Wait for an outstanding acquisition or computation outcome
-        end
-
-        opt A dispatched computation completes
-            SCI->>SCI: Execute scientific computation in worker
-            SCI->>S3: Write generated product object
-            S3-->>SCI: Return initial object location
-            SCI->>CAT: Register product metadata, initial location and actual input references
-
-            opt CAT reorganizes the stored asset
-                CAT->>S3: Move or reorganize product object
-                S3-->>CAT: Confirm new object location
-            end
-
-            CAT->>CAT: Register product and actual lineage
-            CAT-->>SCI: Confirm registration and return canonical asset reference
-            SCI-->>CON: Return successful computation outcome and canonical product reference
-            CON->>CON: Mark task SUCCEEDED and record canonical output reference
-            CON->>CON: Reevaluate dependencies; newly unblocked tasks become READY
         end
     end
 
