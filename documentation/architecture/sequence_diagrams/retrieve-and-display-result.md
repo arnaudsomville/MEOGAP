@@ -1,6 +1,6 @@
 # Retrieve and Display a Result
 
-**Status:** Validated sequence diagrams — design baseline  
+**Status:** Working sequence diagrams — proposed for review  
 **Companion documents:** [Component Interaction Design](../system-interactions/component-interaction-design.md) · [Component Interaction Matrix](../system-interactions/component-interaction-matrix.md) · [Submit Analysis Request](./submit-analysis-request.md) · [Execute Analysis](./execute-analysis.md)  
 **Last updated:** 12 November 2026
 
@@ -17,7 +17,7 @@ These are separate user-facing operations. They share authorization and asset-di
 
 ## 1. Visualize a result
 
-The request is routed through CON for authorization. CON then asks CAT for the canonical asset reference and storage location, and passes the information to SCI. SCI reads the stored product directly and generates the requested representation.
+The request is routed through CON for authorization. CON then asks CAT for the canonical product reference and current storage location, and passes the information to SCI. CON does not keep a duplicate mapping. SCI reads the stored product directly and generates the requested representation.
 
 ```mermaid
 sequenceDiagram
@@ -100,7 +100,7 @@ The exact transfer mechanism (for example streaming through the API or secure te
 
 ## 4. Download the complete dependency archive
 
-The archive is generated on demand from CAT's actual lineage and the corresponding canonical asset references and locations. CON owns the delivery orchestration and ZIP assembly.
+The archive is generated on demand from CAT's actual lineage and the corresponding canonical asset references and current locations. CON owns the delivery orchestration and ZIP assembly, but does not maintain a duplicate asset catalogue or storage mapping.
 
 ```mermaid
 sequenceDiagram
