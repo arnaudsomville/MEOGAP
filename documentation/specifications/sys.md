@@ -1,10 +1,10 @@
 # SYS — System Requirements Baseline
 
-**Status:** Reference snapshot for component-specification work  
-**Source of truth:** `documentation/project_definition.md`, section 5.1, on this branch.  
-**Purpose:** Make system-level intent easy to reference while deriving and reviewing component specifications.
+**Status:** Current system requirements baseline  
+**Source of truth:** This file is the sole authority for `SYS-*` requirement IDs, statements, priorities and delivery treatment.  
+**Purpose:** Maintain the system-level requirements baseline and provide traceability for component specifications and delivery tickets.
 
-This file is a navigational/specification view of the existing `SYS-*` baseline, not an independent authority. If this file and `project_definition.md` diverge, treat `project_definition.md` as authoritative and reconcile this document. Do not silently change, retire or renumber requirement IDs.
+`project_definition.md` records project intent and scientific concepts; it does not duplicate this requirements table. Do not silently change, retire or renumber requirement IDs.
 
 ## Requirement interpretation
 
@@ -30,7 +30,7 @@ This file is a navigational/specification view of the existing `SYS-*` baseline,
 | SYS-09 | P2 | Compare/combine products with differing spatial and temporal characteristics through explicit harmonization. | Deferred; first explicit harmonization operation M1, broader comparison later. |
 | SYS-10 | P0 | Make calculated results immutable/versioned on recomputation and expose lineage including sources, intermediates, method/version, parameters, period, spatial scope, quality, limitations and scientific validation. | M0 minimal synthetic result identity and request/product/scope/status; full lineage M2, hardening M3. |
 | SYS-11 | P2 | Let users define monitoring indicators combining existing products and monitoring rules. | No functional engine/evaluation required M0; optional visual placeholder; initial engine/UX M4. |
-| SYS-12 | P1 | Let authenticated users list their own requests, see current state and access results, cost and quality status. | M0 Requests view with deterministic demo identity/data; real authentication and ownership M3. |
+| SYS-12 | P1 | Let authenticated users list their own requests, see current state and access results, cost and quality status. Users may request cancellation of a request in any state except `COMPLETED`. | M0 Requests view with deterministic demo identity/data and a cancellation interaction; real authentication and ownership M3. |
 | SYS-13 | P1 | Download a successful result as a final product with units and essential context. | Functional deterministic synthetic artifact download M0; real product download as real products arrive; provenance-based archive M3. |
 | SYS-14a | P1 | Each supported product has a validation record with reference, metric, tolerance, observed result and status (validated/unvalidated), distinct from per-result quality. | M0 descriptor may state unvalidated; real record for first EO product M1. |
 | SYS-14b | P1 | Document at least one comparison with a published method/reference product, or justify lack of a suitable comparison. | Not required for synthetic M0; first real method M1 where a reference exists. |
@@ -44,13 +44,13 @@ This file is a navigational/specification view of the existing `SYS-*` baseline,
 | SYS-22 | P1 | Provide versioned product documentation covering purpose, method, inputs/outputs, units, assumptions, limitations, references and validation; verify completeness and expose status. | M0 document synthetic product and placeholder status; real quality-gated documentation M1 onward. |
 | SYS-23 | P1 | Download final product alone or an archive including intermediates and source observations organized with provenance; archive follows actual lineage and may reference already stored sources. | No archive/real lineage packaging M0; real lineage-based archive M3. |
 | SYS-24 | P1 | Estimate credit cost and check balance before admission; record decision, actual cost and balance changes under a configured policy. | Simulated estimate/balance/admission M0; real auditable/idempotent ledger M3. |
-| SYS-25 | P0 | Show estimated cost before submission, actual cost after processing and current credit balance. | Deterministic demo values clearly labelled as simulated; authoritative ledger values M3. |
+| SYS-25 | P0 | Show the estimated cost and current credit balance after an analysis request is submitted and its proposal is prepared, before the user confirms execution; show actual cost after processing. | Deterministic demo values clearly labelled as simulated; authoritative ledger values M3. |
 | SYS-26 | P0 | Expose storage-independent result access that can return bounded spatial/temporal slices without loading the whole result. | Define/exercise against small synthetic result M0; real partial reads after first real product and evidence/ADR. |
 | SYS-27 | P1 | Link each derived representation to its source result and record transformation/version, spatial support/resolution, coverage, missing-data rules and known information loss/uncertainty. | Minimal synthetic descriptor/link M0; full lineage/coverage metadata M1–M2. |
 | SYS-28 | P0 | Generate display representations on demand or from cache; do not require a persisted image per date, and never use a display image as the sole persistent scientific result. | Synthetic display representation M0; real rendering M1; no mandatory per-date image store. |
 | SYS-29 | P0 | Define spatial harmonization as an explicit replaceable operation recording method, target support, aggregation, coverage and native-resolution context. H3 is not a storage format or raster resampling algorithm. | Contract and synthetic demonstration M0; first real harmonization M1; keep H3 aggregation distinct from raster resampling. |
 | SYS-30 | P0 | Enforce explicit spatial, temporal, pixel-count, memory and response-size limits and reject unsupported requests clearly. | Small deterministic API limits M0; resource-aware limits as real processing arrives. |
-| SYS-31 | P0 | Preserve distinct logical responsibilities for the unique public REST Gateway (GTW), request lifecycle/ownership/access/admission/cost (CON), scientific processing (SCI), Data Catalog (CAT), UI, Workers and internal NATS. CON has no scientific knowledge; SCI has no request-lifecycle or ownership responsibility. CON and SCI interact only through explicit versioned interfaces. SCI may contain internal subcomponents such as SCI Gateway for scientific orchestration; these are not peer system components by default. GTW routes external/UI requests through internal contracts; UI uses GTW and never accesses NATS directly. Logical roles do not imply separate deployables. | Document boundaries and demonstrate UI→GTW REST→CON/SCI interface flow→simulated NATS/worker processing→GTW REST result retrieval; capabilities are delivered incrementally. |
+| SYS-31 | P0 | Preserve distinct logical responsibilities for the unique public REST Gateway (GAT), request lifecycle/proposal preparation/access/cost and execution/delivery orchestration (CON), scientific product semantics/feasibility/input requirements/computation (SCI), concrete data and asset discovery/acquisition/registration/actual lineage (CAT), and user interaction/presentation (UI). CON shall not own scientific methods or a duplicate asset catalogue; SCI shall not own request lifecycle or resolve scientific input requirements to concrete available assets; CAT shall not orchestrate generation of missing scientific products. GAT shall be the only public REST entry point. UI shall use GAT and shall not access CAT, object storage or NATS directly. Workers are execution mechanisms and NATS is internal communication infrastructure, not peer logical components. Logical roles do not imply separate deployables. | Document the five logical boundaries and demonstrate a UI→GAT REST request/result flow with explicit CON, SCI and CAT responsibilities. Internal worker/messaging behavior may be simulated; no specific transport or deployment topology is required by this requirement. |
 
 ## Terminology and cross-cutting constraints
 
@@ -62,6 +62,6 @@ This file is a navigational/specification view of the existing `SYS-*` baseline,
 - **Missing / masked / zero:** absence of usable observation, quality-masked observation and genuine measured zero are distinct states.
 - **Product validation:** scientific assessment of the method/product; distinct from per-result data quality and technical request success.
 - **Request state, task state, acquisition state, asset availability and result quality:** distinct concepts that must not be collapsed into one status.
-- **REST:** authoritative public interface for retrieving request state and results; notifications are only a convenience.
+- **REST:** authoritative public interface for retrieving request state and results; notifications are only a convenience. Any user-facing operation expected to take more than 5 seconds is exposed asynchronously from the start; this API policy does not prescribe the internal worker or messaging mechanism.
 - **Storage:** physical storage technology/layout is not fixed by these requirements and must not leak into public contracts.
-- **Logical boundaries:** GTW, CAT and SCI are responsibility boundaries, not mandatory separate services. Workers are execution mechanisms; NATS is internal transport.
+- **Logical boundaries:** UI, GAT, CON, SCI and CAT are responsibility boundaries, not mandatory separate services. Workers are execution mechanisms; NATS is internal transport.
