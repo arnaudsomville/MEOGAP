@@ -1,7 +1,7 @@
 # Component Interaction Design
 
 **Status:** Working design note — component responsibilities, architecture decisions and open design questions  
-**Last updated:** 10 November 2026
+**Last updated:** 12 November 2026
 
 > This document records the responsibility model, architecture decisions and open design questions for M0. The detailed, user-validated interaction inventory is maintained separately in [M0 Component Interaction Matrix](./component-interaction-matrix.md). This note is not an implementation specification, an API contract, or an ADR. The component specifications in this directory are earlier drafts and have not yet been reconciled with every decision below.
 
