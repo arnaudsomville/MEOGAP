@@ -1,6 +1,6 @@
 # MEOGAP — Modular Earth Observation & Geospatial Analytics Platform
 
-**Project Definition — v0.19 (Project Intent and Scientific Concepts)**
+**Project Definition — v0.20 (Project Intent and Scientific Concepts)**
 
 **Status:** Living document · **Date:** 12 November 2026
 
@@ -18,13 +18,14 @@ This document is the source of **project intent, scientific concepts and high-le
 | Topic | Authoritative/current reference | Role |
 |---|---|---|
 | System requirements and M0 treatment (SYS-*) | [System requirements baseline](specifications/sys.md) | Sole source of truth for SYS IDs, requirement text, priorities, M0 treatment and target delivery. |
+| Engineering requirements (ENG-*) | [Engineering requirements baseline](specifications/eng.md) | Sole source of truth for ENG IDs, statements and priorities. |
 | Logical component responsibilities and interaction boundaries | [Component Interaction Design](architecture/system-interactions/component-interaction-design.md) | Current architecture model for UI, GAT, CON, SCI and CAT. |
 | Detailed cross-component interaction inventory | [Component Interaction Matrix](architecture/system-interactions/component-interaction-matrix.md) | Validated interaction directions, purpose and routes. |
 | End-to-end interaction scenarios | [Sequence diagrams](architecture/sequence_diagrams/README.md) | Submission, execution, result retrieval and failure/recovery flows. |
 | Component-level specifications | [Component specifications index](specifications/components/README.md) | First-draft component documents; they are not yet fully reconciled with the current interaction design. |
 | Delivery sequencing and implementation readiness | [GitHub issues and project tickets](https://github.com/arnaudsomville/MEOGAP/issues) | Source of truth for planned work, dependencies, acceptance criteria and delivery order. |
 
-**No duplicated SYS requirement table is maintained here.** Update system requirements in `specifications/sys.md` only. This document may explain their intent or scientific rationale, but must not reproduce stale copies of the SYS baseline.
+**No duplicated SYS or ENG requirement table is maintained here.** Update system requirements in `specifications/sys.md` and engineering requirements in `specifications/eng.md`. This document may explain their intent or scientific rationale, but must not reproduce stale copies of either baseline.
 
 The component documents under `specifications/components/` still contain first-draft assumptions, including legacy component terminology. Until reconciled, use the architecture documents above for current logical boundaries. Do not infer that a component is implemented merely because a specification exists.
 
@@ -279,26 +280,11 @@ The current logical component model is **UI, GAT, CON, SCI and CAT**. The valida
 
 The documents under [component specifications](specifications/components/README.md) are first drafts and are not yet fully reconciled with the current architecture. They may contain legacy terminology and assumptions; do not treat those statements as current decisions until the component specifications are reviewed and aligned with the interaction design.
 
-### 5.3 Engineering Requirements
+### 5.3 Engineering requirements — single source of truth
 
-Engineering requirements state outcomes, not implementation choices.
+The complete `ENG-*` engineering requirements baseline is maintained exclusively in [Engineering Requirements Baseline](specifications/eng.md).
 
-| ID | Priority | Requirement |
-|---|---|---|
-| **ENG-01** | P0 | Shared contracts shall have a single versioned source, explicit compatibility rules, contract tests, and an external API versioning policy; breaking changes shall require a version bump and coordinated consumer updates. |
-| **ENG-02** | P0 | Request and execution state shall be persisted and recoverable after interruption. State-changing operations shall be idempotent so that retries do not duplicate requests, results, ledger entries, or notifications. |
-| **ENG-03** | P0 | User-facing operations expected to take more than 5 seconds shall be exposed asynchronously from the start, with a persistent request reference and retrievable state/outcome. Long-running work shall execute outside the request-response cycle, with bounded retries, failure isolation and observable terminal states; a failed job shall not corrupt request state. Detailed execution progress belongs to technical observability and does not require business progress notifications. |
-| **ENG-04** | P0 | Liveness and readiness shall be distinct; readiness shall reflect required dependencies, and degraded operation shall be explicit. |
-| **ENG-05** | P0 | Structured logs and durable audit events shall carry request, result, and processing-run correlation; they shall be sufficient to diagnose failures and shall never contain secrets or sensitive user data. |
-| **ENG-06** | P0 | Configuration shall be external, validated at startup, fail fast when invalid, and separate non-secret configuration from injected secrets. |
-| **ENG-07** | P0 | Merge-blocking gates shall cover format, lint, type, unit, non-regression, functional, contract, traceability, documentation completeness, security and CVE, and migration checks. Validation and benchmark tests shall be runnable on demand. Changes to shared contracts shall validate all consumers. |
-| **ENG-08** | P1 | Clean-environment reproducibility shall use lockfiles, pinned toolchains, deterministic test fixtures, and no mutable external state. |
-| **ENG-09** | P1 | Documented commands shall cover installation, tests, quality, build, run, and operation. |
-| **ENG-10** | P0 | Credentials and sessions shall be protected; secrets shall not be stored in the repository, images, or logs; components shall run with least privilege; dependency vulnerabilities shall be detected and exceptions documented according to the project CVE policy. |
-| **ENG-11** | P1 | Operational metrics and traces shall expose request and result throughput, latency, failure rate, queue depth, and processing outcomes, correlated with request and result identifiers. |
-| **ENG-12** | P0 | Persistent schema changes shall be versioned migrations, applied consistently, tested, and shall preserve result versions, lineage, and ledger history. |
-| **ENG-13** | P1 | Backup and restore of requests, results, lineage, and ledger data shall be documented and tested. |
-| **ENG-14** | P1 | Third-party licenses, attributions, and dependency inventory shall be tracked; an SBOM may be generated. |
+These cross-cutting requirements complement the system-level `SYS-*` capabilities with engineering constraints for contracts, state reliability, asynchronous execution, identity propagation, observability, security, reproducibility, persistence and operations. Do not duplicate or maintain ENG requirement statements in this project definition. Changes to ENG IDs, wording or priorities belong in `specifications/eng.md`; delivery sequencing and acceptance criteria remain the responsibility of the relevant GitHub issues.
 
 ### 5.4 Reference usage scenario
 
@@ -430,4 +416,4 @@ An agent reading the proposal should distinguish **required capabilities**, **la
 
 ---
 
-**End of proposal — v0.19.**
+**End of proposal — v0.20.**
