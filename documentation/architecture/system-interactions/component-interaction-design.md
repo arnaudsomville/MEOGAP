@@ -68,37 +68,41 @@ The key interface boundaries are:
 
 The matrix is the reference for the interaction list. This note explains the responsibilities and the reasoning behind those boundaries.
 
-## 4. Feasibility, dependency resolution and cost estimation
+## 4. Request submission, feasibility, dependency resolution and cost estimation
 
-The current proposal flow is:
+The proposal-preparation flow starts when the user submits an analysis request. There is no separate pre-submission feasibility or cost-estimation operation.
 
-1. The user configures a requested product, spatial scope, period and parameters in UI.
-2. GAT forwards the feasibility/cost evaluation to CON.
-3. CON asks SCI for scientific feasibility and the scientific input requirements for the requested product.
-4. CON passes those criteria to CAT.
-5. CAT resolves the criteria against its concrete inventory and returns:
+1. The user configures a product, spatial scope, period and parameters in UI and submits the request.
+2. GAT forwards the submitted request to CON.
+3. CON creates and persists the request in a proposal-preparation state before starting evaluation. The exact state name is not fixed yet.
+4. CON asks SCI for scientific feasibility and the scientific input requirements for the requested product.
+5. CON passes those criteria to CAT.
+6. CAT resolves the criteria against its concrete inventory and returns:
    - exact existing product/acquisition instances that can be reused;
    - missing intermediate products that do not currently exist;
    - missing L0 acquisition requirements;
    - acquisition/download costs for missing L0 data.
-6. For each missing intermediate product, **CON** asks SCI for that product's own scientific input requirements and asks CAT to resolve those requirements. CON repeats this process until the required existing products and L0 inputs are identified.
-7. CON builds and persists the planned execution for the request, including the intermediate products that must be generated.
-8. CON calculates the total estimated request cost.
+7. For each missing intermediate product, **CON** asks SCI for that product's own scientific input requirements and asks CAT to resolve those requirements. CON repeats this process until the required existing products and L0 inputs are identified.
+8. CON builds and persists the planned execution for the request, including the intermediate products that must be generated.
+9. CON calculates the total estimated request cost.
+10. If the request is feasible and proposal preparation is complete, CON moves it to **PROPOSED** and returns the proposal and estimated cost through GAT.
 
 The estimated cost must include at least:
-- acquisition/download costs for missing L0 data, supplied by CAT;
+- acquisition/download costs for missing L0 data, supplied by CAT itemized per acquisition;
 - generation/computation costs for every missing intermediate and requested product.
 
 CON owns the overall request estimate and admission decision. SCI may provide feasibility and computation-complexity information. The precise computation-pricing model, rates and cost breakdown are not yet defined.
 
 **Important boundary:** CAT may identify that an L1 product is missing and resolve the L0 inputs needed by that L1 product once CON asks SCI for its requirements. CAT does not trigger or orchestrate the L1 computation. CON owns recursive planning and all missing scientific-product generation.
 
-## 5. Request acceptance and execution
+## 5. Request acceptance, cancellation and execution
 
-The current request lifecycle decision is:
+The current request lifecycle decisions are:
 
-- Before user confirmation, the request is in **PROPOSED** state and has an estimated cost and a planned set of required acquisitions/product generations.
-- When the user accepts the proposal, CON records the accepted execution plan and transitions the request from **PROPOSED** to **IN_EXECUTION**.
+- On submission, CON first persists the request in a proposal-preparation state. Feasibility evaluation, dependency resolution and cost estimation are then performed as part of that request. The exact proposal-preparation state name is not fixed yet.
+- Once proposal preparation is complete and the request is feasible, it enters **PROPOSED** state with an estimated cost and a planned set of required acquisitions/product generations.
+- When the user accepts the proposal, CON records the acceptance and transitions the request from **PROPOSED** to **IN_EXECUTION**.
+- The user may request cancellation in any request state except **COMPLETED**. GAT forwards the cancellation request to CON. CON owns the request lifecycle, records the cancellation and stops further orchestration. How already-running ingestion or computation is interrupted or reconciled is addressed in the execution and failure/recovery flows.
 - CON asks CAT to acquire/ingest the missing L0 source data.
 - Once the required source assets are available, CON dispatches the missing product computations to SCI in dependency order.
 - SCI computes each product and registers the generated asset with CAT, reporting the actual inputs used.
@@ -137,7 +141,8 @@ The user should be able to display and overlay multiple product layers. Visual o
 ## 8. Execution and messaging mechanisms
 
 - Workers may execute long-running L0 ingestion, scientific computation and archive-generation tasks. They are mechanisms, not logical components.
-- NATS is a candidate internal messaging transport, not a logical component and never a UI-facing interface.\n- User-facing API policy: an operation expected to take more than **5 seconds** is exposed asynchronously from the start. GAT returns a request reference and current state; UI retrieves progress/outcome through REST. Notifications are optional refresh mechanisms, while REST remains the source of truth. This policy does not determine whether the internal work uses a worker, NATS or another mechanism.
+- NATS is a candidate internal messaging transport, not a logical component and never a UI-facing interface.
+- User-facing API policy: an operation expected to take more than **5 seconds** is exposed asynchronously from the start. GAT returns a request reference and current state; UI retrieves state and the eventual outcome through REST. Notifications are optional refresh mechanisms; REST remains the source of truth. This policy does not determine whether the internal work uses a worker, NATS or another mechanism.\n- User-facing API policy: an operation expected to take more than **5 seconds** is exposed asynchronously from the start. GAT returns a request reference and current state; UI retrieves progress/outcome through REST. Notifications are optional refresh mechanisms, while REST remains the source of truth. This policy does not determine whether the internal work uses a worker, NATS or another mechanism.
 - CON is expected to dispatch scientific computation to SCI through an asynchronous interaction.
 - SCI reports one business outcome to CON: success or failure, including the canonical CAT product reference after successful registration. Completion transport (for example a durable NATS event) remains undecided. A key concern is avoiding lost completion notifications if CON is unavailable; durability, acknowledgement, correlation, idempotency and recovery must be examined in the contract/execution design.
 - Computation progress is not a required SCI → CON business notification. Use technical observability (traces or a workflow visualizer) to inspect execution progress.
@@ -145,7 +150,8 @@ The user should be able to display and overlay multiple product layers. Visual o
 
 ## 9. Decisions still open
 
-1. **Request state and cancellation:** exact proposal-preparation/infeasibility states, cancellation outcome semantics, and how CON reconciles cancellation with already-running ingestion or computation.\n2. **Computation pricing:** how SCI's complexity information is converted into a computation cost, how CON aggregates it with CAT's L0 acquisition costs, and how actual cost is recorded.
+1. **Request state and cancellation:** exact proposal-preparation/infeasibility states, cancellation outcome semantics, and how CON reconciles cancellation with already-running ingestion or computation.
+2. **Computation pricing:** how SCI's complexity information is converted into a computation cost, how CON aggregates it with CAT's L0 acquisition costs, and how actual cost is recorded.
 3. **Messaging and reliability:** whether CON → SCI dispatch and SCI → CON completion use NATS or another mechanism; how durable delivery, retries, acknowledgement, correlation and idempotency are handled.
 4. **CAT ingestion workflow:** how CON requests missing L0 ingestion, how partial/failed acquisition is reported, and how CON resumes the planned execution.
 5. **Execution-plan representation:** whether CON stores a DAG, an ordered task plan or another representation; how shared dependencies are deduplicated and costed.
