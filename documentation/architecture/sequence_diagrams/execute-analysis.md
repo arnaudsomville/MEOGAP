@@ -39,8 +39,6 @@ sequenceDiagram
     SCI->>S3: Write generated products
     S3-->>SCI: Return initial product locations
     SCI->>CAT: Register product metadata and actual input references
-    CAT->>S3: Set canonical object location
-    S3-->>CAT: Confirm object location
     CAT->>CAT: Register products and actual lineage
     CAT-->>SCI: Confirm registration and return canonical references
     SCI-->>CON: Return computation outcomes and canonical references
