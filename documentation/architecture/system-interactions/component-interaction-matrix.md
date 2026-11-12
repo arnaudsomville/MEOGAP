@@ -24,9 +24,7 @@ GAT is the single public REST entry point for UI. UI does not access CON, SCI, C
 |---|---|---|---|
 | UI-01 | UI → GAT | Browse the product catalogue | Retrieve the list of products that can be requested. |
 | UI-02 | UI → GAT | Retrieve a product definition | Retrieve descriptive metadata and supported parameters for a product. |
-| UI-03 | UI → GAT | Request feasibility evaluation | Submit the product, spatial scope, period and parameters for scientific feasibility assessment. |
-| UI-04 | UI → GAT | Request a cost estimate | Request the estimated cost associated with the proposed analysis. |
-| UI-05 | UI → GAT | Submit an analysis request | Create a request from the selected product and its analysis parameters. |
+| UI-05 | UI → GAT | Submit an analysis request | Create and persist the request, then start scientific feasibility evaluation, dependency resolution and cost estimation. There is no separate pre-submission feasibility/cost operation. |
 | UI-06 | UI → GAT | Confirm a proposed request | Explicitly accept the proposal and authorize execution. This is distinct from submitting the request. |
 | UI-07 | UI → GAT | List analysis requests | Retrieve the requests visible to the authenticated user. |
 | UI-08 | UI → GAT | Retrieve request status | Retrieve the authoritative current state of a request. |
@@ -37,6 +35,7 @@ GAT is the single public REST entry point for UI. UI does not access CON, SCI, C
 | UI-13 | UI → GAT | Download the final product | Request the final product file alone, without packaging its dependencies. |
 | UI-14 | UI → GAT | Request a dependency archive | Request an on-demand archive containing the requested result and the assets in its actual lineage, including relevant intermediate products and source acquisitions. |
 | UI-15 | UI → GAT | Retrieve credit balance | Retrieve the user's current credit balance. |
+| UI-23 | UI → GAT | Request analysis cancellation | Ask to cancel a request in any state except `COMPLETED`. The request can be cancelled while proposal preparation is pending, while awaiting user confirmation, or during execution. |
 
 | ID | Producer → Consumer | Interaction | Purpose / information |
 |---|---|---|---|
@@ -47,6 +46,7 @@ GAT is the single public REST entry point for UI. UI does not access CON, SCI, C
 | UI-20 | GAT → UI | Return actual lineage | Return the concrete provenance of a computed result. |
 | UI-21 | GAT → UI | Return download information | Return delivery status and, when ready, secure access to the final product or generated archive. |
 | UI-22 | GAT → UI | Return credit balance | Return the current balance. |
+| UI-24 | GAT → UI | Return cancellation outcome | Return whether cancellation was accepted/processed and the current request state. |
 
 **Validated UI requirements and rules**
 
@@ -54,20 +54,21 @@ GAT is the single public REST entry point for UI. UI does not access CON, SCI, C
 2. The UI can inspect both theoretical requirements and the actual lineage of a specific computed result. These are different views and follow different internal routes.
 3. Final-product download and dependency-archive download are two distinct UI capabilities and two distinct requests.
 4. The dependency archive is generated on demand. Its content is based on actual lineage, not only on the planned execution graph.
-5. REST remains the source of truth for request state. Notifications may refresh the UI, but the UI must remain functional if no notification is received.
-6. The UI may overlay multiple layers. Overlay alone does not imply that the products are scientifically harmonized or directly comparable.
+5. Submitting an analysis request starts its complete proposal-preparation path; feasibility and cost estimation are not separate pre-submission operations.
+6. The user can request cancellation from any request state except `COMPLETED`.
+7. REST remains the source of truth for request state. Notifications may refresh the UI, but the UI must remain functional if no notification is received.
+8. The UI may overlay multiple layers. Overlay alone does not imply that the products are scientifically harmonized or directly comparable.
 
 ## 3. GAT ↔ CON — Request, access and delivery coordination
 
-CON is authoritative for request lifecycle, estimation coordination, access decisions and delivery orchestration. GAT routes public REST operations to CON.
+CON is authoritative for request lifecycle, proposal preparation and cost coordination, access decisions, cancellation and delivery orchestration. GAT routes public REST operations to CON.
 
 ### 3.1 Request and access management
 
 | ID | Producer → Consumer | Interaction | Purpose / information |
 |---|---|---|---|
-| GC-01 | GAT → CON | Evaluate an analysis request | Request coordinated scientific feasibility and cost estimation for the selected product, scope, period and parameters. |
-| GC-01-R | CON → GAT | Return evaluation proposal | Return feasibility, conditions, estimate and proposal information for display. |
-| GC-02 | GAT → CON | Submit an analysis request | Create the request and its proposal context. |
+| GC-02 | GAT → CON | Submit an analysis request and start proposal preparation | Create and persist the request, then initiate scientific feasibility evaluation, dependency resolution and cost estimation. This is the start of the user journey, not a follow-up to a separate evaluation operation. |
+| GC-02-R | CON → GAT | Return request/proposal information | Return the request reference and current state. Once proposal preparation is complete, return feasibility, conditions, execution proposal and estimated cost. For operations expected to exceed 5 seconds, the initial response returns the reference/state and the result is retrieved through REST. |
 | GC-03 | GAT → CON | Confirm a proposed request | Record explicit user acceptance and trigger the transition to execution. This is separate from GC-02. |
 | GC-04 | GAT → CON | List analysis requests | Retrieve the authenticated user's request list. |
 | GC-04-R | CON → GAT | Return request list | Return the relevant request summaries. |
@@ -77,6 +78,8 @@ CON is authoritative for request lifecycle, estimation coordination, access deci
 | GC-06-R | CON → GAT | Return credit balance | Return the current balance. |
 | GC-07 | GAT → CON | Check result-access authorization | Ask CON whether the current user may access a particular result or its representations. |
 | GC-07-R | CON → GAT | Return access decision | Return the authorization outcome needed by GAT to serve or reject the request. |
+| GC-14 | GAT → CON | Request analysis cancellation | Transmit the user's request to cancel an analysis request. CON owns the request lifecycle and decides/coordinates the cancellation outcome. |
+| GC-14-R | CON → GAT | Return cancellation outcome | Return the cancellation result and current request state. CON must stop further orchestration; interruption or reconciliation of already-running work is specified in the execution flow and contracts. |
 
 ### 3.2 Delivery Management
 
@@ -114,7 +117,7 @@ SCI owns scientific product definitions and methods, scientific feasibility, inp
 
 **Validated rules**
 
-- CS-01 / CS-02 combine scientific feasibility and scientific input requirements into one logical request/response interaction.
+- CS-01 / CS-02 combine scientific feasibility and scientific input requirements into one logical request/response interaction. It is triggered by the submitted analysis request, not by a separate pre-submission evaluation call.
 - CS-05 / CS-06 represent execution and its outcome; completion progress is not a required business notification.
 - Computation progress belongs to technical observability (for example traces or a workflow visualizer), not to a mandatory SCI → CON business interaction.
 - CON remains responsible for request state and cost policy.
@@ -204,8 +207,8 @@ The SCI ↔ CAT interface is limited to generated-product registration and confi
 | User/system need | Logical route |
 |---|---|
 | Browse calculable products and their theoretical input requirements | UI → GAT → SCI → GAT → UI |
-| Evaluate feasibility and estimated cost | UI → GAT → CON ↔ SCI; CON ↔ CAT; CON → GAT → UI |
-| Submit then explicitly confirm a request | UI → GAT → CON (submission); later UI → GAT → CON (confirmation) |
+| Submit an analysis request and obtain the feasibility/cost proposal | UI → GAT → CON; CON ↔ SCI; CON ↔ CAT; CON → GAT → UI (or later REST retrieval when preparation is asynchronous) |
+| Submit then explicitly confirm a request | UI → GAT → CON (submission and proposal preparation); later UI → GAT → CON (confirmation) |
 | Resolve a missing intermediate product | CON ↔ SCI for its requirements; CON ↔ CAT for concrete dependencies; CON recursively repeats as needed |
 | Acquire missing L0 data | CON → CAT → external provider/storage; CAT → CON reports outcome |
 | Execute a computation | CON → SCI; SCI reads object storage directly using references passed by CON |
@@ -214,6 +217,7 @@ The SCI ↔ CAT interface is limited to generated-product registration and confi
 | Inspect actual lineage | UI → GAT → CON → CAT; lineage returns via CON → GAT → UI |
 | Download final product only | UI → GAT → CON → CAT (canonical asset reference) → object storage; delivery access returns through CON → GAT → UI |
 | Download result with dependency archive | UI → GAT → CON → CAT (actual lineage and asset references); CON retrieves assets from object storage and assembles a temporary archive; access returns through GAT to UI |
+| Cancel a request | UI → GAT → CON; CON records cancellation and stops further orchestration, then returns the outcome through GAT to UI |
 
 ## 10. Supporting mechanisms and external infrastructure
 
@@ -228,7 +232,7 @@ REST remains the source of truth for request state. Notifications are optional U
 
 ## 11. Remaining design topics (not blockers for this interaction inventory)
 
-- Exact request and delivery state vocabularies.
+- Exact request and delivery state vocabularies, including the proposal-preparation state and cancellation outcome semantics.
 - Exact payload schemas, product/asset identifiers and stable canonical reference format.
 - Computation pricing policy applied by CON to SCI complexity information.
 - Reliability guarantees and transport for asynchronous computation/ingestion outcomes.
@@ -236,4 +240,4 @@ REST remains the source of truth for request state. Notifications are optional U
 - Temporary archive storage, access security, TTL and cleanup.
 - Reconciliation of the GAT/GTW naming used by current discussion and existing drafts.
 
-This matrix is the validated logical interaction inventory for the current component architecture design. The next design step is to derive the sequence diagrams from it without changing ownership boundaries implicitly.
+This matrix is the validated logical interaction inventory for the current component architecture design. Synchronization and communication mechanisms are deliberately not classified here; they belong to interface and contract design. The user-facing policy is that operations expected to take more than 5 seconds are exposed asynchronously, with REST remaining the source of truth for request state.
