@@ -29,9 +29,7 @@ sequenceDiagram
     alt Proposal preparation expected to take more than 5 seconds
         CON-->>GAT: Return request reference and current state
         GAT-->>UI: Return request reference and current state
-        Note over UI,GAT: UI retrieves state and proposal through REST. Notifications may refresh the UI but are not required.
     else Proposal preparation expected to complete within 5 seconds
-        Note over GAT,CON: The current API interaction remains open while preparation completes.
     end
 
     CON->>SCI: Evaluate scientific feasibility and input requirements
@@ -92,8 +90,14 @@ sequenceDiagram
         GAT-->>UI: Display cancellation result
     end
 
-    Note over UI,CON: Cancellation can be requested in any request state except COMPLETED, including during proposal preparation or execution. The cancellation branch is shown after proposal preparation for readability; handling interruption/reconciliation of already-running acquisition or computation is detailed in the execution and failure/recovery sequences.
 ```
+
+## Interpretation
+
+- For a proposal-preparation operation expected to take more than 5 seconds, GAT returns the request reference and current state without waiting for completion. UI retrieves the state and eventual proposal through REST. Notifications are optional refresh mechanisms.
+- For a proposal-preparation operation expected to complete within 5 seconds, the current API interaction remains open until the evaluation result is available.
+- The cancellation branch is drawn after proposal preparation for readability. The same cancellation interaction is available in every request state except `COMPLETED`, including while proposal preparation or execution is ongoing.
+- This diagram does not detail interruption or reconciliation of an acquisition or computation that is already running when cancellation is requested. That behavior belongs in the execution and failure/recovery sequences.
 
 ## Validated decisions represented
 
