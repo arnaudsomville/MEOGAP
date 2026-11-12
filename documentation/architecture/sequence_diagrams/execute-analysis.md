@@ -39,7 +39,6 @@ sequenceDiagram
             loop For each READY task
                 CON->>SCI: Dispatch product computation with canonical input references
             end
-            Note over SCI: SCI executes dispatched computations using workers. Independent READY tasks may run concurrently. Workers are execution mechanisms, not logical components.
         else No task is currently READY
             CON->>CON: Wait for an outstanding acquisition or computation outcome
         end
