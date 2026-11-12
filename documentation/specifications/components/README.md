@@ -3,7 +3,7 @@
 Status: Working draft for review  
 Scope: UI, GTW, CON, CAT and SCI.
 
-These documents establish the system baseline and initial component boundaries. They are not implementation authorization and do not settle every architecture decision. The system requirements are summarized in [sys.md](../sys.md), which points back to the authoritative requirements in `documentation/project_definition.md`.
+These documents are first-draft component specifications. They are not implementation authorization and do not settle every architecture decision. The authoritative system requirements are maintained in [sys.md](../sys.md), and cross-cutting engineering requirements in [eng.md](../eng.md). `project_definition.md` records project intent and links to both baselines; it does not own or duplicate their requirement tables.
 
 ## Documents
 - [UI](ui.md) — user interaction and presentation.
@@ -11,6 +11,11 @@ These documents establish the system baseline and initial component boundaries. 
 - [SCI](sci.md) — scientific product definitions, feasibility, processing and result characterization; SCI Gateway is an internal subcomponent for scientific orchestration.
 - [CAT](cat.md) — data and asset catalog.
 - [CON](con.md) — request management, ownership and access decisions.
+
+## Requirement baselines
+
+- [System requirements baseline](../sys.md) — authoritative `SYS-*` requirements.
+- [Engineering requirements baseline](../eng.md) — authoritative `ENG-*` requirements.
 
 ## Requirement conventions
 Each component has its own requirement table. IDs are newly proposed and may change before approval. Requirements are derived from current SYS requirements; multiple parent SYS requirements are allowed when justified.
