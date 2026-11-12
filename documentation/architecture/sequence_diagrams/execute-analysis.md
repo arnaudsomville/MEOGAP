@@ -20,39 +20,31 @@ sequenceDiagram
     participant SCI
     participant S3 as Object Storage
 
-    opt Missing L0 acquisitions exist
-        CON->>CAT: Request acquisition and ingestion of missing L0 sources
-        CAT->>EO: Acquire missing source observations
-        EO-->>CAT: Return source observations
-        CAT->>S3: Store source objects
-        S3-->>CAT: Return initial object locations
-        CAT->>CAT: Register L0 assets
-        CAT-->>CON: Return ingestion outcome and canonical L0 asset references
-    end
+    CON->>CAT: Request ingestion of missing L0 sources, if any
+    CAT->>EO: Acquire missing source observations
+    EO-->>CAT: Return source observations
+    CAT->>S3: Store source objects
+    S3-->>CAT: Return initial object locations
+    CAT->>CAT: Register L0 assets
+    CAT-->>CON: Return ingestion outcome and canonical L0 references
 
     CON->>CON: Update execution plan with available L0 references
+    CON->>CON: Evaluate dependencies and identify READY tasks
+    CON->>SCI: Dispatch batch of READY product computations with canonical input references
 
-    loop Until the execution plan is complete
-        CON->>CON: Evaluate task dependencies and identify READY tasks
-
-        alt One or more tasks are READY
-            CON->>SCI: Dispatch batch of READY product computations with canonical input references
-            SCI->>S3: Read input objects for dispatched computations
-            S3-->>SCI: Return input data
-            SCI->>SCI: Execute dispatched scientific computations
-            SCI->>S3: Write generated product objects
-            S3-->>SCI: Return initial object locations
-            SCI->>CAT: Register each product's metadata, location and actual input references
-            CAT->>S3: Resolve canonical storage location, reorganizing objects if needed
-            S3-->>CAT: Confirm canonical object locations
-            CAT->>CAT: Register products and actual lineage
-            CAT-->>SCI: Confirm registrations and return canonical asset references
-            SCI-->>CON: Return computation outcomes and canonical product references
-            CON->>CON: Record task outcomes and canonical output references
-        else No task is currently READY
-            CON->>CON: Wait for an outstanding acquisition or computation outcome
-        end
-    end
+    SCI->>S3: Read input objects for dispatched computations
+    S3-->>SCI: Return input data
+    SCI->>SCI: Execute dispatched scientific computations
+    SCI->>S3: Write generated product objects
+    S3-->>SCI: Return initial object locations
+    SCI->>CAT: Register product metadata, location and actual input references
+    CAT->>S3: Resolve canonical storage location; reorganize objects if needed
+    S3-->>CAT: Confirm canonical object locations
+    CAT->>CAT: Register products and actual lineage
+    CAT-->>SCI: Confirm registration and return canonical asset references
+    SCI-->>CON: Return computation outcomes and canonical product references
+    CON->>CON: Record task outcomes and canonical output references
+    CON->>CON: Reevaluate dependencies; identify newly READY tasks
 
     CON->>CON: Verify all requested outputs have successful tasks and canonical registered references
     CON->>CON: Set request state to COMPLETED
@@ -87,6 +79,7 @@ The request can remain IN_EXECUTION while some tasks are BLOCKED and others are 
 ## Notes and boundaries
 
 - The sequence covers the nominal path. Acquisition failure, computation failure, asset-registration failure, cancellation during execution and recovery are handled in the dedicated failure/recovery sequence.
+- The diagram shows one scheduling pass. CON repeats dependency evaluation, dispatch and outcome processing until the execution plan is complete. If no task is READY while work remains outstanding, CON waits for an ingestion/computation outcome and reevaluates the plan; it does not repeatedly requeue blocked tasks.
 - The exact granularity of CAT's L0 ingestion outcome is still open: CAT may report each acquisition independently or return a consolidated outcome. The sequence only requires CON to receive canonical references for each successfully registered L0 asset before dispatching dependent tasks.
 - The sequence does not prescribe whether internal dispatch and completion use NATS, REST or another transport. It does not model workers as logical components.
 - The precise concurrency limit, retry/backoff policy, duplicate-task prevention, idempotency and scheduler recovery behavior belong to interface/execution contract design.
