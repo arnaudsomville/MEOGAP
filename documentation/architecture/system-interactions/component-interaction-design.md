@@ -29,10 +29,10 @@ A logical component does not imply a dedicated package, process, container, serv
 | Logical component | Owns | Explicitly does not own |
 |---|---|---|
 | **UI** | Product discovery experience, request configuration/confirmation, Requests view, maps, plots, layer visibility/overlay and download actions. | Scientific computation, dependency resolution, internal messaging, physical storage access. |
-| **GAT** | The public REST boundary; request validation at the API boundary; routing UI operations to the responsible internal components; exposing request state, product representations and download access. | Authoritative request lifecycle, final cost policy, scientific algorithms, physical asset inventory or storage layout. |
-| **CON** | Feasibility/cost coordination, request lifecycle, persisted execution plan, orchestration of missing product generation, and delivery orchestration. | Scientific product semantics, scientific compatibility decisions, provider-specific data acquisition, physical asset cataloguing or scientific computation. |
-| **SCI** | Scientific product definitions/methods, scientific feasibility, the input requirements/criteria needed for a computation, computation and scientific result characterization. | Knowing which concrete product instances or acquisitions are currently available; resolving those requirements to actual assets; provider inventory/pricing; request lifecycle and user access policy. |
-| **CAT** | Discovery and availability of concrete source observations and product assets; resolution of scientific input requirements to exact available product/acquisition instances; identification of missing inputs; L0 acquisition/ingestion and provider-specific acquisition pricing; asset registration and actual product lineage. | Defining scientific methods, deciding scientific compatibility, or orchestrating the generation of missing scientific products. |
+| **GAT** | The public REST boundary; request validation; validation of caller authentication; derivation and propagation of trusted caller identity context; routing UI operations to the responsible internal components; exposing request state, product representations and download access. | Authoritative request lifecycle, final cost policy, access-policy decisions, scientific algorithms, physical asset inventory or storage layout. |
+| **CON** | Feasibility/cost coordination, request lifecycle and ownership association, persistence of the trusted caller context with the request and execution plan, access decisions, orchestration of missing product generation, and delivery orchestration. | Authentication credential validation, scientific product semantics, scientific compatibility decisions, provider-specific data acquisition, physical asset cataloguing or scientific computation. |
+| **SCI** | Scientific product definitions/methods, scientific feasibility, the input requirements/criteria needed for a computation, computation and scientific result characterization; consuming trusted caller/request context for correlation, tracing and audit where needed. | Knowing which concrete product instances or acquisitions are currently available; resolving those requirements to actual assets; provider inventory/pricing; request lifecycle, caller authentication and user access-policy decisions. |
+| **CAT** | Discovery and availability of concrete source observations and product assets; resolution of scientific input requirements to exact available product/acquisition instances; identification of missing inputs; L0 acquisition/ingestion and provider-specific acquisition pricing; asset registration and actual product lineage; consuming trusted caller/request context for correlation, tracing and audit where needed. | Defining scientific methods, deciding scientific compatibility, caller authentication, user access-policy decisions, or orchestrating the generation of missing scientific products. |
 
 ### Terminology clarification: what SCI knows
 
@@ -67,6 +67,20 @@ The key interface boundaries are:
 - **GAT ↔ CAT:** no direct interface in the validated model.
 
 The matrix is the reference for the interaction list. This note explains the responsibilities and the reasoning behind those boundaries.
+
+### Identity and caller-context propagation (ENG-15)
+
+Identity propagation is a cross-cutting property of the interactions below, not a separate business component or an independent request lifecycle.
+
+1. An authenticated public REST call must carry proof of caller authentication. GAT validates that proof using the configured trust mechanism and derives a **trusted identity context**. Explicitly unauthenticated bootstrap and health/readiness operations are exceptions.
+2. Caller-supplied owner IDs or identity headers are not proof of identity. The authoritative owner is derived from the validated caller identity, not accepted from request payload fields.
+3. GAT passes the trusted context to CON for request, access and delivery operations. Direct GAT → SCI catalogue calls also carry the caller/trace context needed for audit and correlation; they do not grant access to private computed results.
+4. CON associates the authenticated subject/owner, initiating actor where distinct, calling client/origin and request/trace correlation with the request. It propagates the trusted context to the SCI and CAT operations it coordinates, including L0 ingestion, dependency resolution, computation dispatch, result registration context and delivery.
+5. Deferred execution must persist enough trusted context with the request/task so that a worker can restore the original owner and correlation when it runs. It must not depend on the original HTTP request remaining alive or on forwarding the external credential itself.
+6. CON remains responsible for request/result/delivery authorization decisions. SCI and CAT consume only the context needed for their operations, audit and tracing; they do not independently redefine ownership or make user access-policy decisions.
+7. Propagate the validated identity context, not the raw external credential by default. Credentials and secrets must never be written to logs or traces.
+
+The credential format, authentication provider, identity claims and internal context representation remain open for interface/security contract design (see [ENG-15](../../specifications/eng.md#eng-15)).
 
 ## 4. Request submission, feasibility, dependency resolution and cost estimation
 
@@ -163,6 +177,7 @@ The user should be able to display and overlay multiple product layers. Visual o
 9. **Storage backend:** S3-compatible object storage has been considered, but is not selected by this note.
 10. **Visualization representations:** supported map/plot representations, bounded spatial/temporal retrieval and overlay limitations. The access route is established: GAT → CON for authorization, then CON → SCI for representation retrieval.
 11. **Product and asset catalogue interfaces:** the criteria model, catalogue queries, product metadata and stable asset-reference/access contract.
+12. **Identity and security contracts:** the authentication/trust mechanism, credential format, identity claims, trusted internal context representation and its integrity protection/propagation. ENG-15 establishes the required behavior; concrete choices belong to M0-E02-T03 and any necessary security ADR.
 
 ## 10. Reconciliation with existing component drafts
 
@@ -185,19 +200,19 @@ flowchart LR
     UI -->|User operations| GAT
     GAT -->|REST responses| UI
 
-    GAT -->|Request lifecycle, access and delivery| CON
-    CON -->|Proposals, state and delivery access| GAT
+    GAT -->|Request + trusted identity context| CON
+    CON -->|Proposals, state and access outcomes| GAT
 
-    GAT -->|Scientific catalogue queries only| SCI
+    GAT -->|Catalogue queries + caller/trace context| SCI
     SCI -->|Product definitions and input requirements| GAT
 
-    CON -->|Scientific evaluation and computation requests| SCI
+    CON -->|Scientific operations + trusted identity context| SCI
     SCI -->|Evaluation and computation outcome| CON
 
-    CON -->|Dependency resolution, L0 ingestion and asset queries| CAT
-    CAT -->|Resolved assets, itemized costs, ingestion outcomes and lineage| CON
+    CON -->|Dependency, ingestion and asset operations + trusted context| CAT
+    CAT -->|Resolved assets, costs, ingestion outcomes and lineage| CON
 
-    SCI -->|Generated-product metadata and actual input lineage| CAT
+    SCI -->|Product registration + request context| CAT
     CAT -->|Product registration confirmation| SCI
 ```
 
