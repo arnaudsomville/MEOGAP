@@ -10,7 +10,7 @@
 
 - **Producer → consumer** indicates the direction in which the interaction is initiated or information is supplied.
 - A response in the reverse direction is shown as a separate row when it is a meaningful interaction.
-- **Synchronous** describes a request/response expected to complete within the interaction. **Asynchronous** describes work whose completion is reported later. These labels are logical expectations, not protocol decisions.
+- Synchronization mode and transport are deliberately not assigned to individual rows in this matrix. Those decisions belong to interface and contract design, because API response behavior, worker execution and internal messaging are distinct concerns.
 - A component boundary represents a logical responsibility boundary. It does not imply a separate process, service, package or deployment.
 - Where an interaction crosses several components, the end-to-end route is stated explicitly. An indirect route does not create a direct interface between non-adjacent components.
 
@@ -55,7 +55,7 @@ GAT is the single public REST entry point for UI. UI does not access CON, SCI, C
 3. Final-product download and dependency-archive download are two distinct UI capabilities and two distinct requests.
 4. The dependency archive is generated on demand. Its content is based on actual lineage, not only on the planned execution graph.
 5. Submitting an analysis request starts its complete proposal-preparation path; feasibility and cost estimation are not separate pre-submission operations.
-6. The user can request cancellation from any request state except `COMPLETED`.
+6. The user can request cancellation from any request state except `COMPLETED`. If the request is already being processed, CON coordinates stopping further work; interruption or reconciliation of already-running operations is defined in the execution flows and interface contracts.
 7. REST remains the source of truth for request state. Notifications may refresh the UI, but the UI must remain functional if no notification is received.
 8. The UI may overlay multiple layers. Overlay alone does not imply that the products are scientifically harmonized or directly comparable.
 
