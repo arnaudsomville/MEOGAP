@@ -161,34 +161,44 @@ The existing first-draft component specifications contain assumptions that preda
 
 For this design, the decisions in this working note are the latest user-reviewed direction. The individual component specifications should be reconciled only after the component interaction model and matrix are reviewed. Do not silently treat the older draft statements as settled decisions or update the future contract schemas from this note alone.
 
-## 11. Initial logical interaction diagram
+## 11. Component Interaction Diagram
 
-This is a conceptual starting point. It intentionally shows only the five logical components. External providers and storage infrastructure are not peer MEOGAP components; Workers and NATS are deliberately omitted from this structural view.
+The diagram below shows the validated logical interaction boundaries and the main purpose of each direction. It contains exactly the five MEOGAP logical components. It does not prescribe REST routes, message topics, protocols, deployment units or execution mechanisms.
 
 ```mermaid
 flowchart LR
-    subgraph MEOGAP
-        UI[UI]
-        GAT[GAT - Public REST Gateway]
-        CON[CON - Request and Delivery Orchestration]
-        SCI[SCI - Scientific Processing]
-        CAT[CAT - Data and Asset Catalog]
+    UI[UI]
+    GAT[GAT - Public REST Gateway]
+    CON[CON - Request and Delivery Orchestration]
+    SCI[SCI - Scientific Processing]
+    CAT[CAT - Data and Asset Catalog]
 
-        UI <--> GAT
-        GAT <--> CON
-        GAT <--> SCI
-        CON <--> SCI
-        CON <--> CAT
-        SCI <--> CAT
-    end
+    UI -->|User operations| GAT
+    GAT -->|REST responses| UI
 
-    PROVIDERS[(EO Data Providers)]
-    CAT <--> PROVIDERS
+    GAT -->|Request lifecycle, access and delivery| CON
+    CON -->|Proposals, state and delivery access| GAT
 
-    STORAGE[(Object storage backend - TBD)]
-    CAT <--> STORAGE
-    SCI --> STORAGE
-    CON <--> STORAGE
+    GAT -->|Scientific catalogue queries only| SCI
+    SCI -->|Product definitions and input requirements| GAT
+
+    CON -->|Scientific evaluation and computation requests| SCI
+    SCI -->|Evaluation and computation outcome| CON
+
+    CON -->|Dependency resolution, L0 ingestion and asset queries| CAT
+    CAT -->|Resolved assets, itemized costs, ingestion outcomes and lineage| CON
+
+    SCI -->|Generated-product metadata and actual input lineage| CAT
+    CAT -->|Registration confirmation and canonical asset reference| SCI
 ```
 
-The diagram shows logical interaction boundaries, not protocols or call directions for every operation. Detailed directions and purposes are recorded in the companion interaction matrix; sequence diagrams will refine the end-to-end scenarios.
+### Important interpretation rules
+
+- **GAT ↔ SCI** is limited to the scientific product catalogue and theoretical input requirements. Visualization and analytical representations of a specific result follow **GAT → CON → SCI**, with the response returning through CON and GAT.
+- **GAT ↔ CAT does not exist** in the validated model. User-facing asset and lineage operations are routed through CON.
+- **CON ↔ SCI** covers scientific evaluation, computation-complexity estimation, computation dispatch and computation outcome. Progress monitoring is handled by observability, not by a required business notification.
+- **CON ↔ CAT** covers concrete dependency resolution, itemized L0 acquisition pricing, ingestion coordination, canonical asset references and actual lineage.
+- **SCI ↔ CAT** is limited to registering generated-product metadata and actual inputs, then returning registration confirmation and the canonical asset reference. CAT does not supply input references directly to SCI; the path is **CAT → CON → SCI**.
+- SCI writes generated outputs directly to object storage. CON reads objects directly from storage for delivery. Object storage is infrastructure, not a logical component in this diagram.
+
+Workers, NATS, EO data providers and object storage are deliberately excluded from the component diagram. They may be shown as supporting mechanisms or external infrastructure in the relevant sequence diagrams, without being represented as peer logical components.
