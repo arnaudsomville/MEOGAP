@@ -66,35 +66,30 @@ sequenceDiagram
     end
 
     alt Proposal preparation expected to complete within 5 seconds
-        CON-->>GAT: Return feasibility outcome, proposal and estimated cost
-        GAT-->>UI: Display feasibility outcome and proposal
+        CON-->>GAT: Return evaluation outcome (proposal/cost or infeasibility)
+        GAT-->>UI: Display evaluation outcome
     else Proposal preparation was asynchronous
         UI->>GAT: Retrieve request status and proposal (REST)
         GAT->>CON: Retrieve request status and proposal
-        CON-->>GAT: Return feasibility outcome, proposal and estimated cost
-        GAT-->>UI: Display feasibility outcome and proposal
+        CON-->>GAT: Return current state and evaluation outcome
+        GAT-->>UI: Display current state and evaluation outcome
     end
 
-    alt A feasible proposal is ready
-        alt User confirms
-            User->>UI: Confirm proposed request
-            UI->>GAT: Confirm analysis request
-            GAT->>CON: Confirm request
-            CON->>CON: Record acceptance
-            CON->>CON: Set request state to IN_EXECUTION
-            CON-->>GAT: Return updated request status
-            GAT-->>UI: Display IN_EXECUTION
-        else User cancels
-            User->>UI: Cancel analysis request
-            UI->>GAT: Request cancellation
-            GAT->>CON: Request cancellation
-            CON->>CON: Record cancellation and stop further orchestration
-            CON-->>GAT: Return cancellation outcome and current state
-            GAT-->>UI: Display cancellation result
-        end
-    else Request is scientifically infeasible
-        CON-->>GAT: Return infeasibility outcome
-        GAT-->>UI: Display infeasibility outcome
+    alt User confirms a feasible proposal
+        User->>UI: Confirm proposed request
+        UI->>GAT: Confirm analysis request
+        GAT->>CON: Confirm request
+        CON->>CON: Record acceptance
+        CON->>CON: Set request state to IN_EXECUTION
+        CON-->>GAT: Return updated request status
+        GAT-->>UI: Display IN_EXECUTION
+    else User cancels the request
+        User->>UI: Cancel analysis request
+        UI->>GAT: Request cancellation
+        GAT->>CON: Request cancellation
+        CON->>CON: Record cancellation and stop further orchestration
+        CON-->>GAT: Return cancellation outcome and current state
+        GAT-->>UI: Display cancellation result
     end
 
     Note over UI,CON: Cancellation can be requested in any request state except COMPLETED, including during proposal preparation or execution. The cancellation branch is shown after proposal preparation for readability; handling interruption/reconciliation of already-running acquisition or computation is detailed in the execution and failure/recovery sequences.
@@ -115,7 +110,7 @@ sequenceDiagram
 
 ## Notes and boundaries
 
-- The exact state vocabulary for proposal preparation and infeasibility is not fixed here.
+- The exact state vocabulary for proposal preparation and infeasibility is not fixed here. Confirmation is available only when a feasible proposal has been returned; cancellation remains available in every request state except `COMPLETED`.
 - The 5-second rule concerns the user-facing API behavior. It does not select a worker technology, messaging transport or internal synchronous/asynchronous protocol.
 - The sequence intentionally does not prescribe REST endpoints, HTTP status codes, NATS subjects, worker topology or payload schemas.
 - The precise behavior when cancellation races with an already-running acquisition or computation must be completed in the execution and failure/recovery sequences, then specified in interface contracts.
