@@ -214,10 +214,10 @@ The SCI ↔ CAT interface is limited to generated-product registration and confi
 | Acquire missing L0 data | CON → CAT → external provider/storage; CAT → CON reports outcome |
 | Execute a computation | CON → CAT for canonical input references/locations; CON → SCI with those references/locations; SCI reads object storage directly |
 | Register a generated product | SCI writes result to object storage; SCI → CAT registers metadata/lineage; CAT → SCI confirms; SCI → CON reports computation/registration outcome; CON queries CAT later when it needs the canonical asset reference/location |
-| View a computed result | UI → GAT → CON (authorization) → SCI (representation); result returns via CON → GAT → UI |
+| View a computed result | UI → GAT → CON (authorization); CON → CAT for the canonical product reference and current location; CON → SCI for the representation; result returns through CON → GAT → UI |
 | Inspect actual lineage | UI → GAT → CON → CAT; lineage returns via CON → GAT → UI |
-| Download final product only | UI → GAT → CON → CAT (canonical asset reference) → object storage; delivery access returns through CON → GAT → UI |
-| Download result with dependency archive | UI → GAT → CON → CAT (actual lineage and asset references); CON retrieves assets from object storage and assembles a temporary archive; access returns through GAT to UI |
+| Download final product only | UI → GAT → CON → CAT (canonical asset reference and current location) → object storage; delivery access returns through CON → GAT → UI |
+| Download result with dependency archive | UI → GAT → CON → CAT (actual lineage, canonical asset references and current locations); CON retrieves assets from object storage and assembles a temporary archive; access returns through GAT to UI |
 | Cancel a request | UI → GAT → CON; CON records cancellation and stops further orchestration, then returns the outcome through GAT to UI |
 
 ## 10. Supporting mechanisms and external infrastructure
