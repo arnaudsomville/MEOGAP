@@ -105,16 +105,16 @@ The current request lifecycle decisions are:
 - The user may request cancellation in any request state except **COMPLETED**. GAT forwards the cancellation request to CON. CON owns the request lifecycle, records the cancellation and stops further orchestration. How already-running ingestion or computation is interrupted or reconciled is addressed in the execution and failure/recovery flows.
 - CON asks CAT to acquire/ingest the missing L0 source data.
 - Once the required source assets are available, CON evaluates the persisted dependency plan and dispatches only computations whose required inputs are available. Independent eligible tasks may be dispatched concurrently; workers execute the tasks but do not resolve dependencies or repeatedly requeue blocked tasks.
-- After each successful product registration, SCI reports the computation/registration outcome to CON. CON records the task outcome and reevaluates the plan. It does not store CAT's canonical asset reference or storage location. When a newly eligible task needs an input asset, CON queries CAT for that asset's current canonical reference and location before dispatch.
+- SCI computes each product and writes its result object to storage. SCI sends CAT the computation metadata, initial object location and exact input references actually consumed. CAT registers the product and actual lineage, then confirms registration to SCI.
+- SCI reports the computation and registration outcome to CON, distinguishing scientific execution failure from asset-registration failure. CON owns the authoritative request/task state. CON does not store CAT's canonical asset reference or storage location; when it needs an asset, it queries CAT using the logical product/task identifier from its execution plan.
+- After a successful registration, CON records the task outcome and reevaluates the plan. Newly unblocked tasks become eligible for dispatch.
+- If a required task fails, CON marks that task **FAILED** and keeps its dependent tasks **BLOCKED**. Independent tasks that were already **READY** or **RUNNING** when the failure was detected are allowed to finish. CON waits for that work to settle; if a requested output remains impossible to produce, CON marks the overall request **FAILED**.
 - The request enters **COMPLETED** only after all requested outputs are available and registered in CAT. CON verifies completion using the logical output identifiers in its execution plan and CAT's authoritative catalogue state; it does not maintain a duplicate asset-reference/location mapping.
-- SCI computes each product and registers the generated asset with CAT, reporting the actual inputs used.
-- CAT records the exact actual lineage for each generated product.
-- SCI reports the computation and registration outcome to CON. On success, SCI confirms that CAT registration succeeded. CON owns the authoritative request/task state; when it needs the canonical asset reference or current storage location, it queries CAT using the logical product/task identifier in its execution plan.
 - Computation progress is handled through technical observability (for example traces or a workflow visualizer); it is not a required business notification from SCI to CON.
 
 The persisted request plan identifies the logical products/tasks that CON intends to generate. It is not a substitute for CAT's actual asset lineage and does not duplicate CAT's canonical asset references or storage locations.
 
-The exact task-state model, proposal-preparation and infeasibility states, cancellation outcome semantics, partial-failure behavior, retries and replanning rules remain open.
+The exact task-state vocabulary, proposal-preparation and infeasibility states, cancellation outcome semantics, retry policy, idempotency and replanning behavior remain open.
 
 ## 6. Delivery orchestration and dependency archive
 
@@ -153,15 +153,16 @@ The user should be able to display and overlay multiple product layers. Visual o
 ## 9. Decisions still open
 
 1. **Request state and cancellation:** exact proposal-preparation/infeasibility states, cancellation outcome semantics, and how CON reconciles cancellation with already-running ingestion or computation.
-2. **Computation pricing:** how SCI's complexity information is converted into a computation cost, how CON aggregates it with CAT's L0 acquisition costs, and how actual cost is recorded.
-3. **Messaging and reliability:** whether CON → SCI dispatch and SCI → CON completion use NATS or another mechanism; how durable delivery, retries, acknowledgement, correlation and idempotency are handled.
-4. **CAT ingestion workflow:** how CON requests missing L0 ingestion, how partial/failed acquisition is reported, and how CON resumes the planned execution.
-5. **Execution-plan representation:** whether CON stores a DAG, an ordered task plan or another representation; how shared dependencies are deduplicated and costed.
-6. **Actual lineage semantics:** the exact metadata/version references CAT records for each generated product, including direct inputs actually consumed.
-7. **Delivery implementation:** which execution mechanism assembles the ZIP, how CAT provides asset access, where the temporary archive is held, and its TTL/cleanup behavior.
-8. **Storage backend:** S3-compatible object storage has been considered, but is not selected by this note.
-9. **Visualization representations:** supported map/plot representations, bounded spatial/temporal retrieval and overlay limitations. The access route is established: GAT → CON for authorization, then CON → SCI for representation retrieval.
-10. **Product and asset catalogue interfaces:** the criteria model, catalogue queries, product metadata and stable asset-reference/access contract.
+2. **Failure recovery:** which failure categories are retryable, retry limits/backoff, idempotency, whether partially successful independent outputs remain available after an overall request failure, and cleanup or reconciliation of objects written to storage but not registered in CAT.
+3. **Computation pricing:** how SCI's complexity information is converted into a computation cost, how CON aggregates it with CAT's L0 acquisition costs, and how actual cost is recorded.
+4. **Messaging and reliability:** whether CON → SCI dispatch and SCI → CON completion use NATS or another mechanism; how durable delivery, retries, acknowledgement, correlation and idempotency are handled.
+5. **CAT ingestion workflow:** how CON requests missing L0 ingestion, how partial/failed acquisition is reported, and how CON resumes the planned execution.
+6. **Execution-plan representation:** whether CON stores a DAG, an ordered task plan or another representation; how shared dependencies are deduplicated and costed.
+7. **Actual lineage semantics:** the exact metadata/version references CAT records for each generated product, including direct inputs actually consumed.
+8. **Delivery implementation:** which execution mechanism assembles the ZIP, how CAT provides asset access, where the temporary archive is held, and its TTL/cleanup behavior.
+9. **Storage backend:** S3-compatible object storage has been considered, but is not selected by this note.
+10. **Visualization representations:** supported map/plot representations, bounded spatial/temporal retrieval and overlay limitations. The access route is established: GAT → CON for authorization, then CON → SCI for representation retrieval.
+11. **Product and asset catalogue interfaces:** the criteria model, catalogue queries, product metadata and stable asset-reference/access contract.
 
 ## 10. Reconciliation with existing component drafts
 
@@ -211,3 +212,7 @@ flowchart LR
 - SCI writes generated outputs directly to object storage. CON reads objects directly from storage for delivery. Object storage is infrastructure, not a logical component in this diagram.
 
 Workers, NATS, EO data providers and object storage are deliberately excluded from the component diagram. They may be shown as supporting mechanisms or external infrastructure in the relevant sequence diagrams, without being represented as peer logical components.
+
+## 12. Failure and recovery sequence
+
+The validated failure policy and its two distinct scenarios are documented in [Failure and Recovery](../sequence_diagrams/failure-and-recovery.md). It distinguishes scientific computation failure from CAT asset-registration failure, preserves already eligible independent work, and prevents false request completion.
