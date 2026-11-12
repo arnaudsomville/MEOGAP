@@ -31,7 +31,7 @@ sequenceDiagram
         GAT-->>UI: Return request reference and current state
         Note over UI,GAT: UI retrieves state and proposal through REST. Notifications may refresh the UI but are not required.
     else Proposal preparation expected to complete within 5 seconds
-        Note over GAT,CON: The request remains in the current API interaction while preparation completes.
+        Note over GAT,CON: The current API interaction remains open while preparation completes.
     end
 
     CON->>SCI: Evaluate scientific feasibility and input requirements
@@ -75,26 +75,29 @@ sequenceDiagram
         GAT-->>UI: Display feasibility outcome and proposal
     end
 
-    opt User requests cancellation before request is COMPLETED
-        User->>UI: Cancel analysis request
-        UI->>GAT: Request cancellation
-        GAT->>CON: Request cancellation
-        CON->>CON: Record cancellation and stop further orchestration
-        CON-->>GAT: Return cancellation outcome and current state
-        GAT-->>UI: Display cancellation result
+    alt A feasible proposal is ready
+        alt User confirms
+            User->>UI: Confirm proposed request
+            UI->>GAT: Confirm analysis request
+            GAT->>CON: Confirm request
+            CON->>CON: Record acceptance
+            CON->>CON: Set request state to IN_EXECUTION
+            CON-->>GAT: Return updated request status
+            GAT-->>UI: Display IN_EXECUTION
+        else User cancels
+            User->>UI: Cancel analysis request
+            UI->>GAT: Request cancellation
+            GAT->>CON: Request cancellation
+            CON->>CON: Record cancellation and stop further orchestration
+            CON-->>GAT: Return cancellation outcome and current state
+            GAT-->>UI: Display cancellation result
+        end
+    else Request is scientifically infeasible
+        CON-->>GAT: Return infeasibility outcome
+        GAT-->>UI: Display infeasibility outcome
     end
 
-    opt User confirms a feasible proposal instead of cancelling
-        User->>UI: Confirm proposed request
-        UI->>GAT: Confirm analysis request
-        GAT->>CON: Confirm request
-        CON->>CON: Record acceptance
-        CON->>CON: Set request state to IN_EXECUTION
-        CON-->>GAT: Return updated request status
-        GAT-->>UI: Display IN_EXECUTION
-    end
-
-    Note over UI,CON: Cancellation can be requested in any request state except COMPLETED, including during proposal preparation or execution. This sequence illustrates the cancellation interaction after proposal preparation; interruption/reconciliation of already-running acquisition or computation is detailed in the execution and failure/recovery sequences.
+    Note over UI,CON: Cancellation can be requested in any request state except COMPLETED, including during proposal preparation or execution. The cancellation branch is shown after proposal preparation for readability; handling interruption/reconciliation of already-running acquisition or computation is detailed in the execution and failure/recovery sequences.
 ```
 
 ## Validated decisions represented
@@ -106,7 +109,7 @@ sequenceDiagram
 - CAT provides itemized costs for missing L0 acquisitions. SCI provides computation-complexity estimates; CON calculates the user-facing total estimate.
 - The plan and estimate are stored with the request. Once proposal preparation is complete and the request is feasible, the request enters `PROPOSED`.
 - Confirmation is a separate explicit user action; CON then transitions the request to `IN_EXECUTION`.
-- The user can request cancellation from any request state except `COMPLETED`. CON owns the cancellation request and stops further orchestration.
+- The user can request cancellation from any request state except `COMPLETED`. GAT transmits the request to CON; CON owns its lifecycle and stops further orchestration.
 - REST remains the source of truth for request state. Notifications may refresh the UI but are not required for correct operation.
 - Any operation expected to take more than 5 seconds is exposed asynchronously at the user-facing API. The execution mode is selected before starting the operation; the API does not switch an in-flight synchronous operation to asynchronous after a timeout.
 
