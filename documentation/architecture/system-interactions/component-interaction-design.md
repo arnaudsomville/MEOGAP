@@ -104,7 +104,9 @@ The current request lifecycle decisions are:
 - When the user accepts the proposal, CON records the acceptance and transitions the request from **PROPOSED** to **IN_EXECUTION**.
 - The user may request cancellation in any request state except **COMPLETED**. GAT forwards the cancellation request to CON. CON owns the request lifecycle, records the cancellation and stops further orchestration. How already-running ingestion or computation is interrupted or reconciled is addressed in the execution and failure/recovery flows.
 - CON asks CAT to acquire/ingest the missing L0 source data.
-- Once the required source assets are available, CON dispatches the missing product computations to SCI in dependency order.
+- Once the required source assets are available, CON evaluates the persisted dependency plan and dispatches only computations whose required inputs are available. Independent eligible tasks may be dispatched concurrently; workers execute the tasks but do not resolve dependencies or repeatedly requeue blocked tasks.
+- After each successful product registration, CON records the canonical output reference and reevaluates the plan. Newly unblocked tasks become eligible for dispatch.
+- The request enters **COMPLETED** only after all requested outputs are available and registered in CAT with canonical references.
 - SCI computes each product and registers the generated asset with CAT, reporting the actual inputs used.
 - CAT records the exact actual lineage for each generated product.
 - SCI reports the computation outcome to CON. On success, the outcome includes the canonical CAT reference of the registered product. CON owns the authoritative request state and updates it when the required execution is complete or has failed.
