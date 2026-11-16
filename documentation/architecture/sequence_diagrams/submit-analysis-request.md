@@ -22,9 +22,10 @@ sequenceDiagram
     participant CAT
 
     User->>UI: Configure and submit analysis request
-    UI->>GAT: Submit analysis request
-    GAT->>CON: Create request and start proposal preparation
-    CON->>CON: Persist request in proposal-preparation state
+    UI->>GAT: Submit analysis request with authentication proof
+    GAT->>GAT: Validate caller and derive trusted identity context
+    GAT->>CON: Create request and start proposal preparation with trusted identity context
+    CON->>CON: Persist request, owner identity and caller context in proposal-preparation state
 
     alt Proposal preparation expected to take more than 5 seconds
         CON-->>GAT: Return request reference and current state
@@ -32,19 +33,19 @@ sequenceDiagram
     else Proposal preparation expected to complete within 5 seconds
     end
 
-    CON->>SCI: Evaluate scientific feasibility and input requirements
+    CON->>SCI: Evaluate scientific feasibility and input requirements with trusted identity context
     SCI-->>CON: Feasibility, constraints and scientific input requirements
 
     alt Scientifically infeasible
         CON->>CON: Record infeasibility outcome
     else Scientifically feasible
-        CON->>CAT: Resolve scientific input requirements
+        CON->>CAT: Resolve scientific input requirements with trusted identity context
         CAT-->>CON: Available assets, missing intermediate products and missing L0 acquisitions
 
         loop For each missing intermediate product
-            CON->>SCI: Evaluate intermediate product and retrieve input requirements
+            CON->>SCI: Evaluate intermediate product with trusted identity context
             SCI-->>CON: Feasibility and input requirements
-            CON->>CAT: Resolve intermediate product requirements
+            CON->>CAT: Resolve intermediate product requirements with trusted identity context
             CAT-->>CON: Available assets and further missing dependencies
         end
 
@@ -102,7 +103,7 @@ sequenceDiagram
 ## Validated decisions represented
 
 - Submitting an analysis request starts the complete proposal-preparation path; feasibility and cost estimation are not separate pre-submission operations.
-- CON persists the request before carrying out evaluation and dependency resolution. The exact name of the proposal-preparation state remains open.
+- GAT validates caller authentication and derives the trusted identity context. CON persists the authenticated owner/caller context with the request before carrying out evaluation and dependency resolution. The exact name of the proposal-preparation state remains open.
 - SCI returns scientific feasibility and scientific input requirements. CAT resolves those criteria to concrete assets and reports missing dependencies.
 - CON recursively resolves requirements for missing intermediate products.
 - CAT provides itemized costs for missing L0 acquisitions. SCI provides computation-complexity estimates; CON calculates the user-facing total estimate.
@@ -111,6 +112,7 @@ sequenceDiagram
 - The user can request cancellation from any request state except `COMPLETED`. GAT transmits the request to CON; CON owns its lifecycle and stops further orchestration.
 - REST remains the source of truth for request state. Notifications may refresh the UI but are not required for correct operation.
 - Any operation expected to take more than 5 seconds is exposed asynchronously at the user-facing API. The execution mode is selected before starting the operation; the API does not switch an in-flight synchronous operation to asynchronous after a timeout.
+- The trusted context preserves the authenticated subject/owner, initiating actor where distinct, calling client/origin and request/trace correlation. The raw external credential is not indiscriminately forwarded and is never logged.
 
 ## Notes and boundaries
 
