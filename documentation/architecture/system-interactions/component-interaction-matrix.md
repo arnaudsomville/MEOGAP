@@ -2,7 +2,7 @@
 
 **Status:** Validated logical interaction inventory — design baseline  
 **Companion design note:** [Component Interaction Design](./component-interaction-design.md)  
-**Last updated:** 12 November 2026
+**Last updated:** 16 November 2026
 
 > This document records the logical interactions validated during the component architecture design discussion. It is an interaction inventory, not an API specification: routes, payload schemas, authentication mechanisms, protocols and implementation details remain outside its scope.
 
