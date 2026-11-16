@@ -31,8 +31,8 @@ sequenceDiagram
     CON->>CON: Record available logical L0 assets in execution state
     CON->>CON: Evaluate dependencies
     CON->>CON: Identify READY tasks
-    CON->>CAT: Request canonical references and locations for task inputs
-    CAT-->>CON: Return canonical references and current locations
+    CON->>CAT: Request canonical references and locations for task inputs with trusted identity context
+    CAT-->>CON: Return canonical references, current locations and request correlation
     CON->>SCI: Dispatch READY computations with input references, locations and trusted identity context
 
     SCI->>S3: Read input objects
@@ -43,12 +43,12 @@ sequenceDiagram
     SCI->>CAT: Register product metadata, actual input references and request identity/correlation context
     CAT->>CAT: Register products and actual lineage
     CAT-->>SCI: Confirm product registration
-    SCI-->>CON: Return computation outcomes and registered product identifiers
+    SCI-->>CON: Return computation outcomes and registered product identifiers with task/request correlation
     CON->>CON: Record task outcomes
     CON->>CON: Reevaluate dependencies
     CON->>CON: Identify newly READY tasks
-    CON->>CAT: Resolve canonical references and current locations for newly READY task inputs
-    CAT-->>CON: Return canonical references and current locations
+    CON->>CAT: Resolve canonical references and current locations for newly READY task inputs with trusted identity context
+    CAT-->>CON: Return canonical references, current locations and request correlation
 
     CON->>CON: Verify all requested outputs are registered
     CON->>CON: Set request state to COMPLETED
