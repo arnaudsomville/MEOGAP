@@ -2,7 +2,7 @@
 
 **Status:** Validated sequence diagram — design baseline  
 **Companion documents:** [Component Interaction Design](../system-interactions/component-interaction-design.md) · [Component Interaction Matrix](../system-interactions/component-interaction-matrix.md)  
-**Last updated:** 12 November 2026
+**Last updated:** 16 November 2026
 
 ## Purpose
 
