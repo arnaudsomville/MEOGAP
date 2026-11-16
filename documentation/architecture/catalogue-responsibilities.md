@@ -269,19 +269,24 @@ sequenceDiagram
     SCI->>Store: Read original source data
     Store-->>SCI: Original product and quality layers
     SCI->>SCI: Generate harmonized product and quality layers
-    SCI->>Store: Write harmonized representations
-    Store-->>SCI: Harmonized representation references
-    SCI->>CAT: Register harmonized representations and provenance
-    CAT->>CAT: Update Source Asset representation records
-    alt Harmonized representation registration succeeds
-      CAT-->>SCI: Harmonized representations registered
-      SCI-->>CON: Harmonization completed
-      CON->>CAT: Check required representation availability
-      CAT-->>CON: Required harmonized representation available
-    else Harmonization or registration fails
-      CAT-->>SCI: Representation registration failure
-      SCI-->>CON: Harmonization failed or not registered
-      Note over CAT,CON: Original Source Asset remains registered
+    alt SCI harmonization succeeds
+      SCI->>Store: Write harmonized representations
+      Store-->>SCI: Harmonized representation references
+      SCI->>CAT: Register harmonized representations and provenance
+      alt CAT representation registration succeeds
+        CAT->>CAT: Update Source Asset representation records
+        CAT-->>SCI: Harmonized representations registered
+        SCI-->>CON: Harmonization completed and submitted for availability check
+        CON->>CAT: Check required representation availability
+        CAT-->>CON: Required harmonized representation available
+      else CAT representation registration fails
+        CAT-->>SCI: Representation registration failure
+        SCI-->>CON: Harmonization generated, but representations not registered
+        Note over CAT,CON: Original Source Asset remains registered; harmonized representations are unavailable
+      end
+    else SCI harmonization fails
+      SCI-->>CON: Harmonization processing failure
+      Note over CAT,CON: Original Source Asset remains registered; no harmonized representation is available
     end
 ```
 
