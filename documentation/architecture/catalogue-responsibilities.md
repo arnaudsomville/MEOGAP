@@ -282,11 +282,11 @@ sequenceDiagram
       else CAT representation registration fails
         CAT-->>SCI: Representation registration failure
         SCI-->>CON: Harmonization generated, but representations not registered
-        Note over CAT,CON: Original Source Asset remains registered; harmonized representations are unavailable
+        Note over CAT,CON: Original Source Asset remains registered while harmonized representations are unavailable
       end
     else SCI harmonization fails
       SCI-->>CON: Harmonization processing failure
-      Note over CAT,CON: Original Source Asset remains registered; no harmonized representation is available
+      Note over CAT,CON: Original Source Asset remains registered while no harmonized representation is available
     end
 ```
 
