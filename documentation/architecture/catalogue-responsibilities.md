@@ -48,16 +48,28 @@ For example, an NDVI definition may require compatible red and near-infrared mea
 SCI owns:
 - the scientific input characteristics required by the method;
 - compatibility rules and acceptable ranges;
-- product-specific quality criteria and assumptions.
+- product-specific quality criteria and assumptions;
+- selection constraints between multiple inputs when the method depends on their relative acquisition characteristics.
+
+Examples of potentially useful selection constraints include:
+- acquisition-time difference between observations, including local acquisition time where scientifically relevant;
+- maximum or minimum number of days between acquisitions;
+- minimum/maximum spatial resolution;
+- required spectral bands or spectral-response characteristics;
+- minimum/maximum spectral resolution;
+- quality and usable-coverage thresholds over the requested footprint.
+
+These are examples of criteria the model must be able to express, not a fixed M0 list. Their exact semantics and units belong to the scientific product definition. In particular, the meaning of "local acquisition time" (for example local solar time versus another local-time convention) must be explicit when a product uses it.
 
 CAT owns:
 - discovery of concrete acquisitions and assets;
-- matching concrete metadata against SCI's requirements;
-- returning the exact source/product instances that satisfy the criteria.
+- matching concrete metadata against SCI's requirements and selection constraints;
+- returning the exact source/product instances that satisfy the criteria;
+- computing objective footprint-specific quality statistics from retained quality layers, as described below.
 
 A shared band label alone does not prove scientific interchangeability. Compatibility must be defined at the level needed by the method (for example spectral characteristics and resolution), and must not be assumed merely because two providers use similar names.
 
-CON remains responsible for recursive dependency planning and orchestration. CAT resolves concrete assets; it does not orchestrate generation of missing derived products.
+When CAT proposes an existing Derived Asset as an input, its suitability must not be established only from the derived asset's top-level metadata. The input constraints must be checked recursively against its actual lineage, including the source acquisitions and relevant intermediate product definitions/versions. The recursive check must establish that the underlying observations and transformations satisfy the requesting product's constraints. CON owns recursive dependency planning and orchestration; CAT resolves concrete assets and exposes actual lineage/metadata, but does not orchestrate generation of missing derived products.
 
 ## 4. Logical asset and physical composition
 
@@ -162,7 +174,11 @@ The model must distinguish the detailed quality evidence from the current usabil
 
 The native resolution and support of the source data must remain known. An H3 representation is a harmonized/derived spatial representation, not a claim that the original sensor measured at H3 resolution.
 
-Quality statistics must be computable for a sub-area of a tile. A cloud-cover statistic for a tile and cloud-cover for a requested AOI are different values and must not be conflated. For multi-date products, the acquisition dates of the actual contributing observations must remain traceable; a single aggregate period does not replace the dates of the inputs.
+Quality statistics must be computable by CAT for any requested footprint contained within a tile, using the retained quality layers. This includes cloud cover and, more generally, the percentage of usable data. The latter is derived from the inverse of the combined non-quality conditions (for example cloud, cloud shadow and missing data), under an explicitly identified quality policy. A tile-level percentage and a percentage over a requested AOI are different values and must not be conflated.
+
+The calculation must identify its spatial support, denominator/weighting convention, quality layers and policy version. Missing or unknown quality information must not silently be treated as usable. The detailed masks remain available so that a later policy can recompute the statistic.
+
+For multi-date products, the acquisition dates of the actual contributing observations must remain traceable; a single aggregate period does not replace the dates of the inputs.
 
 ## 6. Scientific metadata and CAT ownership
 
@@ -174,14 +190,14 @@ CAT must retain and index meaningful scientific metadata to support asset discov
 | Spatial support | Footprint, native resolution, harmonized spatial support | CAT stores/indexes; SCI defines method requirements |
 | Temporal support | Acquisition date/time, start/end, individual contributing acquisition dates | CAT stores/indexes |
 | Observation quality | Provider cloud percentage, quality layers, missing-data information | CAT stores/indexes source and generated metadata; SCI defines product-specific acceptability |
-| AOI-specific quality | Cloud/invalid coverage over a requested geometry | Computed from quality layers using an identified method; CAT may index/cache results, but does not define scientific acceptance |
+| AOI-specific quality | Cloud coverage and percentage of usable data over a requested footprint contained in a tile | CAT computes from retained quality layers using an identified/versioned policy; CAT may index/cache results, but does not define product-specific scientific acceptance |
 | Scientific result | Method, parameters, units, uncertainty, limitations and validation status | SCI produces and interprets; CAT retains/indexes relevant metadata |
 | Physical access | Canonical asset reference, representation and current physical location | CAT |
 | Actual lineage | Exact input asset/product instances and versions actually consumed | CAT records from SCI's registration handoff |
 
 Provider-native metadata must be preserved as provider metadata. Statistics computed by MEOGAP (for example cloud coverage over a requested AOI) must be distinguishable from provider-supplied scene-level statistics.
 
-SCI defines the scientific criteria for accepting observations for a given product. CAT may calculate or index objective catalogue statistics from retained layers, but it must not decide that a given cloud percentage is scientifically acceptable for every product.
+SCI defines the scientific criteria for accepting observations for a given product. CAT computes objective footprint-specific statistics from retained layers, including the percentage of usable data (the inverse of the combined non-quality conditions under a declared policy). CAT may index/cache these statistics, but it must not decide that a given usable percentage is scientifically acceptable for every product.
 
 ### 6.1 SCI → CAT registration handoff
 
@@ -242,8 +258,8 @@ sequenceDiagram
       CON->>CAT: Resolve canonical references when required
       CAT-->>CON: Current references and availability
     else Registration fails
-      CAT-->>CON: Registration failure (not catalogue-available)
-      Note over CAT,Store: Physical objects may exist without a registered asset; reconciliation is deferred
+      CAT-->>CON: Registration failed; asset is not catalogue-available
+      CAT-->>CON: Physical objects may remain unregistered; reconciliation is deferred
     end
 ```
 
@@ -350,13 +366,18 @@ The following constraints should be preserved when the detailed data model is de
 8. Source-tile footprint and request AOI are distinct. AOI-specific quality statistics must be computed for the AOI, not inferred from a tile-wide percentage.
 9. Multi-date products must preserve the exact acquisition dates and asset references actually used.
 10. Planned execution dependencies in CON are distinct from actual input lineage registered by CAT.
+11. Product input criteria may express temporal relationships between acquisitions, spatial/spectral resolution bounds, band compatibility and quality constraints.
+12. Reusing a Derived Asset requires recursive validation of its actual lineage against the requesting product's input constraints; top-level derived metadata alone is insufficient.
+13. CAT can calculate usable-data percentages for a requested footprint contained in a source tile from retained quality layers, with the policy and spatial support identified.
 
 Questions for later design include:
 - How should an Asset expose multiple representations and their versions without coupling its identity to a Zarr-specific layout?
 - Which parts of harmonization are mandatory for every source modality, and which are modality-specific?
 - What is the precise semantics of an H3 usability summary at different resolutions?
 - How should masks represent multiple simultaneous conditions, uncertainty/probability and unknown/missing classification?
-- Which objective quality statistics should CAT compute on demand, cache or index?
+- Which objective quality statistics should CAT compute on demand, cache or index, and what exact denominator/area-weighting convention should be used?
+- How are acquisition-time relationships (including local acquisition time) represented consistently across missions and time conventions?
+- How are recursive lineage checks performed efficiently when multiple derived assets share common ancestors?
 - How are harmonization failures, partial tile acquisitions and unregistered physical objects reconciled?
 - What is the minimum provenance needed to reproduce an individual harmonized array and a derived scientific result?
 
