@@ -3,7 +3,7 @@
 Status: Working draft for review  
 Scope: UI, GTW, CON, CAT and SCI.
 
-These documents establish the system baseline and initial component boundaries. They are not implementation authorization and do not settle every architecture decision. The system requirements are summarized in [sys.md](../sys.md), which points back to the authoritative requirements in `documentation/project_definition.md`.
+These documents are first-draft component specifications. They are not implementation authorization and do not settle every architecture decision. The authoritative system requirements are maintained in [sys.md](../sys.md), and cross-cutting engineering requirements in [eng.md](../eng.md). `project_definition.md` records project intent and links to both baselines; it does not own or duplicate their requirement tables.
 
 ## Documents
 - [UI](ui.md) — user interaction and presentation.
@@ -11,6 +11,11 @@ These documents establish the system baseline and initial component boundaries. 
 - [SCI](sci.md) — scientific product definitions, feasibility, processing and result characterization; SCI Gateway is an internal subcomponent for scientific orchestration.
 - [CAT](cat.md) — data and asset catalog.
 - [CON](con.md) — request management, ownership and access decisions.
+
+## Requirement baselines
+
+- [System requirements baseline](../sys.md) — authoritative `SYS-*` requirements.
+- [Engineering requirements baseline](../eng.md) — authoritative `ENG-*` requirements.
 
 ## Requirement conventions
 Each component has its own requirement table. IDs are newly proposed and may change before approval. Requirements are derived from current SYS requirements; multiple parent SYS requirements are allowed when justified.
@@ -25,6 +30,8 @@ Each component has its own requirement table. IDs are newly proposed and may cha
 Detailed REST/JSON schemas, message contracts and E2E test cases will be defined in follow-up work.
 
 ## Current assumptions
+
+**Refinement notice:** The assumptions below are from the earlier first-draft component specifications. The broader component interaction design is maintained separately in [component-interaction-design.md](../../architecture/system-interactions/component-interaction-design.md), with its detailed [component-interaction-matrix.md](../../architecture/system-interactions/component-interaction-matrix.md). In particular, the current direction is that SCI defines scientific input requirements, CAT resolves those requirements to exact available product/acquisition instances and manages L0 ingestion, and CON recursively plans and orchestrates generation of missing scientific products. The individual component specifications have not yet been reconciled with this direction.
 1. UI, GTW, CON, CAT and SCI are distinct logical responsibilities. SCI Gateway is a subcomponent within SCI, not a peer component. Workers are an execution mechanism; NATS is internal messaging infrastructure, not a public API or a business component.
 2. GTW is the unique public REST API. No other component exposes a public REST API.
 3. CON is responsible for request lifecycle/status, ownership/access rights, admission and cost tracking. It has no scientific knowledge and requests feasibility/complexity estimates from SCI through versioned interfaces. SCI internally uses its SCI Gateway subcomponent to orchestrate scientific dependencies. Logical components need not be separate processes or deployments.
@@ -39,7 +46,7 @@ Detailed REST/JSON schemas, message contracts and E2E test cases will be defined
 13. GitHub issues are the work-tracking authority. These documents describe intended behavior, not implementation tickets.
 
 ## Decisions deferred to the M0 contract ticket
-The following are intentionally not resolved in these component specifications. They are in scope for [M0-E02-T02 — Define Cross-Component Interfaces and Data Models](https://github.com/arnaudsomville/MEOGAP/issues/38):
+The following are intentionally not resolved in these component specifications. They are in scope for [M0-E02-T03 — Identify M0 Interface and Contract Boundaries](https://github.com/arnaudsomville/MEOGAP/issues/38):
 - Product-definition descriptor and versioned data models.
 - Internal GTW/CON/SCI interfaces, including CON-owned request/access decisions and SCI-owned scientific feasibility/product operations.
 - Deterministic M0 identity transport and propagation, explicitly distinct from production authentication.

@@ -1,8 +1,8 @@
 # MEOGAP — Modular Earth Observation & Geospatial Analytics Platform
 
-**Project Definition — v0.18 (Concept and Requirements)**
+**Project Definition — v0.20 (Project Intent and Scientific Concepts)**
 
-**Status:** Living draft · **Date:** 28 October 2026
+**Status:** Living document · **Date:** 12 November 2026
 
 **Project type:** Personal learning and scientific exploration project, with an engineering portfolio dimension
 
@@ -13,20 +13,25 @@
 
 ## Documentation ownership and navigation
 
-This file is the **source of project intent and scientific concepts**, not a second copy of the detailed technical specifications. Use the following documents for the authoritative detail in each area:
+This document is the source of **project intent, scientific concepts and high-level architecture principles**. It is not the authority for detailed system requirements, component contracts or implementation sequencing.
 
-| Topic | Reference document | Authority |
+| Topic | Authoritative/current reference | Role |
 |---|---|---|
-| System requirements and their M0 treatment (SYS-*) | [System requirements baseline](specifications/sys.md) | Requirement statements remain defined in §5.1 of this document for now; sys.md is their navigational and traceability view. |
-| UI responsibilities and requirements | [UI specification](specifications/components/ui.md) | Component boundary and UI-specific requirements |
-| Public REST boundary | [GTW specification](specifications/components/gtw.md) | Public API and routing responsibilities |
-| Request lifecycle, identity, access and credits | [CON specification](specifications/components/con.md) | Request ownership, authorization decisions, admission and cost lifecycle |
-| Asset discovery and registration | [CAT specification](specifications/components/cat.md) | Asset catalogue and availability responsibilities |
-| Scientific products, feasibility, processing and provenance | [SCI specification](specifications/components/sci.md) | Scientific semantics and processing responsibilities |
-| Cross-component boundaries and component-spec index | [Component specifications index](specifications/components/README.md) | Navigation and boundary summary |
-| Delivery sequencing, scope and implementation readiness | [GitHub issues and project tickets](https://github.com/arnaudsomville/MEOGAP/issues) | Tickets and their acceptance criteria are the source of truth for planned work and delivery order |
+| System requirements and M0 treatment (SYS-*) | [System requirements baseline](specifications/sys.md) | Sole source of truth for SYS IDs, requirement text, priorities, M0 treatment and target delivery. |
+| Engineering requirements (ENG-*) | [Engineering requirements baseline](specifications/eng.md) | Sole source of truth for ENG IDs, statements and priorities. |
+| Logical component responsibilities and interaction boundaries | [Component Interaction Design](architecture/system-interactions/component-interaction-design.md) | Current architecture model for UI, GAT, CON, SCI and CAT. |
+| Detailed cross-component interaction inventory | [Component Interaction Matrix](architecture/system-interactions/component-interaction-matrix.md) | Validated interaction directions, purpose and routes. |
+| End-to-end interaction scenarios | [Sequence diagrams](architecture/sequence_diagrams/README.md) | Submission, execution, result retrieval and failure/recovery flows. |
+| Component-level specifications | [Component specifications index](specifications/components/README.md) | First-draft component documents; they are not yet fully reconciled with the current interaction design. |
+| Delivery sequencing and implementation readiness | [GitHub issues and project tickets](https://github.com/arnaudsomville/MEOGAP/issues) | Source of truth for planned work, dependencies, acceptance criteria and delivery order. |
 
-GitHub's standard Markdown renderer does not include another Markdown file inline. These links are therefore intentional; do not copy component-level requirement tables into this document. If inline assembly becomes valuable, introduce a documentation-generation step as a separate, justified change rather than maintaining two manually edited copies.
+**No duplicated SYS or ENG requirement table is maintained here.** Update system requirements in `specifications/sys.md` and engineering requirements in `specifications/eng.md`. This document may explain their intent or scientific rationale, but must not reproduce stale copies of either baseline.
+
+The component documents under `specifications/components/` still contain first-draft assumptions, including legacy component terminology. Until reconciled, use the architecture documents above for current logical boundaries. Do not infer that a component is implemented merely because a specification exists.
+
+GitHub's standard Markdown renderer does not include another Markdown file inline. Keep these references as links; do not copy detailed requirements or component tables into this document.
+
+---
 
 ## 1. Project Rationale and Value Proposition
 
@@ -112,7 +117,7 @@ This is the **central conceptual model** of the platform.
 | **Product definition** | Versioned description of what a product calculates, independently of any particular request, output file or storage layout. | Developed and maintained within the Product Engine |
 | **Analysis request** | A user-initiated demand for a product over a spatial input, UTC period and parameters. | Submitted by a user or authorized consumer |
 | **Product result** | The immutable, versioned outcome calculated or retrieved for a request and a precise set of inputs. | Produced by the Product Engine |
-| **Result representation** | A technical or analytical view of a result: native data, a common-grid resampling, an H3 aggregation, an extracted series, a display image or an archive. | Produced by the Product Engine or Backend and linked to its source result |
+| **Result representation** | A technical or analytical view of a result: native data, a common-grid resampling, an H3 aggregation, an extracted series, a display image or an archive. | Scientific representations are generated by SCI; CON coordinates authorized access and delivery; each representation remains linked to its source result |
 | **Monitoring Indicator** | A configurable monitoring definition that combines existing products and rules to follow a phenomenon over space and time. | Configured by the user; a placeholder path is present in the first end-to-end demonstration |
 
 A **product definition** describes *what is calculated*; a **product result** is *what was calculated for particular sources, parameters, place and period*. A **result representation** is not necessarily a new scientific product: it is a derived view that must remain linked to its source result and document its transformation, spatial support, native-resolution context and known information loss. This distinction allows the same scientific method to be reused in many analyses without conflating scientific results with storage or display artifacts.
@@ -164,9 +169,9 @@ Scientific processing may need native raster geometry, appropriate reprojection,
 
 An SAU is the smallest selectable geographical unit used for aggregated analysis and time-series plots. Depending on the method, it could be a raster pixel, a grid cell, a hexagon or another spatial feature. **H3 is a promising initial candidate**, not a permanent commitment. Spatial resolution and aggregation methods must remain explicit: projecting a coarse observation onto smaller cells does not create new measured detail.
 
-A user should be able to select a spatial input (AOI, POI, or LOI) for an analysis and an individual SAU for aggregated evolution, then view a product for a chosen period and inspect its evolution by month, season or other supported time windows. For POI/LOI inputs, the UI sends the original geometry and explicit buffer parameters; buffering into an AOI is a backend responsibility. Missing observations, cloud masking, insufficient coverage and actual measured zeros must remain distinguishable. In particular, **“no data” must never be silently interpreted as “no change.”**
+A user should be able to select a spatial input (AOI, POI, or LOI) for an analysis and an individual SAU for aggregated evolution, then view a product for a chosen period and inspect its evolution by month, season or other supported time windows. For POI/LOI inputs, the UI sends the original geometry and explicit buffer parameters; buffering into an AOI is performed server-side; its detailed contract is defined separately. Missing observations, cloud masking, insufficient coverage and actual measured zeros must remain distinguishable. In particular, **“no data” must never be silently interpreted as “no change.”**
 
-Product outputs are not restricted to raster images: they may also be numerical values, per-unit measurements, time series or other suitable representations. The Core provides the analytical results; the Frontend presents them as maps and charts.
+Product outputs are not restricted to raster images: they may also be numerical values, per-unit measurements, time series or other suitable representations. SCI produces scientific results and representations; GAT exposes the authorized API operations, and UI presents them as maps and charts.
 
 ### 3.5 Analysis requests as the entry point to visualization
 
@@ -188,129 +193,106 @@ A result may be exposed through several **representations**: native scientific d
 - coverage and missing-data rules;
 - the known information loss, approximation or uncertainty introduced.
 
-The access contract for results must remain **independent of the physical storage organization**. A consumer must be able to request a bounded temporal or spatial slice, or a single representation, without knowing whether the data are stored as rasters, multidimensional arrays, files or database records. Loading an entire result is acceptable only within explicit request limits (spatial extent, number of dates, pixel count, memory and response size).
+The result-access contract exposed through GAT must remain **independent of the physical storage organization**. A consumer must be able to request a bounded temporal or spatial slice, or a single representation, without knowing whether the data are stored as rasters, multidimensional arrays, files or database records. Loading an entire result is acceptable only within explicit request limits (spatial extent, number of dates, pixel count, memory and response size).
 
 **Cartographic images are generated on demand, possibly with a cache.** The platform must not require a persisted image per date, and a display image must never become the sole persistent copy of a scientific result. Missing, masked, invalid, partial and genuine-zero values must remain distinguishable in every representation.
 
-The choice of a physical datacube organization (versioned raster collection, multidimensional array store such as Zarr, or another layout) is an implementation decision. It must not leak into product definitions or into the frontend contract.
+The choice of a physical datacube organization (versioned raster collection, multidimensional array store such as Zarr, or another layout) is an implementation decision. It must not leak into product definitions or into the public API contract exposed by GAT.
 
 ---
 
 ## 4. Logical System Architecture
 
-This section records the **conceptual architecture only**. Detailed component responsibilities and requirements belong to the linked specifications, not duplicated tables here.
+This section describes the current **logical target architecture**. It does not define deployment topology, implementation packages, API routes or message schemas.
 
-**High-level flow:** **UI → unique public REST Gateway (GTW) → CON for request lifecycle and SCI for scientific feasibility/orchestration → internal NATS/Workers → CAT and scientific results → GTW REST → UI**. GTW is the only public REST API. SCI Gateway is a subcomponent within SCI, not a peer component at this architecture level. The UI never accesses NATS directly. REST is the public source of truth for request state and result access; NATS is internal messaging infrastructure.
+### 4.1 Logical components
 
-| Logical responsibility | Specification |
+MEOGAP has five logical components:
+
+| Component | Responsibility |
 |---|---|
-| UI — interaction and presentation | [UI specification](specifications/components/ui.md) |
-| GTW — unique public REST API and routing | [GTW specification](specifications/components/gtw.md) |
-| CON — request lifecycle, ownership/access decisions, admission and cost tracking | [CON specification](specifications/components/con.md) |
-| CAT — asset discovery, registration and availability | [CAT specification](specifications/components/cat.md) |
-| SCI — scientific semantics, feasibility, processing, quality and provenance; SCI Gateway is internal to SCI | [SCI specification](specifications/components/sci.md) |
-| System-level requirements and interfaces | [SYS baseline](specifications/sys.md) |
-| Cross-cutting architecture and component index | [Component specifications index](specifications/components/README.md) |
+| **UI** | User interaction and presentation: product discovery, request configuration, Requests view, map/plot display and download actions. |
+| **GAT — Gateway** | The unique public REST entry point. It validates public request structure and routes operations to the responsible logical component. |
+| **CON — Control / Orchestration** | Authoritative request lifecycle, proposal preparation, cost coordination, access decisions, execution-plan orchestration, cancellation and delivery orchestration. CON does not own scientific methods or a catalogue of concrete assets. |
+| **SCI — Scientific Processing** | Scientific product definitions and methods, feasibility, scientific input requirements, computation and generation of scientific result representations. SCI does not resolve scientific criteria to concrete available acquisitions or own request lifecycle. |
+| **CAT — Data and Asset Catalog** | Discovery and availability of concrete source/product assets, resolution of scientific requirements to exact assets, identification of missing inputs, L0 acquisition/ingestion and itemized acquisition pricing, asset registration, actual lineage, canonical asset references and current storage locations. CAT does not define scientific methods or orchestrate generation of missing scientific products. |
 
-**Implementation mapping (provisional):** `meogap_api` implements most GTW responsibilities; `meogap_core` is a reusable software library for scientific logic, adapters and shared abstractions, and is not synonymous with the SCI responsibility; `meogap_worker` executes tasks using those capabilities. CAT's software boundary and persistence mechanism remain to be designed. Do not create a separate service solely because CAT is a distinct logical responsibility.
+### 4.2 Validated interaction boundaries
 
-**M0 boundary:** Demonstrate one deterministic browser-driven request journey through UI → REST API → mocked/simulated processing → result → UI. M0 must exercise versioned contracts, deterministic identity propagation and owner-scoped authorization behavior, while not claiming production authentication or hardened multi-account isolation. Real EO acquisition and scientific computation, robust persistence, and a production credit ledger are scheduled and tracked in the corresponding GitHub tickets. Contracts and observable states may be real while scientific data and selected services are mocked.
+The main logical routes are:
 
-**Notifications:** NATS is internal and remains an implementation-level transport. Notifications only signal that state may have changed; clients retrieve authoritative state and results through REST, including after reconnection. The specific browser-facing update mechanism is a separate implementation decision and must not create a second source of truth.
+- **UI ↔ GAT:** all user-facing operations use the single public REST Gateway.
+- **GAT ↔ CON:** request submission and state, proposal confirmation, cancellation, access decisions and Delivery Management.
+- **GAT ↔ SCI:** scientific product catalogue and theoretical input requirements only.
+- **CON ↔ SCI:** scientific feasibility and input requirements, computation-complexity estimates, computation dispatch and execution outcomes.
+- **CON ↔ CAT:** concrete dependency resolution, L0 ingestion, itemized acquisition costs, actual lineage, and on-demand resolution of canonical asset references and current storage locations.
+- **SCI ↔ CAT:** registration of generated-product metadata and actual input lineage, followed by registration confirmation.
+- **No direct GAT ↔ CAT interface:** user-facing asset and lineage operations pass through CON.
 
-**Key architectural constraint:** GTW, CON, CAT and SCI have distinct responsibilities and communicate through explicit contracts. CON and SCI are coupled only through versioned interfaces, not shared responsibilities. SCI Gateway remains an internal SCI subcomponent. These logical boundaries do not prescribe deployment topology.
+For a generated product, SCI writes the result object to object storage and sends CAT the computation metadata, initial location and exact input assets actually used. CAT registers the asset and its actual lineage. CON records the logical task outcome, but does not maintain a duplicate product-to-asset or asset-to-location mapping. Whenever CON needs an asset reference or location, it queries CAT.
 
-## 5. Functional Requirements
+For a computation input, the route is **CAT → CON → SCI**: CAT resolves the scientific input requirements to concrete assets; CON passes their current canonical references and locations to SCI. SCI accesses the objects directly from storage.
 
-Requirements are described at these levels:
+For visualization or delivery, CON first checks access rights and then queries CAT for the current canonical reference and location. CON passes these to SCI for representation generation, or uses them to retrieve objects and assemble a delivery. A dependency archive is generated on demand from CAT's **actual lineage**, not from CON's planned execution graph.
 
-- **System/Service (`SYS`)**: what the platform must make possible, independently of implementation. System requirements may also establish logical responsibility boundaries where these are necessary to keep public access, data assets and scientific computation distinct.
-- **Component (`FE`, `CORE`, `BE`)**: the current component-level requirement inventory. During refinement, each item must be mapped to its actual logical owner: UI, GTW, CON, CAT, SCI, or a cross-cutting/system concern. `BE` and `CORE` are existing requirement prefixes, not final logical component names.
-- **Engineering (`ENG`)**: capabilities required to build, operate, and validate the platform, independent of user-facing features. Engineering requirements state outcomes, not implementation choices.
+### 4.3 Supporting mechanisms and external infrastructure
 
-The logical responsibilities **GTW/CON/CAT/SCI** are not package names. Do not silently rename or delete existing requirement IDs; keep an explicit traceability/migration map when the component inventory is reallocated.
+The following are not additional logical components:
 
-**Priorities and delivery scope:** `P0` = required to be represented in the M0 end-to-end demonstration, which may mean a real contract with mocked data/behavior or a deliberately partial implementation; it does **not** imply that the full capability is implemented in M0. `P1` = later foundational capability, generally M1–M3; `P2` = later extension. The requirement's full intended behavior and its M0 demonstration scope must be distinguished explicitly. The relevant GitHub tickets and their acceptance criteria define when full behavior is delivered.
+- **Workers** execute long-running ingestion, computation or archive-assembly tasks. CON decides which computations are eligible; workers do not resolve scientific dependencies themselves.
+- **NATS** is a candidate internal messaging transport. It is not a business component or a public interface. Its use, delivery guarantees and recovery behavior remain interface/contract decisions.
+- **EO providers** are external systems accessed by CAT for source acquisitions.
+- **Object storage** is infrastructure. SCI reads and writes objects directly; CON may read objects for delivery; CAT owns the logical asset catalogue and canonical storage-location mapping.
 
-### 5.1 System / Service Requirements
+The request state remains retrievable through REST. Notifications are optional refresh mechanisms and are not a second source of truth.
 
-| ID | Priority | Requirement | M0 treatment / full delivery |
-|---|---|---|---|
-| **SYS-01** | P0 | The platform shall expose a catalogue of the scientific products it supports, with the information needed to understand each product's purpose, scientific context, processing level, inputs and outputs, spatial and temporal characteristics, units, known limitations, documentation reference, and scientific validation status. Catalogue availability shall describe what can be requested and shall not imply that a computed result is already available. | M0: expose one synthetic product descriptor with explicit demo/unvalidated status. Full real catalogue metadata grows with the first real product in M1 and reusable definitions in M2. |
-| **SYS-02** | P0 | A user shall be able to define or select a spatial input for an analysis — an Area of Interest (AOI), Point of Interest (POI), or Line of Interest (LOI) — according to the spatial input types supported by the selected product and within configurable constraints. | M0: support AOI, POI and LOI. UI sends original POI/LOI geometry and explicit buffer parameters; the backend bufferises these inputs and treats the resulting geometry as an AOI downstream. Product-specific constraints may still reject unsupported requests. |
-| **SYS-03** | P0 | A user shall be able to submit an analysis request for a supported product with all required inputs and parameters, including the spatial input, UTC time period, and product-specific parameters. Invalid or incomplete requests shall be rejected with explicit feedback. | M0: submit a deterministic request with validated required fields, AOI and UTC period through REST; reject invalid/missing fields. Real source-specific parameters and validation expand in M1–M2. |
-| **SYS-04** | P1 | The platform shall calculate the requested product, including required intermediate products, or retrieve a suitable existing result according to documented product-version, parameter, spatial and temporal coverage, quality, and access criteria. | M0: deterministic simulated processing/result retrieval only. First real EO product and source access in M1; reusable dependency resolution and compatible-result reuse in M2. |
-| **SYS-05** | P0 | A user shall be able to display a successful analysis request as a geographical result, cropped to its spatial input, for a supported time window, using an action in the Requests view. | M0: display a successful synthetic request result from Requests through the UI/API contract. Real product rendering in M1. |
-| **SYS-06** | P0 | A user shall be able to select a Spatial Analysis Unit (or an AOI summary) and inspect a product's evolution over time. | M0: demonstrate a synthetic SAU-like selection or AOI summary and time series without requiring a physical H3 grid. Real SAU aggregation is developed in M1–M2. |
-| **SYS-07** | P0 | The platform shall distinguish valid values (including genuine zeros), missing observations, masked/cloud-affected values, and processing failures. | M0: fixtures and UI/API contracts distinguish zero, missing/masked data and processing failure. Real sensor masks and source-specific quality handling in M1. |
-| **SYS-08a** | P0 | A user shall be able to filter results by a UTC time window `[start, end]`, with both bounds inclusive, at date or month granularity. | M0: support an inclusive UTC range at the demo's fixed granularity. Product-specific supported frequencies and bounded windows are defined in M1–M2. |
-| **SYS-08b** | P1 | A user shall be able to select recurring temporal subsets of an existing product dataset (for example, the summer observations for each of the last ten years) without implying that new scientific observations or temporal aggregates are being calculated. SCI shall apply the product-supported temporal selection and create an appropriate result representation for visualization or analysis. | M0: demonstrate the filter/representation contract with deterministic data if included in the reference journey. Real product-specific seasonal selection and representation generation follow the first real product in M1. Temporal aggregation/statistical synthesis is not implied by this requirement. |
-| **SYS-09** | P2 | The platform shall support meaningful comparison or combination of products with different spatial and temporal characteristics through explicit harmonization. | Deferred extension. Do not implement multi-product comparison in M0; first explicit harmonization operation is targeted for M1, with broader multi-product comparison later. |
-| **SYS-10** | P0 | Each calculated result shall be immutable and versioned when recomputed, and shall expose its lineage: source datasets, intermediate products, method and version, parameters, time window, spatial scope, quality status and limitations, and scientific validation status. | M0: minimal synthetic result contract with stable result identity, request/product reference, parameters, spatial/time scope and status. Full scientific lineage, dependency/intermediate provenance and persistent immutable versions in M2, with platform hardening in M3. |
-| **SYS-11** | P2 | A user shall be able to define a monitoring indicator that combines existing products and monitoring rules. | M0: no functional indicator engine or stub evaluation is required; a non-functional/visual placeholder may communicate future scope. Initial real engine and UX in M4; advanced rules later. |
-| **SYS-12** | P1 | An authenticated user shall be able to consult a dedicated list of their own analysis requests, see the current state of each request, and access its available results, cost, and quality status. | M0: Requests view and state display against a local deterministic demo identity/data set; real authentication and owner-scoped access in M3. |
-| **SYS-13** | P1 | A user shall be able to download a successful result as a final product, with its units and essential context. | M0: functional download of a deterministic synthetic result artifact; real product artifact download as real products arrive, with provenance-based archives in M3. |
-| **SYS-14a** | P1 | Every supported scientific product shall carry a mandatory validation record containing at least a reference, a metric, a tolerance, an observed result, and a scientific validation status (`validated` or `unvalidated`). The record shall be exposed with the product and its results. This product-level status is distinct from the per-result quality status. | M0: synthetic catalogue may label validation as unvalidated; enforce real product validation records with the first real EO product in M1. |
-| **SYS-14b** | P1 | Scientific methods shall document at least one comparison with a published method or reference product, or justify why no suitable comparison is available. | M0: not required for the synthetic demo. Compare the first real scientific method against a published method or reference in M1 where a suitable reference exists. |
-| **SYS-15** | P1 | The platform shall be extensible with additional products and data sources without requiring a redesign of the user experience. | M0: demonstrate a small product descriptor/contract that does not hard-code scientific computation into the UI. Prove reusable extensibility with the Product Engine in M2. |
-| **SYS-16** | P0 | The Requests view shall reflect request-state changes automatically, without requiring the user to reload the page. After reconnection, the current state shall remain retrievable through REST. | M0: demonstrate state updates in the local demo and use REST to recover current state; production-grade notification delivery and recovery are hardened later. |
-| **SYS-17** | P1 | The platform shall provide REST-based access to submit and consult analysis requests, their statuses, and their results for authenticated users and authorized future consumers, with access scoped to the caller's data and with the caller identity and request origin recorded for authorization and audit. | M0: implement the public REST contract for the local demo without claiming production authentication/authorization. Authenticated, owner-scoped access and audit in M3. |
-| **SYS-18** | P1 | The platform shall authenticate users, support sign-in and sign-out, and restrict access to each user's own requests, results, and derived data. It shall support multiple user accounts and propagate the authenticated identity to every component involved in processing a request. | M0: no real authentication, multi-account support or security claim. Full authentication, ownership isolation and identity propagation in M3. |
-| **SYS-19** | P1 | The platform shall maintain versioned, reusable scientific product definitions, including their processing level, supported spatial input types and constraints, input requirements, dependency graph/tree with intermediate products, parameters, outputs, documentation, and scientific validation status. | M0: minimal deterministic product descriptor sufficient for the demo. Full versioned definitions and dependency graph in M2. |
-| **SYS-20** | P1 | Each product result and source observation shall carry the quality metadata needed to interpret it, including a quality status (`validated`, `poor_quality`, `unknown`) and a quality index field whose value may be `unknown` when it has not been computed. When several sources are available, the platform shall select them according to documented quality and availability criteria. Computing the quality index from factors such as spatial resolution, cloud cover, and source characteristics is a later capability. | M0: synthetic fixtures preserve quality/unknown/missing distinctions. Real source-quality handling in M1; reusable quality selection in M2. |
-| **SYS-21** | P1 | The platform shall support configurable temporal frequencies and maximum periods for products and source observations, including daily, monthly, annual, seasonal, and custom definitions. | M0: fixed demo-supported period/frequency only. Product-specific temporal capability definitions in M1–M2. |
-| **SYS-22** | P1 | Every supported scientific product shall have versioned documentation covering its purpose, method, inputs, outputs, units, assumptions, limitations, references, and validation. Documentation completeness shall be verified by the project's quality gates and its status exposed in the product catalogue. | M0: document the synthetic demo product sufficiently to explain its placeholder status. Full quality-gated documentation for the first real product in M1 and reusable catalogue checks thereafter. |
-| **SYS-23** | P1 | A user shall be able to download a successful result as a final product only, or as an archive that additionally includes its intermediate products and source observations, organized as a directory tree with the provenance needed to interpret them. The archive shall be constructed from the actual lineage of the result; source observations already available in the source store may be referenced rather than duplicated. | M0: no archive or real lineage packaging. Real archive built from actual lineage in M3. |
-| **SYS-24** | P1 | Before accepting an analysis request, the platform shall estimate its cost in credits, verify that the authenticated user has sufficient credits, and record the admission decision. After processing, it shall record the actual cost and update the user's credit balance according to the configured credit policy. The initial configuration may grant unlimited credits, but estimation, admission, and recording shall still occur. | M0: simulated estimate/balance/admission for the demo only; no real ledger or financial accounting. Real admission and idempotent ledger in M3. |
-| **SYS-25** | P0 | A user shall be able to see the estimated cost before submitting a request, the actual cost after processing, and their current credit balance. | M0: show deterministic simulated cost and balance with explicit demo semantics. Real values from the credit ledger in M3. |
-| **SYS-26** | P0 | The platform shall expose a storage-independent access contract for a result that can return a bounded spatial and temporal slice without requiring the whole result to be loaded. | M0: define and exercise the contract against a small synthetic result. Real bounded partial reads after the first real product, based on measured needs and an ADR for storage constraints. |
-| **SYS-27** | P1 | Every derived representation shall be linked to its source result and shall record its transformation method and version, spatial support and resolution, coverage, missing-data rules, and known information loss or uncertainty. | M0: minimal synthetic representation descriptor and source-result link. Full lineage/coverage/loss metadata in M1–M2 as real representations are introduced. |
-| **SYS-28** | P0 | The platform shall generate display representations on demand or from a cache; it shall not require a persisted image per date, and a display representation shall never be the sole persistent copy of a scientific result. | M0: demonstrate a display representation generated from synthetic result data; real rendering follows the first real product in M1. The principle forbids designing a mandatory per-date image store. |
-| **SYS-29** | P0 | The platform shall define spatial harmonization as an explicit, replaceable operation with a contract that records method, target support, aggregation, coverage and native-resolution context. H3 may be an analysis support but shall not be treated as a storage format or as a raster resampling algorithm. | M0: contract and deterministic synthetic demonstration only. First real harmonization implementation in M1; do not require a physical H3 grid in M0. H3 aggregation and raster resampling remain distinct operations. |
-| **SYS-30** | P0 | The platform shall enforce explicit analysis-request limits covering spatial extent, temporal period, pixel count, memory and response size, and shall reject requests outside supported bounds with explicit feedback. | M0: enforce a small, deterministic set of request limits in the demo API. Full resource-aware limits as real data and processing are introduced. |
-| **SYS-31** | P0 | The system architecture shall define and preserve distinct responsibilities for the unique public REST Gateway (GTW), request lifecycle/ownership/access/admission/cost management (CON), scientific processing (SCI), Data Catalog (CAT), UI, asynchronous execution (Workers), and internal messaging (NATS). CON shall have no scientific knowledge; SCI shall not own request lifecycle, ownership/access rights or credit policy. CON and SCI shall interact only through explicit versioned interfaces. SCI may contain internal subcomponents such as SCI Gateway for scientific orchestration; these are not peer system components by default. GTW shall be the only public REST API and route external/UI requests through internal contracts. The UI shall use GTW and shall not access NATS directly. These responsibilities shall have explicit ownership boundaries and contracts, without requiring a one-to-one mapping to packages, processes or deployed services. | M0: document the responsibility/interface model and demonstrate UI→GTW REST→CON/SCI interface flow→simulated NATS/worker processing→GTW REST result retrieval; real ingestion and heavy scientific processing arrive incrementally. |
+### 4.4 Request lifecycle and API behavior
 
-### 5.2 Component Requirements — authoritative specifications
+Submitting an analysis request starts proposal preparation: CON persists the request, coordinates scientific feasibility and dependency resolution, and calculates the estimated cost. The proposal is returned for explicit user confirmation. Confirmation starts execution; the user may request cancellation in any request state except `COMPLETED`.
 
-The component specifications now hold the owner-oriented requirement sets (UI-*, GTW-*, CON-*, CAT-* and SCI-*). They are the working references for component boundaries and proposed behavior. The earlier FE-*, CORE-* and BE-* inventories have not yet been fully reconciled against these component-specific IDs; do not assume a one-to-one migration or silently discard an unmapped requirement. Complete that traceability review as a follow-up before treating the migration as closed.
+Any user-facing operation expected to take more than **5 seconds** is exposed asynchronously from the start. GAT returns a request/reference and current state; UI retrieves state and the eventual outcome through REST. This API behavior does not dictate whether internal work uses a worker, NATS or another mechanism.
 
-- **UI / former FE requirements:** [UI specification](specifications/components/ui.md)
-- **GTW:** [GTW specification](specifications/components/gtw.md)
-- **CON:** [CON specification](specifications/components/con.md)
-- **CAT:** [CAT specification](specifications/components/cat.md)
-- **SCI / scientific processing and former CORE requirements:** [SCI specification](specifications/components/sci.md)
-- **Cross-component contracts and system traceability:** [SYS baseline](specifications/sys.md) and [component index](specifications/components/README.md)
+### 4.5 Implementation boundary
 
-Next documentation step: create an explicit mapping from each legacy FE-*, CORE-* and BE-* requirement to one or more component-specific requirements or record it as intentionally retired with rationale. Until that review is complete, the component specifications are a working draft, not proof that every legacy requirement has been carried forward. System-level requirements in §5.1 remain the baseline against which component requirements are traced.
+These are logical responsibility boundaries, not a required one-to-one mapping to packages, processes, containers or deployed services. The architecture is a design target, not a claim that all listed capabilities are already implemented. The current repository remains a scaffold; M0 demonstrates a deterministic end-to-end journey with selected mocked behavior, while real EO acquisition, scientific products and reusable processing capabilities arrive incrementally under their respective tickets.
 
-### 5.5 Engineering Requirements
+**Legacy component drafts:** some first-draft specifications still use earlier component names or responsibility allocations. They are not authoritative where they conflict with the five-component model above and must be reconciled before being used to define contracts or implementation.
 
-Engineering requirements state outcomes, not implementation choices.
+---
 
-| ID | Priority | Requirement |
-|---|---|---|
-| **ENG-01** | P0 | Shared contracts shall have a single versioned source, explicit compatibility rules, contract tests, and an external API versioning policy; breaking changes shall require a version bump and coordinated consumer updates. |
-| **ENG-02** | P0 | Request and execution state shall be persisted and recoverable after interruption. State-changing operations shall be idempotent so that retries do not duplicate requests, results, ledger entries, or notifications. |
-| **ENG-03** | P0 | Long-running work shall execute outside the request-response cycle with progress, bounded retries, failure isolation, and observable terminal states; a failed job shall not corrupt request state. |
-| **ENG-04** | P0 | Liveness and readiness shall be distinct; readiness shall reflect required dependencies, and degraded operation shall be explicit. |
-| **ENG-05** | P0 | Structured logs and durable audit events shall carry request, result, and processing-run correlation; they shall be sufficient to diagnose failures and shall never contain secrets or sensitive user data. |
-| **ENG-06** | P0 | Configuration shall be external, validated at startup, fail fast when invalid, and separate non-secret configuration from injected secrets. |
-| **ENG-07** | P0 | Merge-blocking gates shall cover format, lint, type, unit, non-regression, functional, contract, traceability, documentation completeness, security and CVE, and migration checks. Validation and benchmark tests shall be runnable on demand. Changes to shared contracts shall validate all consumers. |
-| **ENG-08** | P1 | Clean-environment reproducibility shall use lockfiles, pinned toolchains, deterministic test fixtures, and no mutable external state. |
-| **ENG-09** | P1 | Documented commands shall cover installation, tests, quality, build, run, and operation. |
-| **ENG-10** | P0 | Credentials and sessions shall be protected; secrets shall not be stored in the repository, images, or logs; components shall run with least privilege; dependency vulnerabilities shall be detected and exceptions documented according to the project CVE policy. |
-| **ENG-11** | P1 | Operational metrics and traces shall expose request and result throughput, latency, failure rate, queue depth, and processing outcomes, correlated with request and result identifiers. |
-| **ENG-12** | P0 | Persistent schema changes shall be versioned migrations, applied consistently, tested, and shall preserve result versions, lineage, and ledger history. |
-| **ENG-13** | P1 | Backup and restore of requests, results, lineage, and ledger data shall be documented and tested. |
-| **ENG-14** | P1 | Third-party licenses, attributions, and dependency inventory shall be tracked; an SBOM may be generated. |
+## 5. Requirements and Reference User Journey
 
-### 5.6 Reference usage scenario
+This document states project intent, scientific concepts and high-level architecture principles. The detailed system requirements and their M0 treatment are maintained in the dedicated baseline.
 
-After signing in, a user sees a multi-resolution satellite basemap, selects a supported product (for example, nighttime radiance), defines an AOI, POI, or LOI and chooses a range of months. The platform shows the estimated cost and the user's credit balance before submission. The user submits an **analysis request**, which appears in the **Requests** tab with its current status and updates automatically; REST remains the source of truth after reconnection. Once it succeeds, the user can download the **final product only**, or include intermediate products and source observations in an archive. The user selects **Display on map** from that request entry. The final product appears cropped to the spatial input for an available month, and the user selects a **Spatial Analysis Unit** to inspect its time series. If a month contains no valid observations, the plot shows a gap or an explicit unavailable status—not a zero. A successful request can therefore still contain missing observations. The user can also identify the source, method, quality status, and scientific validation status behind the result.
+### 5.1 System requirements — single source of truth
+
+The complete `SYS-*` requirement set, priorities, M0 treatment and target delivery are maintained exclusively in [System Requirements Baseline](specifications/sys.md).
+
+Do not create or maintain a duplicate SYS table in this document. Requirement IDs, wording, priorities and delivery treatment must be changed in `specifications/sys.md`; this project definition may explain the scientific motivation but is not a competing requirements baseline.
+
+### 5.2 Component specifications and architecture references
+
+The current logical component model is **UI, GAT, CON, SCI and CAT**. The validated responsibility boundaries and interactions are documented in:
+
+- [Component Interaction Design](architecture/system-interactions/component-interaction-design.md) — responsibilities, ownership boundaries and architecture decisions.
+- [Component Interaction Matrix](architecture/system-interactions/component-interaction-matrix.md) — detailed producer/consumer interactions and logical routes.
+- [Sequence diagrams](architecture/sequence_diagrams/README.md) — request submission, execution, result retrieval, and failure/recovery scenarios.
+
+The documents under [component specifications](specifications/components/README.md) are first drafts and are not yet fully reconciled with the current architecture. They may contain legacy terminology and assumptions; do not treat those statements as current decisions until the component specifications are reviewed and aligned with the interaction design.
+
+### 5.3 Engineering requirements — single source of truth
+
+The complete `ENG-*` engineering requirements baseline is maintained exclusively in [Engineering Requirements Baseline](specifications/eng.md).
+
+These cross-cutting requirements complement the system-level `SYS-*` capabilities with engineering constraints for contracts, state reliability, asynchronous execution, identity propagation, observability, security, reproducibility, persistence and operations. Do not duplicate or maintain ENG requirement statements in this project definition. Changes to ENG IDs, wording or priorities belong in `specifications/eng.md`; delivery sequencing and acceptance criteria remain the responsibility of the relevant GitHub issues.
+
+### 5.4 Reference usage scenario
+
+After signing in, a user sees a multi-resolution satellite basemap, selects a supported product (for example, nighttime radiance), defines an AOI, POI or LOI and chooses a range of months. The user submits an **analysis request**. The request appears in the **Requests** view while CON prepares the proposal by evaluating scientific feasibility, resolving dependencies and estimating cost. The estimated cost and feasibility outcome are then displayed to the user, who explicitly confirms or cancels the request. After confirmation, execution begins; the request state remains retrievable through REST, while notifications may refresh the UI. The user can request cancellation in any state except `COMPLETED`. Once the request succeeds, the user can download the **final product only**, or request an on-demand archive containing the product and its actual dependencies. The user selects **Display on map** from the request entry. The final product appears cropped to the spatial input for an available month, and the user selects a **Spatial Analysis Unit** to inspect its time series. If a month contains no valid observations, the plot shows a gap or an explicit unavailable status—not a zero. A successful request can therefore still contain missing observations. The user can also identify the source, method, quality status and scientific validation status behind the result.
 
 **This single journey, together with the minimal indicator placeholder path, is a sufficient first end-to-end demonstration.** Multiple sensors, elaborate monitoring indicators, distributed execution and advanced scientific retrieval algorithms are not needed to prove it.
 
-### 5.7 Terminology
+### 5.5 Terminology
 
 - **AOI**: Area of Interest, a polygonal spatial input for a request.
 - **POI**: Point of Interest, a point spatial input for a request.
@@ -329,7 +311,7 @@ After signing in, a user sees a multi-resolution satellite basemap, selects a su
 - **Representation**: a derived technical or analytical view of a result (native data, common-grid resampling, H3 aggregation, extracted series, display image or archive). It is linked to its source result and documents its transformation, support, resolution, coverage and known information loss; it is not a new scientific product by itself.
 - **Native grid**: the geometry, coordinate reference system and resolution of a source observation or computed product, preserved as the scientific reference.
 - **Spatial harmonization**: an explicit operation that transforms or compares data on a common spatial support, such as reprojection, resampling or aggregation.
-- **Spatial Harmonization Engine**: the replaceable component responsible for explicit spatial harmonization operations; it does not absorb product-specific scientific computation or decide aggregation validity on its own.
+- **Spatial harmonization operation**: an explicit, replaceable scientific operation that transforms data onto a documented common support. It is a processing capability, not a sixth logical component; it must not absorb unrelated product-specific scientific computation or decide aggregation validity without a documented method.
 - **Datacube**: an organized multidimensional store for a product across space and time. Its physical layout is an implementation decision and must not leak into product definitions or access contracts.
 - **Partial read**: retrieval of a bounded temporal or spatial slice of a result without loading the whole result.
 - **Retention**: the policy governing how long source observations, scientific results and derived representations are kept, which may differ by category.
@@ -434,4 +416,4 @@ An agent reading the proposal should distinguish **required capabilities**, **la
 
 ---
 
-**End of proposal — v0.18.**
+**End of proposal — v0.20.**
