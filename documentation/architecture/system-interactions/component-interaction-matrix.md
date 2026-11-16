@@ -139,13 +139,16 @@ SCI owns scientific product definitions and methods, scientific feasibility, inp
 | CS-02 | SCI → CON | Return scientific evaluation | Return feasibility, conditions or limitations, and input requirements (for example spectral bands, spatial/spectral resolution, acquisition period and quality constraints). SCI describes requirements; it does not select concrete assets. |
 | CS-03 | CON → SCI | Request computation-complexity estimate | Request information about the computational effort/resources required for a product computation. |
 | CS-04 | SCI → CON | Return computation-complexity estimate | Return technical complexity/resource information. CON applies its pricing policy and calculates the user-facing computation cost. |
-| CS-05 | CON → SCI | Request product computation | Dispatch a computation with the product definition/version, parameters and concrete input references already resolved by CON through CAT. |
+| CS-05 | CON → SCI | Request product computation | Dispatch a derived-product computation with the product definition/version, parameters and concrete input references already resolved by CON through CAT. |
 | CS-06 | SCI → CON | Return computation outcome | Report success or failure, distinguishing scientific computation failure from asset-registration failure. A successful outcome confirms that CAT registration completed; CON queries CAT separately when it needs the canonical asset reference or storage location. |
+| CS-07 | CON → SCI | Request L0 source harmonization | Request harmonization of a registered Source Asset's original provider representation. CON supplies the original representation reference and the required request/correlation context. |
+| CS-08 | SCI → CON | Return L0 harmonization outcome | Report harmonization success/failure and identify the logical Source Asset and processing run. Successful completion means SCI has generated the harmonized representations and submitted them to CAT for registration; CON must verify required representation availability through CAT before unblocking dependent computations. |
 
 **Validated rules**
 
 - CS-01 / CS-02 combine scientific feasibility and scientific input requirements into one logical request/response interaction. It is triggered by the submitted analysis request, not by a separate pre-submission evaluation call.
-- CS-05 / CS-06 represent execution and its outcome; completion progress is not a required business notification.
+- CS-05 / CS-06 represent derived-product execution and its outcome; completion progress is not a required business notification.
+- CS-07 / CS-08 represent source harmonization as a distinct SCI processing operation after CAT has acquired, preserved and registered the original L0 representation. CON orchestrates this operation.
 - Computation progress belongs to technical observability (for example traces or a workflow visualizer), not to a mandatory SCI → CON business interaction.
 - CON remains responsible for request state and cost policy.
 - For a missing intermediate product, CON repeats the scientific evaluation and CAT resolution process recursively, then orchestrates its computation in dependency order.
@@ -153,7 +156,7 @@ SCI owns scientific product definitions and methods, scientific feasibility, inp
 
 ## 5. CON ↔ CAT — Concrete dependency resolution, acquisition and asset references
 
-CAT knows concrete source acquisitions and product assets, resolves scientific input requirements against its inventory, identifies missing data, manages L0 ingestion and records actual lineage. CON owns recursive planning and orchestration of missing scientific products. CON supplies trusted request/caller context for attribution, audit and tracing; CAT does not make user access-policy decisions.
+CAT knows concrete source acquisitions and product assets, resolves scientific input requirements against its inventory, identifies missing data, acquires and preserves original L0 provider representations, registers Source Assets and representation references, and records actual lineage. SCI generates harmonized representations; CON owns orchestration of acquisition, harmonization and missing scientific-product generation. CON supplies trusted request/caller context for attribution, audit and tracing; CAT does not make user access-policy decisions.
 
 | ID | Producer → Consumer | Interaction | Purpose / information |
 |---|---|---|---|
@@ -169,28 +172,36 @@ CAT knows concrete source acquisitions and product assets, resolves scientific i
 | CC-10 | CAT → CON | Return canonical asset references and locations | Return the canonical asset reference and current storage location for each requested asset. CAT remains the source of truth; CON uses the returned information for the immediate operation and does not maintain a duplicate asset catalogue or storage mapping. |
 | CC-11 | CON → CAT | Request actual result lineage | Ask for the actual dependencies used by a specific generated result. |
 | CC-12 | CAT → CON | Return actual result lineage | Return the exact product/acquisition instances and versions used to generate the result. |
+| CC-13 | CON → CAT | Resolve original Source Asset representation | Request the canonical reference/location of the original provider representation for a Source Asset, before SCI harmonization. |
+| CC-14 | CON → CAT | Check harmonized representation availability | Check whether the required harmonized product and quality representations for a Source Asset have been registered and are currently available. |
 
 **Validated rules**
 
 1. CAT resolves scientific criteria into concrete available product/acquisition instances. SCI does not perform this matching.
 2. CAT identifies missing intermediate products but does not trigger or orchestrate their generation. CON recursively plans and dispatches those computations.
+3. CAT acquires, preserves and registers the original L0 provider representation. SCI, not CAT, generates the MEOGAP-harmonized product and quality representations.
+4. CON orchestrates harmonization after original Source Asset registration. CAT registers the harmonized representation references against that existing Source Asset and reports their availability.
 3. CAT provides the acquisition cost separately for each missing L0 acquisition. CON consolidates these costs with computation costs.
 4. CAT is the source of truth for the mapping from a logical asset to its canonical storage reference/location.
 5. The planned execution graph owned by CON is distinct from the actual lineage recorded by CAT.
 6. For archive creation, CON requests actual lineage and asset references from CAT, then retrieves the objects from storage and assembles the temporary ZIP.
 
-## 6. SCI ↔ CAT — Registration of generated products
+## 6. SCI ↔ CAT — Registration of generated products and harmonized representations
 
-SCI writes computed output objects directly to the object-storage bucket. It then reports the generated asset and computation metadata to CAT. CAT registers the asset and may reorganize the stored object.
+SCI writes derived-product outputs and L0 harmonized representations directly to object storage. For a Derived Asset, SCI reports the generated asset, computation metadata and exact input references actually consumed to CAT. For L0 harmonization, SCI reports the generated representation references, harmonization method/version, quality-layer metadata and source representation reference. CAT registers Derived Assets with their actual lineage, or registers harmonized representations against the existing Source Asset; it does not reinterpret or generate the scientific data.
 
 | ID | Producer → Consumer | Interaction | Purpose / information |
 |---|---|---|---|
-| SC-01 | SCI → CAT | Declare/register a generated product | Supply computation metadata, the initial object-storage location and the exact input asset references actually consumed. SCI has already written the result object to the bucket. |
-| SC-02 | CAT → SCI | Confirm product registration | Confirm that the generated product and its actual lineage have been registered successfully. CAT remains the source of truth for the canonical asset reference and current location; CON queries CAT when those are needed. |
+| SC-01 | SCI → CAT | Declare/register a Derived Asset | Supply computation metadata, the initial object-storage location and the exact input asset references actually consumed. SCI has already written the result object to the bucket. |
+| SC-02 | CAT → SCI | Confirm Derived Asset registration | Confirm that the Derived Asset and its actual lineage have been registered successfully. CAT remains the source of truth for the canonical asset reference and current location; CON queries CAT when those are needed. |
+| SC-03 | SCI → CAT | Register harmonized Source Asset representations | Supply the existing Source Asset identifier, original representation reference, harmonization method/version, generated product/quality representation references and relevant provenance/metadata. This updates the existing Source Asset; it does not create a Derived Asset. |
+| SC-04 | CAT → SCI | Confirm harmonized representation registration | Confirm that the harmonized representations have been registered against the existing Source Asset and return their logical representation identifiers/status. CAT remains the source of truth for representation references and availability. |
 
 **Validated rules**
 
 - SCI accesses input objects directly through references and locations supplied by CON; there is no direct CAT → SCI input-reference exchange.
+- For L0 harmonization, CON obtains the original Source Asset representation reference from CAT and supplies it to SCI. SCI then writes harmonized outputs and registers their references with CAT.
+- Registration of harmonized representations updates the existing Source Asset and must not be modelled as creation of a Derived Asset.
 - The input references follow the route **CAT → CON → SCI**.
 - SCI writes generated result objects to storage and sends metadata to CAT; CAT owns catalogue registration, actual lineage, canonical asset references and current storage locations.
 - CAT may subsequently reorganize the asset in storage without changing the logical identity exposed to consumers. Consumers must ask CAT for the current location when they need to access it.
@@ -238,8 +249,9 @@ The SCI ↔ CAT interface is limited to generated-product registration and confi
 | Submit an analysis request and obtain the feasibility/cost proposal | UI → GAT → CON; CON ↔ SCI; CON ↔ CAT; CON → GAT → UI (or later REST retrieval when preparation is asynchronous) |
 | Submit then explicitly confirm a request | UI → GAT → CON (submission and proposal preparation); later UI → GAT → CON (confirmation) |
 | Resolve a missing intermediate product | CON ↔ SCI for its requirements; CON ↔ CAT for concrete dependencies; CON recursively repeats as needed |
-| Acquire missing L0 data | CON → CAT → external provider/storage; CAT → CON reports outcome |
-| Execute a computation | CON → CAT for canonical input references/locations; CON → SCI with those references/locations; SCI reads object storage directly |
+| Acquire missing L0 data | CON → CAT → external provider/storage; CAT preserves and registers original Source Asset representation, then reports outcome |
+| Harmonize missing L0 data | CON → CAT for original representation reference; CON → SCI for harmonization; SCI writes harmonized representations and SCI → CAT registers them against the existing Source Asset; CON checks representation availability |
+| Execute a derived-product computation | CON → CAT for canonical harmonized input references/locations; CON → SCI with those references/locations; SCI reads object storage directly |
 | Register a generated product | SCI writes result to object storage; SCI → CAT registers metadata/lineage; CAT → SCI confirms; SCI → CON reports computation/registration outcome; CON queries CAT later when it needs the canonical asset reference/location |
 | View a computed result | UI → GAT → CON (authorization); CON → CAT for the canonical product reference and current location; CON → SCI for the representation; result returns through CON → GAT → UI |
 | Inspect actual lineage | UI → GAT → CON → CAT; lineage returns via CON → GAT → UI |
