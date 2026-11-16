@@ -10,11 +10,38 @@
 
 - **Producer → consumer** indicates the direction in which the interaction is initiated or information is supplied.
 - A response in the reverse direction is shown as a separate row when it is a meaningful interaction.
-- Synchronization mode and transport are deliberately not assigned to individual rows in this matrix. Those decisions belong to interface and contract design, because API response behavior, worker execution and internal messaging are distinct concerns.
+- Synchronization is described at the **interaction-family** level in §1.2 rather than repeated on every row. This distinguishes known user-facing API behavior from internal transport choices that remain open. A REST operation being asynchronous at the API boundary does not, by itself, specify whether its internal interaction uses a worker, messaging or another mechanism.
 - A component boundary represents a logical responsibility boundary. It does not imply a separate process, service, package or deployment.
 - Where an interaction crosses several components, the end-to-end route is stated explicitly. An indirect route does not create a direct interface between non-adjacent components.
+- Identity and correlation context are cross-cutting metadata propagated with applicable interactions, as defined in §1.1; they are not additional logical components or business interactions.
 
 The component names used here are **UI**, **GAT**, **CON**, **SCI** and **CAT**. GAT is the working name used in this design discussion; the repository's older component drafts use **GTW**. Naming must be reconciled before contracts are formalized.
+
+### 1.1 Cross-cutting identity and caller context (ENG-15)
+
+Identity context accompanies interactions; it is not modelled as a standalone business operation.
+
+- An authenticated public REST request carries proof of caller authentication. GAT validates it through the configured trust mechanism and derives a trusted caller identity and origin context. Explicitly unauthenticated bootstrap and health/readiness operations are exceptions.
+- UI may provide request data, but it cannot establish the authoritative owner by sending an owner ID or identity header. GAT derives the caller identity from validated authentication proof.
+- GAT passes the trusted context to CON for request, access and delivery operations. Direct GAT → SCI catalogue calls carry sufficient caller/trace context for correlation and audit, but remain limited to public scientific catalogue information.
+- CON binds the authenticated subject/owner, initiating actor if distinct, calling client/origin and correlation identifiers to the persisted request. It propagates the context to SCI and CAT for the internal operations associated with that request.
+- The context remains associated with deferred ingestion/computation tasks. Workers restore it when executing so asynchronous work and resulting events remain traceable to the originating request and owner.
+- CON owns user-facing request/result/delivery authorization decisions. SCI and CAT use context for correlation, audit and operation attribution; they do not independently redefine ownership or make CON's access decisions.
+- The validated context, not the raw external credential, is propagated by default. Credentials and secrets must not appear in logs or traces.
+- Authentication provider, credential format (including whether to use a Bearer token), claims and internal context format remain open for interface/security contract design. This behavior is required by ENG-15 and supports SYS-17/SYS-18.
+
+### 1.2 Synchronization knowns and open points
+
+| Interaction family | Known interaction behavior | Still open |
+|---|---|---|
+| UI ↔ GAT | Public REST request/response. User-facing operations expected to exceed 5 seconds are exposed asynchronously from the start: return a reference/current state, then retrieve the outcome through REST. | Concrete endpoint contracts and status vocabulary. |
+| GAT ↔ CON | GAT routes user operations; operations expected to exceed 5 seconds use the asynchronous API pattern above. | Whether each internal GAT–CON call is direct request/response or uses an internal asynchronous mechanism. |
+| GAT ↔ SCI | Product catalogue and theoretical input requirements are conceptually request/response. | Internal synchronization/transport; this does not concern private result access. |
+| CON ↔ SCI | Scientific evaluation and complexity estimation return information to CON. Product computation is dispatched asynchronously and reports a later outcome. | Dispatch/outcome transport, acknowledgement, durability, correlation and recovery contracts. |
+| CON ↔ CAT | Dependency, pricing and asset-reference interactions are request/response at the conceptual level. L0 ingestion is a potentially long-running operation with a later outcome. | Exact ingestion dispatch/outcome mechanism and guarantees for partial or failed acquisitions. |
+| SCI ↔ CAT | SCI requests registration; CAT returns registration confirmation. | Whether registration/confirmation is synchronous or event-driven internally, and its idempotency/retry guarantees. |
+
+The table describes conceptual interaction semantics only. It does not prescribe protocols, workers, messaging subjects or deployment topology.
 
 ## 2. UI ↔ GAT — User-facing REST interface
 
@@ -61,7 +88,7 @@ GAT is the single public REST entry point for UI. UI does not access CON, SCI, C
 
 ## 3. GAT ↔ CON — Request, access and delivery coordination
 
-CON is authoritative for request lifecycle, proposal preparation and cost coordination, access decisions, cancellation and delivery orchestration. GAT routes public REST operations to CON.
+CON is authoritative for request lifecycle, proposal preparation and cost coordination, access decisions, cancellation and delivery orchestration. GAT routes public REST operations to CON with the trusted caller context established at the public boundary.
 
 ### 3.1 Request and access management
 
@@ -104,7 +131,7 @@ GC-08 to GC-13 form a distinct **Delivery Management** family. CON orchestrates 
 
 ## 4. CON ↔ SCI — Scientific evaluation and computation
 
-SCI owns scientific product definitions and methods, scientific feasibility, input requirements and computation. It does not know which concrete product instances or acquisitions are currently available in CAT. CON coordinates dependency resolution and execution.
+SCI owns scientific product definitions and methods, scientific feasibility, input requirements and computation. It does not know which concrete product instances or acquisitions are currently available in CAT. CON coordinates dependency resolution and execution. CON supplies the trusted request/caller context needed for attribution, audit and tracing; SCI does not use it to make user access-policy decisions.
 
 | ID | Producer → Consumer | Interaction | Purpose / information |
 |---|---|---|---|
@@ -126,7 +153,7 @@ SCI owns scientific product definitions and methods, scientific feasibility, inp
 
 ## 5. CON ↔ CAT — Concrete dependency resolution, acquisition and asset references
 
-CAT knows concrete source acquisitions and product assets, resolves scientific input requirements against its inventory, identifies missing data, manages L0 ingestion and records actual lineage. CON owns recursive planning and orchestration of missing scientific products.
+CAT knows concrete source acquisitions and product assets, resolves scientific input requirements against its inventory, identifies missing data, manages L0 ingestion and records actual lineage. CON owns recursive planning and orchestration of missing scientific products. CON supplies trusted request/caller context for attribution, audit and tracing; CAT does not make user access-policy decisions.
 
 | ID | Producer → Consumer | Interaction | Purpose / information |
 |---|---|---|---|
@@ -172,7 +199,7 @@ SCI writes computed output objects directly to the object-storage bucket. It the
 
 ## 7. GAT ↔ SCI — Public scientific catalogue only
 
-The direct GAT ↔ SCI interface is deliberately limited to the scientific catalogue. Retrieval of private computed-result representations goes through CON for authorization.
+The direct GAT ↔ SCI interface is deliberately limited to the scientific catalogue. It carries caller/trace context for correlation and audit, but retrieval of private computed-result representations goes through CON for authorization.
 
 | ID | Producer → Consumer | Interaction | Purpose / information |
 |---|---|---|---|
@@ -240,5 +267,6 @@ REST remains the source of truth for request state. Notifications are optional U
 - Storage access strategy and permissions for SCI and CON.
 - Temporary archive storage, access security, TTL and cleanup.
 - Reconciliation of the GAT/GTW naming used by current discussion and existing drafts.
+- Authentication/trust mechanism, credential format, identity claims and integrity-protected internal context format/propagation. ENG-15 defines the required behavior; concrete contract/security choices are deferred to M0-E02-T03 and any necessary ADR.
 
 This matrix is the validated logical interaction inventory for the current component architecture design. Synchronization and communication mechanisms are deliberately not classified here; they belong to interface and contract design. The user-facing policy is that operations expected to take more than 5 seconds are exposed asynchronously, with REST remaining the source of truth for request state.
