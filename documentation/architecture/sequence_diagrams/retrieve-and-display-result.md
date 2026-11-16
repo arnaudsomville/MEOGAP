@@ -30,12 +30,13 @@ sequenceDiagram
     participant S3 as Object Storage
 
     User->>UI: Request map or analytical representation
-    UI->>GAT: Request result representation
-    GAT->>CON: Request access authorization
-    CON->>CON: Verify user permissions
-    CON->>CAT: Request canonical product reference and location
+    UI->>GAT: Request result representation with authentication proof
+    GAT->>GAT: Validate caller and derive trusted identity context
+    GAT->>CON: Request access authorization with trusted identity context
+    CON->>CON: Verify user permissions against trusted owner identity
+    CON->>CAT: Request canonical product reference and location with request context
     CAT-->>CON: Return product reference and storage location
-    CON->>SCI: Request representation with product reference and location
+    CON->>SCI: Request representation with product reference, location and trusted context
     SCI->>S3: Read product object
     S3-->>SCI: Return product data
     SCI->>SCI: Generate requested representation
@@ -58,10 +59,11 @@ sequenceDiagram
     participant CAT
 
     User->>UI: Inspect result dependencies
-    UI->>GAT: Request actual result lineage
-    GAT->>CON: Request lineage and access check
-    CON->>CON: Verify user permissions
-    CON->>CAT: Retrieve actual result lineage
+    UI->>GAT: Request actual result lineage with authentication proof
+    GAT->>GAT: Validate caller and derive trusted identity context
+    GAT->>CON: Request lineage and access check with trusted identity context
+    CON->>CON: Verify user permissions against trusted owner identity
+    CON->>CAT: Retrieve actual result lineage with request context
     CAT-->>CON: Return actual dependency tree and asset references
     CON-->>GAT: Return lineage information
     GAT-->>UI: Provide lineage information
@@ -84,10 +86,11 @@ sequenceDiagram
     participant S3 as Object Storage
 
     User->>UI: Download final product
-    UI->>GAT: Request final product delivery
-    GAT->>CON: Request final product delivery
-    CON->>CON: Verify user permissions
-    CON->>CAT: Request canonical product reference and location
+    UI->>GAT: Request final product delivery with authentication proof
+    GAT->>GAT: Validate caller and derive trusted identity context
+    GAT->>CON: Request final product delivery with trusted identity context
+    CON->>CON: Verify user permissions against trusted owner identity
+    CON->>CAT: Request canonical product reference and location with request context
     CAT-->>CON: Return product reference and storage location
     CON->>S3: Retrieve final product object
     S3-->>CON: Return product object
@@ -112,12 +115,13 @@ sequenceDiagram
     participant S3 as Object Storage
 
     User->>UI: Download complete dependency archive
-    UI->>GAT: Request dependency archive
-    GAT->>CON: Request archive delivery
-    CON->>CON: Verify user permissions
-    CON->>CAT: Retrieve actual result lineage
+    UI->>GAT: Request dependency archive with authentication proof
+    GAT->>GAT: Validate caller and derive trusted identity context
+    GAT->>CON: Request archive delivery with trusted identity context
+    CON->>CON: Verify user permissions against trusted owner identity
+    CON->>CAT: Retrieve actual result lineage with request context
     CAT-->>CON: Return actual dependency tree
-    CON->>CAT: Request canonical references and locations for lineage assets
+    CON->>CAT: Request canonical references and locations for lineage assets with request context
     CAT-->>CON: Return asset references and locations
     CON->>S3: Retrieve all required result and dependency objects
     S3-->>CON: Return requested objects
@@ -133,12 +137,13 @@ sequenceDiagram
 
 1. **CON does not maintain a duplicate product/asset catalogue.** CAT remains the single source of truth for canonical asset references, storage locations and actual lineage.
 2. When CON needs a result, it queries CAT for the canonical product reference and its current storage location. This applies to visualization, final-product download and dependency-archive generation.
-3. For visualization, CON performs the access check, obtains the canonical reference and location from CAT, then passes them to SCI. SCI reads the object directly from storage and generates the requested representation.
+3. For visualization, CON performs the access check using the trusted owner identity, obtains the canonical reference and location from CAT, then passes them and the required trusted context to SCI. SCI reads the object directly from storage and generates the requested representation.
 4. For lineage inspection, CON asks CAT for the actual lineage and returns the relevant provenance information through GAT. The planned execution graph is not substituted for actual lineage.
 5. For final-product download, CON retrieves the reference and location from CAT and orchestrates delivery of that product alone.
 6. For a dependency archive, CON requests actual lineage and the references/locations for all required assets, retrieves the objects from storage and assembles the ZIP on demand.
 7. GAT is the only public REST entry point. UI does not access CAT or object storage directly.
 8. Physical storage locations are internal information and are not exposed as part of the public UI contract.
+9. Authenticated retrieval calls carry caller proof to GAT. GAT derives trusted identity context; CON uses the owner identity for authorization and propagates the context to CAT/SCI for audit and correlation. Credentials are not copied into logs or indiscriminately forwarded.
 
 ## Notes and boundaries
 
