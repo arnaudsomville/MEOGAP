@@ -1,6 +1,6 @@
 # Execute Analysis
 
-**Status:** Working sequence diagram — nominal execution flow  
+**Status:** Validated sequence diagram — design baseline  
 **Companion documents:** [Component Interaction Design](../system-interactions/component-interaction-design.md) · [Component Interaction Matrix](../system-interactions/component-interaction-matrix.md) · [Submit Analysis Request](./submit-analysis-request.md)  
 **Last updated:** 12 November 2026
 
@@ -8,7 +8,7 @@
 
 Describe the nominal execution of a confirmed analysis request, from the acquisition/ingestion of missing L0 source data through dependency-aware scheduling, scientific computation, asset registration and final request completion.
 
-The request is assumed to be in IN_EXECUTION state, with an accepted execution plan already persisted by CON.
+The request is assumed to be in IN_EXECUTION state, with an accepted execution plan and its trusted identity/correlation context already persisted by CON. Deferred workers restore this context when executing a task; they do not depend on the original HTTP request or external credential remaining available.
 
 ## Sequence
 
@@ -20,7 +20,7 @@ sequenceDiagram
     participant SCI
     participant S3 as Object Storage
 
-    CON->>CAT: Request missing source ingestion
+    CON->>CAT: Request missing source ingestion with persisted trusted identity context
     CAT->>EO: Acquire source observations
     EO-->>CAT: Return source observations
     CAT->>S3: Store source objects
@@ -33,14 +33,14 @@ sequenceDiagram
     CON->>CON: Identify READY tasks
     CON->>CAT: Request canonical references and locations for task inputs
     CAT-->>CON: Return canonical references and current locations
-    CON->>SCI: Dispatch READY computations with input references and locations
+    CON->>SCI: Dispatch READY computations with input references, locations and trusted identity context
 
     SCI->>S3: Read input objects
     S3-->>SCI: Return input data
     SCI->>SCI: Execute scientific computations
     SCI->>S3: Write generated products
     S3-->>SCI: Return initial product locations
-    SCI->>CAT: Register product metadata and actual input references
+    SCI->>CAT: Register product metadata, actual input references and request identity/correlation context
     CAT->>CAT: Register products and actual lineage
     CAT-->>SCI: Confirm product registration
     SCI-->>CON: Return computation outcomes and registered product identifiers
@@ -64,6 +64,7 @@ sequenceDiagram
 6. **CON reevaluates dependencies after outcomes.** When a task succeeds, CON reevaluates the execution plan. For newly READY tasks, CON asks CAT for the canonical references and current locations of their input assets before dispatching the computations. CON records task outcomes and logical identifiers, not CAT's asset-to-location mapping.
 7. **A task is considered SUCCEEDED only after successful asset registration.** Scientific computation success alone is insufficient to make the product available to downstream tasks.
 8. **Request completion is verified.** CON moves the request to COMPLETED only when every requested output product has been successfully generated and registered in CAT, or otherwise satisfied by an already available asset. No required task may remain blocked, pending or running. CAT remains the source of truth for the resulting asset references and locations.
+9. **Identity survives asynchronous execution.** CON persists the trusted caller context with the request/task; workers restore it when running ingestion or computation. SCI and CAT use the propagated context for operation attribution, audit and tracing, not to replace CON's authorization decisions. The external credential itself is not stored in task context or logs.
 
 ## Conceptual task states
 
