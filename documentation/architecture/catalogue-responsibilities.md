@@ -258,8 +258,9 @@ sequenceDiagram
       CON->>CAT: Resolve canonical references when required
       CAT-->>CON: Current references and availability
     else Registration fails
-      CAT-->>CON: Registration failed; asset is not catalogue-available
-      CAT-->>CON: Physical objects may remain unregistered; reconciliation is deferred
+      CAT-->>CON: Registration failure
+      Note over CAT,CON: Asset is not available through the catalogue
+      Note over CAT,Store: Stored objects may remain unregistered
     end
 ```
 
