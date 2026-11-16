@@ -124,7 +124,7 @@ sequenceDiagram
 2. **Scientific failure and Derived Asset registration failure are distinct outcomes.** SCI reports which stage failed to CON.
 3. **A task is SUCCEEDED only after CAT confirms successful Derived Asset registration.** Successful computation alone is not sufficient.
 4. **A failed task's descendants remain BLOCKED.** CON must not dispatch a task whose required dependency failed or whose required representation is not registered/available in CAT.
-4. **Already eligible independent work may finish.** CON allows independent tasks that were already READY or RUNNING when the failure was detected to complete. This avoids discarding useful work that does not depend on the failed task.
+5. **Already eligible independent work may finish.** CON allows independent tasks that were already READY or RUNNING when the failure was detected to complete. This avoids discarding useful work that does not depend on the failed task.
 5. **The failure prevents false completion.** If a requested final product cannot be generated because a required task failed, the request cannot become COMPLETED.
 6. **The request becomes FAILED after already eligible/running independent work has settled**, once CON determines that a requested output remains impossible to produce.
 7. **CAT remains the source of truth.** A generated file that was not registered successfully is not an available product and cannot satisfy dependencies.
