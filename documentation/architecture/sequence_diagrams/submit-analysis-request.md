@@ -95,7 +95,7 @@ sequenceDiagram
 
 ## Interpretation
 
-- For a proposal-preparation operation expected to take more than 5 seconds, GAT returns the request reference and current state without waiting for completion. UI retrieves the state and eventual proposal through REST. Notifications are optional refresh mechanisms.
+- For a proposal-preparation operation expected to take more than 5 seconds, GAT returns the request reference and current state without waiting for completion. UI retrieves the state and eventual proposal through REST. Each poll, confirmation and cancellation is a new authenticated public REST operation: GAT validates the caller again and derives the trusted context; CON checks that the caller is authorized for the request. Notifications are optional refresh mechanisms.
 - For a proposal-preparation operation expected to complete within 5 seconds, the current API interaction remains open until the evaluation result is available.
 - The cancellation branch is drawn after proposal preparation for readability. The same cancellation interaction is available in every request state except `COMPLETED`, including while proposal preparation or execution is ongoing.
 - This diagram does not detail interruption or reconciliation of an acquisition or computation that is already running when cancellation is requested. That behavior belongs in the execution and failure/recovery sequences.
