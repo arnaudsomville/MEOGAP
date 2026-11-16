@@ -2,7 +2,7 @@
 
 **Status:** Current engineering requirements baseline  
 **Source of truth:** This file is the sole authority for `ENG-*` requirement IDs, statements and priorities.  
-**Last updated:** 12 November 2026
+**Last updated:** 16 November 2026
 
 ## Purpose and scope
 
