@@ -29,7 +29,7 @@ A product definition is not an asset. A request or execution plan is not an asse
 | Derived Asset | An asset produced by a MEOGAP scientific processing operation. It corresponds to a product instance at an internal level Ln, n > 0. |
 | Representation | A logical/physical encoding or organization of an asset's data, such as original provider data or a MEOGAP-harmonized representation. |
 | Physical object | A file, chunk, collection or other stored object that materializes some part of a representation. |
-| Harmonization | Ingestion-time preparation that converts source data and associated quality information into MEOGAP-compatible representations. It does not automatically create a new Derived Asset. |
+| Harmonization | SCI-owned scientific/data-preparation processing that converts source data and associated quality information into MEOGAP-compatible representations. It does not automatically create a new Derived Asset. |
 
 ### 2.1 Source/derived classification is based on origin in MEOGAP
 
@@ -79,13 +79,17 @@ An Asset may be materialized by multiple physical objects or by a container hold
 
 ### 4.1 Source Asset composition — intended direction
 
-For a source tile ingested by MEOGAP, the intended data organization is:
+For a source tile ingested by MEOGAP, the intended data organization and responsibility split are:
 
-1. Preserve the provider's original product data.
-2. Produce MEOGAP-harmonized representations for downstream processing.
-3. Preserve source-provided quality layers and/or quality layers generated during ingestion.
-4. Harmonize those quality layers into the same spatial representation as the data they qualify.
-5. Keep enough metadata and provenance to trace every representation to its source, transformation and version.
+1. CAT acquires and preserves the provider's original product data, native metadata and native quality layers.
+2. CAT registers the Source Asset and the original representation, which may be available before harmonization has completed.
+3. CON orchestrates a harmonization operation by SCI.
+4. SCI reads the original source representation and generates MEOGAP-harmonized product and quality representations.
+5. SCI writes the harmonized representations and supplies CAT with their references, transformation provenance and scientific metadata.
+6. CAT registers those representations against the existing Source Asset and exposes their availability.
+7. Keep enough metadata and provenance to trace every representation to its source, transformation and version.
+
+CAT owns catalogue registration and physical references; it does not implement or execute the harmonization algorithms. SCI owns the harmonization methods and the generation of the harmonized representations.
 
 A Zarr container is being considered as a convenient way to group the original product, harmonized data and quality layers. It is **not mandated by this note**.
 
@@ -119,9 +123,11 @@ flowchart TB
     end
     P --> O
     P --> M
-    O -->|harmonization| H
+    SCI[SCI: harmonization methods and processing]
+    O --> SCI
     P -->|native quality layers, when supplied| Q
-    O -->|quality generation / harmonization| Q
+    SCI --> H
+    SCI --> Q
     H --> U
     Q --> U
     CAT[CAT: logical asset identity, metadata, availability and lineage]
@@ -132,7 +138,7 @@ flowchart TB
     O -. retained; not the normal downstream input .-> NEXT
 ```
 
-The Source Asset is the catalogue entity. Original data, harmonized arrays, quality layers and usability views are constituent data/representations, not automatically separate assets.
+The Source Asset is the catalogue entity. Original data, harmonized arrays, quality layers and usability views are constituent data/representations, not automatically separate assets. SCI generates the harmonized representations; CAT registers their references and metadata.
 
 ## 5. Extensible quality-layer model
 
@@ -203,68 +209,83 @@ SCI defines the scientific criteria for accepting observations for a given produ
 
 For a generated product, SCI supplies scientific result metadata, the initial physical-object reference and exact input references actually consumed. CAT registers the asset, its canonical reference/access metadata and actual lineage, then confirms registration.
 
+The same registration boundary applies when SCI generates harmonized representations for an existing Source Asset: SCI supplies representation references, transformation provenance and relevant metadata; CAT records them against the existing asset. This does not create a Derived Asset.
+
 CAT may index scientific metadata for search and discovery. It does not alter the scientific method or reinterpret the scientific outcome.
 
 ### 6.2 Independent status dimensions
 
-Registration, physical availability and scientific quality are independent:
+Registration, representation availability and scientific quality are independent:
 
 | Dimension | Illustrative states | Meaning |
 |---|---|---|
-| Registration | registered / not registered | Whether CAT has a catalogue record for the asset |
-| Availability | available / unavailable / unknown | Whether the data can currently be retrieved |
+| Asset registration | registered / not registered | Whether CAT has a catalogue record for the logical asset |
+| Representation availability | available / unavailable / unknown / pending | Whether a particular representation can currently be retrieved or is still being produced |
 | Scientific quality | valid / degraded / invalid / unknown | Scientific characterization for a defined use or validation context |
 
-These labels are conceptual; exact enums and contracts are deferred. A registered asset must not disappear from CAT merely because its physical data is temporarily inaccessible. A successful registration does not imply scientific validity, and scientific validity does not imply physical availability.
+Availability must be tracked at representation level, not only as one boolean for the whole asset. For example, a Source Asset may be registered and its original provider representation may be available while its MEOGAP-harmonized representation is still pending or has failed. The asset exists in CAT, but it is not yet ready as an input for downstream MEOGAP computations that require the harmonized representation.
+
+These labels are conceptual; exact enums and contracts are deferred. A registered asset must not disappear from CAT merely because one representation is temporarily inaccessible. A successful registration does not imply scientific validity, and scientific validity does not imply physical availability.
 
 ## 7. Source Asset lifecycle
 
-The nominal source lifecycle is:
+The nominal source lifecycle separates acquisition from scientific harmonization:
 
 1. **Identify / discover:** CON supplies abstract scientific input criteria; CAT discovers matching concrete source products/acquisitions.
 2. **Select / resolve:** CAT identifies the concrete source tile/product and relevant provider metadata. CON owns the planned dependency and acquisition orchestration.
 3. **Acquire:** CAT coordinates provider-specific acquisition. The intended strategy is to retain the complete source tile even when the request AOI is smaller.
-4. **Preserve original:** the original provider product and native metadata/quality layers are retained.
-5. **Harmonize:** MEOGAP creates internal representations of product data and quality layers, including the common spatial representation under consideration.
-6. **Register:** CAT registers the logical Source Asset, its product type, footprint, temporal support, scientific/discovery metadata, representation references and provenance.
-7. **Confirm availability:** CAT reports the registered logical asset and its availability outcome to CON. CON obtains canonical references/current locations from CAT when needed.
-8. **Retrieve / consume:** downstream SCI computations consume the MEOGAP-harmonized representations, not the original provider representation as their normal input.
-9. **Failure handling:** acquisition, harmonization, storage and registration failures must remain distinguishable. If registration fails, the data must not be treated as a catalogue-available input. Orphaned physical objects and retry/cleanup behavior remain execution-design topics.
+4. **Preserve original:** CAT stores/preserves the original provider product and native metadata/quality layers.
+5. **Register original representation:** CAT registers the logical Source Asset and its original representation, including product type, footprint, temporal support, source metadata, physical reference and provenance. At this point the Source Asset exists, even though MEOGAP harmonization may not yet be complete.
+6. **Orchestrate harmonization:** CON requests SCI to harmonize the Source Asset. CON owns orchestration; it does not implement the transformation.
+7. **Generate harmonized representations:** SCI reads the original representation, applies the versioned harmonization method, and generates harmonized product and quality layers, including the common spatial representation under consideration.
+8. **Register harmonized representations:** SCI supplies CAT with the generated representation references and transformation metadata. CAT records these against the existing Source Asset and reports the registration outcome.
+9. **Confirm readiness:** CAT exposes the availability of each representation. A Source Asset is usable by downstream computations only when the representation required by those computations is available.
+10. **Retrieve / consume:** downstream SCI computations consume the MEOGAP-harmonized representations, not the original provider representation as their normal input.
+11. **Failure handling:** acquisition, original registration, harmonization, harmonized-representation registration and physical availability failures must remain distinguishable. A failed harmonization does not erase a successfully registered original Source Asset. Orphaned physical objects and retry/cleanup behavior remain execution-design topics.
 
 ```mermaid
 sequenceDiagram
     participant CON
     participant CAT
     participant Provider as EO Provider
-    participant Harmonizer as Ingestion / Harmonization
     participant Store as Physical Data Store
+    participant SCI
 
     CON->>CAT: Resolve abstract scientific input criteria
-    CAT->>Provider: Discover candidate products / tiles
+    CAT->>Provider: Discover candidate products and tiles
     Provider-->>CAT: Product metadata and candidates
     CAT-->>CON: Concrete candidates and acquisition requirements
-    CON->>CAT: Request acquisition / ingestion
+    CON->>CAT: Request source acquisition
     CAT->>Provider: Acquire complete source tile
-    Provider-->>CAT: Original product + native metadata / quality layers
+    Provider-->>CAT: Original product and native quality layers
     CAT->>Store: Preserve original source material
     Store-->>CAT: Original representation reference
-    CAT->>Harmonizer: Harmonize product and quality layers
-    Harmonizer->>Store: Write harmonized data + quality representations
-    Store-->>Harmonizer: Harmonized representation references
-    Harmonizer-->>CAT: Harmonization outcome + provenance
-    CAT->>CAT: Register logical Source Asset and metadata
-    alt Registration succeeds
-      CAT-->>CON: Registered Source Asset identifier / outcome
-      CON->>CAT: Resolve canonical references when required
-      CAT-->>CON: Current references and availability
-    else Registration fails
-      CAT-->>CON: Registration failure
-      Note over CAT,CON: Asset is not available through the catalogue
-      Note over CAT,Store: Stored objects may remain unregistered
+    CAT->>CAT: Register Source Asset and original representation
+    CAT-->>CON: Source Asset registered and original available
+
+    CON->>SCI: Request harmonization for Source Asset
+    SCI->>CAT: Resolve original representation reference
+    CAT-->>SCI: Original representation reference
+    SCI->>Store: Read original source data
+    Store-->>SCI: Original product and quality layers
+    SCI->>SCI: Generate harmonized product and quality layers
+    SCI->>Store: Write harmonized representations
+    Store-->>SCI: Harmonized representation references
+    SCI->>CAT: Register harmonized representations and provenance
+    CAT->>CAT: Update Source Asset representation records
+    alt Harmonized representation registration succeeds
+      CAT-->>SCI: Harmonized representations registered
+      SCI-->>CON: Harmonization completed
+      CON->>CAT: Check required representation availability
+      CAT-->>CON: Required harmonized representation available
+    else Harmonization or registration fails
+      CAT-->>SCI: Representation registration failure
+      SCI-->>CON: Harmonization failed or not registered
+      Note over CAT,CON: Original Source Asset remains registered
     end
 ```
 
-This is a conceptual lifecycle, not a final orchestration/API contract. The logical responsibilities already established remain: CON orchestrates missing L0 ingestion; CAT owns the functional acquisition/ingestion and catalogue registration responsibility; execution workers are mechanisms, not peer logical components.
+This is a conceptual lifecycle, not a final orchestration/API contract. CAT owns source discovery, provider acquisition, preservation of the original representation, catalogue registration and canonical references. SCI owns the harmonization methods and generation of harmonized representations. CON orchestrates acquisition and harmonization. Execution workers are mechanisms, not peer logical components.
 
 ## 8. Derived Asset lifecycle and composition
 
@@ -314,8 +335,8 @@ The physical format of a Derived Asset is not specified here. A common container
 | Product definitions and scientific methods | Owns | No | No | Exposes catalogue view |
 | Abstract scientific input criteria | Defines | Resolves to concrete assets | Orchestrates recursive resolution | No |
 | Concrete source discovery and acquisition | No | Owns functional responsibility | Orchestrates request | No direct CAT interface |
-| Source Asset registration and physical references | Supplies no scientific definition of source | Owns | Consumes outcome | No direct CAT interface |
-| Harmonization method and scientific interpretation | Owns scientific semantics where relevant | Retains/indexes outcome and references | Orchestrates workflow | No |
+| Original source preservation and registration | No | Owns | Orchestrates acquisition | No direct CAT interface |
+| Harmonization methods and generation of harmonized representations | Owns methods and processing | Registers representation references and metadata | Orchestrates harmonization | No |
 | Derived scientific computation | Owns | No | Dispatches/orchestrates | No |
 | Derived Asset registration and actual lineage | Supplies metadata and actual consumed inputs | Owns | Consumes registration outcome | No direct CAT interface |
 | Planned execution graph | No | No | Owns | No |
@@ -333,10 +354,11 @@ M0 should exercise only the minimum CAT behavior needed by the reference journey
 - distinguish Product Catalogue definitions from registered data assets;
 - register and discover source and derived assets;
 - preserve enough metadata to identify product type, spatial/temporal support and provenance;
-- expose registration/availability outcomes distinctly from scientific computation outcomes;
-- provide canonical logical asset references and current access references to CON;
+- expose asset registration and per-representation availability distinctly from scientific computation outcomes;
+- provide canonical logical asset and representation references to CON;
 - record actual lineage for generated products;
-- support the SCI → CAT registration and CAT → CON discovery/availability boundaries.
+- support SCI → CAT registration of derived products and harmonized representations, plus CAT → CON discovery/availability;
+- allow CON to orchestrate source acquisition followed by SCI harmonization.
 
 The exact M0 mock behavior and contract fields belong to the relevant contract/implementation tickets, not this note.
 
@@ -360,7 +382,7 @@ The following constraints should be preserved when the detailed data model is de
 1. Logical Asset identity must not depend on a particular storage technology or serialization.
 2. A single Asset represents one product type; a physical container may contain multiple arrays/layers that materialize that product.
 3. Original source data must remain distinguishable from harmonized MEOGAP representations.
-4. Downstream scientific computations use harmonized representations under the intended processing model.
+4. SCI generates harmonized representations; CAT registers their references; downstream scientific computations use those harmonized representations under the intended processing model.
 5. Native spatial resolution and support must remain explicit; H3 must not imply false native precision.
 6. Quality layers remain independent, extensible and traceable. A current usability view is a derived interpretation, not a replacement.
 7. Any destructive aggregation/rescaling assumption must be explicit, versioned and reproducible.
@@ -374,6 +396,7 @@ The following constraints should be preserved when the detailed data model is de
 Questions for later design include:
 - How should an Asset expose multiple representations and their versions without coupling its identity to a Zarr-specific layout?
 - Which parts of harmonization are mandatory for every source modality, and which are modality-specific?
+- How should CON represent and recover the two-stage source preparation workflow: original acquisition/registration followed by SCI harmonization/representation registration?
 - What is the precise semantics of an H3 usability summary at different resolutions?
 - How should masks represent multiple simultaneous conditions, uncertainty/probability and unknown/missing classification?
 - Which objective quality statistics should CAT compute on demand, cache or index, and what exact denominator/area-weighting convention should be used?
@@ -393,6 +416,6 @@ In particular:
 - H3 is a candidate common spatial representation, not a settled resolution or contract.
 - Full-tile acquisition is the intended source-data strategy, not yet an implemented behavior.
 - Extensible modality-specific quality layers are a model requirement; specific SAR masks and algorithms remain future work.
-- Harmonization is conceptually distinct from scientific product generation, but its exact component/execution ownership and detailed contracts must be aligned with the later ingestion design.
+- SCI owns the harmonization methods and generation of MEOGAP-harmonized representations. CAT owns original-source preservation, catalogue registration and representation references. CON orchestrates acquisition and harmonization. The detailed contracts and execution mechanics remain future design work.
 
 No ADR is created by this note: no storage, deployment or implementation technology is selected.
