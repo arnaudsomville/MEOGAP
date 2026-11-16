@@ -263,9 +263,9 @@ sequenceDiagram
     CAT->>CAT: Register Source Asset and original representation
     CAT-->>CON: Source Asset registered and original available
 
-    CON->>SCI: Request harmonization for Source Asset
-    SCI->>CAT: Resolve original representation reference
-    CAT-->>SCI: Original representation reference
+    CON->>CAT: Resolve original representation reference
+    CAT-->>CON: Original representation reference
+    CON->>SCI: Request harmonization with original representation reference
     SCI->>Store: Read original source data
     Store-->>SCI: Original product and quality layers
     SCI->>SCI: Generate harmonized product and quality layers
