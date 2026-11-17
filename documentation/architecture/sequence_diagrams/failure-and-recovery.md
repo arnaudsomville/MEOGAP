@@ -6,16 +6,46 @@
 
 ## Purpose
 
-Describe two distinct failure cases during scientific product execution:
+Describe three distinct failure cases during source preparation and scientific product execution:
 
-1. Scientific computation fails before a generated product is registered.
-2. Scientific computation succeeds, but CAT fails to register the generated product.
+1. L0 harmonization fails after the original Source Asset has been acquired and registered.
+2. Scientific computation fails before a generated Derived Asset is registered.
+3. Scientific computation succeeds, but CAT fails to register the generated Derived Asset.
 
 The distinction matters because a file may exist in object storage even though no usable catalogue asset exists. Both scenarios run under the trusted identity/correlation context persisted with the originating request; workers restore it, and SCI/CAT outcomes retain the request and processing-run correlation without carrying the external credential.
 
-## 1. Scientific computation failure
+## 1. L0 harmonization failure
 
-In this case SCI cannot generate the requested product. No registration request is sent to CAT for the failed task.
+In this case CAT has successfully acquired, preserved and registered the original provider representation of a Source Asset, but SCI cannot generate the required MEOGAP-harmonized product and quality representations.
+
+The original Source Asset remains registered and its original representation may remain available. The required harmonized representations are unavailable, so dependent scientific computations must remain BLOCKED. This is not a Derived Asset computation failure and must not remove or invalidate the original Source Asset.
+
+```mermaid
+sequenceDiagram
+    participant CON
+    participant CAT
+    participant SCI
+    participant S3 as Object Storage
+
+    CON->>CAT: Request original Source Asset acquisition
+    CAT->>S3: Preserve original provider representation
+    CAT->>CAT: Register Source Asset and original representation
+    CAT-->>CON: Original Source Asset registered
+    CON->>CAT: Resolve original representation reference
+    CAT-->>CON: Return original representation reference
+    CON->>SCI: Request L0 harmonization
+    SCI->>S3: Read original provider representation
+    S3-->>SCI: Return original data and native quality layers
+    SCI->>SCI: Attempt harmonization
+    SCI-->>CON: Report harmonization failure
+    CON->>CON: Keep dependent scientific tasks BLOCKED
+    Note over CAT,CON: Original Source Asset remains registered
+    Note over CON,SCI: Required harmonized representations are unavailable
+```
+
+## 2. Scientific computation failure
+
+In this case SCI cannot generate the requested Derived Asset. No registration request is sent to CAT for the failed task.
 
 The example includes a second task that was already eligible and independent of the failed task. CON allows that already eligible work to finish, but does not dispatch descendants of the failed task.
 
@@ -47,9 +77,9 @@ sequenceDiagram
     CON->>CON: Set request state to FAILED
 ```
 
-## 2. Asset-registration failure
+## 3. Derived Asset registration failure
 
-In this case SCI completes the scientific computation and writes the generated object to storage, but CAT cannot register the product and its actual lineage.
+In this case SCI completes the derived-product computation and writes the generated object to storage, but CAT cannot register the Derived Asset and its actual lineage.
 
 The generated file may therefore exist in storage without being a usable catalogue asset. Dependent tasks must not consume it.
 
@@ -90,14 +120,15 @@ sequenceDiagram
 
 ## Validated failure-handling rules
 
-1. **Scientific failure and registration failure are distinct outcomes.** SCI reports which stage failed to CON.
-2. **A task is SUCCEEDED only after CAT confirms successful asset registration.** Successful computation alone is not sufficient.
-3. **A failed task's descendants remain BLOCKED.** CON must not dispatch a task whose required dependency failed or whose output is not registered in CAT.
-4. **Already eligible independent work may finish.** CON allows independent tasks that were already READY or RUNNING when the failure was detected to complete. This avoids discarding useful work that does not depend on the failed task.
-5. **The failure prevents false completion.** If a requested final product cannot be generated because a required task failed, the request cannot become COMPLETED.
-6. **The request becomes FAILED after already eligible/running independent work has settled**, once CON determines that a requested output remains impossible to produce.
-7. **CAT remains the source of truth.** A generated file that was not registered successfully is not an available product and cannot satisfy dependencies.
-8. **Identity context is retained through failure handling.** The request and affected tasks keep their original trusted owner and correlation context. SCI/CAT use it for audit/trace attribution; CON remains responsible for user-facing access decisions.
+1. **L0 harmonization failure is distinct from Derived Asset computation or registration failure.** SCI reports harmonization failure to CON; the original Source Asset remains registered, but dependent tasks remain BLOCKED until their required harmonized representations are available.
+2. **Scientific failure and Derived Asset registration failure are distinct outcomes.** SCI reports which stage failed to CON.
+3. **A task is SUCCEEDED only after CAT confirms successful Derived Asset registration.** Successful computation alone is not sufficient.
+4. **A failed task's descendants remain BLOCKED.** CON must not dispatch a task whose required dependency failed or whose required representation is not registered/available in CAT.
+5. **Already eligible independent work may finish.** CON allows independent tasks that were already READY or RUNNING when the failure was detected to complete. This avoids discarding useful work that does not depend on the failed task.
+6. **The failure prevents false completion.** If a requested final product cannot be generated because a required task failed, the request cannot become COMPLETED.
+7. **The request becomes FAILED after already eligible/running independent work has settled**, once CON determines that a requested output remains impossible to produce.
+8. **CAT remains the source of truth.** A generated file that was not registered successfully is not an available product and cannot satisfy dependencies.
+9. **Identity context is retained through failure handling.** The request and affected tasks keep their original trusted owner and correlation context. SCI/CAT use it for audit/trace attribution; CON remains responsible for user-facing access decisions.
 
 ## Task and request state interpretation
 
@@ -105,7 +136,7 @@ The existing conceptual task states remain:
 
 | Task state | Meaning in these scenarios |
 |---|---|
-| `FAILED` | The scientific computation failed, or the computation succeeded but CAT registration failed. The failure reason must remain distinguishable. |
+| `FAILED` | A Derived Asset computation failed, or the computation succeeded but CAT registration failed. The failure reason must remain distinguishable. L0 harmonization failure is tracked as a source-preparation outcome, not as a Derived Asset task failure. |
 | `BLOCKED` | A required dependency is not available. A descendant of a failed task remains blocked. |
 | `SUCCEEDED` | Computation completed and CAT registration succeeded. |
 
@@ -126,4 +157,4 @@ These topics belong in interface/execution contract design and, where they requi
 
 ## Scope boundary
 
-The diagrams show the two failure types required by the component-interaction design. They do not define worker topology, NATS subjects, REST routes, payload schemas or concrete recovery algorithms. Workers remain execution mechanisms; they are not logical components.
+The diagrams show L0 harmonization failure and the two Derived Asset failure types required by the component-interaction design. They do not define worker topology, NATS subjects, REST routes, payload schemas or concrete recovery algorithms. Workers remain execution mechanisms; they are not logical components.
