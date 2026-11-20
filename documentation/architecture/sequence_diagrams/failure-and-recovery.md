@@ -2,7 +2,7 @@
 
 **Status:** Validated failure-handling policy — design baseline  
 **Companion documents:** [Component Interaction Design](../system-interactions/component-interaction-design.md) · [Component Interaction Matrix](../system-interactions/component-interaction-matrix.md) · [Execute Analysis](./execute-analysis.md)  
-**Last updated:** 16 November 2026
+**Last updated:** 20 November 2026
 
 ## Purpose
 
@@ -118,6 +118,38 @@ sequenceDiagram
     CON->>CON: Set request state to FAILED
 ```
 
+## 4. Asynchronous delivery failure
+
+Delivery preparation is a separate asynchronous lifecycle owned by CON. A failure while retrieving a final product object or assembling a dependency archive updates the delivery resource to `FAILED` and is exposed through UI-21. It does not change the scientific request/result state and does not invalidate a result that remains successfully registered in CAT.
+
+A retry is represented as a new delivery request through GC-08 (final product) or GC-09 (dependency archive), unless a later delivery contract explicitly defines idempotent retry of the same delivery resource. Retry policy, temporary-object cleanup and retention of failure diagnostics remain open.
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant UI
+    participant GAT
+    participant CON
+    participant CAT
+    participant S3 as Object Storage
+
+    UI->>GAT: Request delivery (UI-13 or UI-14)
+    GAT->>CON: Create delivery (GC-08 or GC-09, Async)
+    CON->>CON: Persist delivery ID and PREPARING state
+    CON-->>GAT: Return delivery ID and initial state
+    GAT-->>UI: Return delivery reference
+    CON->>CAT: Resolve canonical references/lineage (Sync)
+    CAT-->>CON: Return references/lineage
+    CON->>S3: Retrieve object(s) or assemble archive
+    S3-->>CON: Delivery preparation fails
+    CON->>CON: Set delivery state to FAILED
+    UI->>GAT: Retrieve delivery state (UI-21)
+    GAT->>CON: Read existing delivery resource
+    CON-->>GAT: Return FAILED state and caller-safe diagnostics
+    GAT-->>UI: Return UI-21 delivery outcome
+    Note over CON,CAT: Scientific result remains registered and unchanged.
+```
+
 ## Validated failure-handling rules
 
 1. **L0 harmonization failure is distinct from Derived Asset computation or registration failure.** SCI reports harmonization failure to CON; the original Source Asset remains registered, but dependent tasks remain BLOCKED until their required harmonized representations are available.
@@ -157,4 +189,4 @@ These topics belong in interface/execution contract design and, where they requi
 
 ## Scope boundary
 
-The diagrams show L0 harmonization failure and the two Derived Asset failure types required by the component-interaction design. They do not define worker topology, NATS subjects, REST routes, payload schemas or concrete recovery algorithms. Workers remain execution mechanisms; they are not logical components.
+The diagrams show L0 harmonization failure, the two Derived Asset failure types and the separate asynchronous delivery-failure lifecycle. They do not define worker topology, NATS subjects, REST routes, payload schemas or concrete recovery algorithms. Workers remain execution mechanisms; they are not logical components.
