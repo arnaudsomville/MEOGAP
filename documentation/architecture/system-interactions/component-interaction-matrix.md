@@ -252,7 +252,7 @@ The SCI ↔ CAT interface is limited to generated-product registration and confi
 | User/system need | Logical route |
 |---|---|
 | Browse calculable products and their theoretical input requirements | UI → GAT → SCI → GAT → UI |
-| Submit an analysis request and obtain the feasibility/cost proposal | UI → GAT → CON; CON ↔ SCI; CON ↔ CAT; CON → GAT → UI (or later REST retrieval when preparation is asynchronous) |
+| Submit an analysis request and obtain the feasibility/cost proposal | UI → GAT → CON; CON asynchronously coordinates SCI feasibility/complexity and CAT dependency/acquisition-cost operations; the proposal outcome is exposed later through the request resource and REST (UI-17). |
 | Submit then explicitly confirm a request | UI → GAT → CON (submission and proposal preparation); later UI → GAT → CON (confirmation) |
 | Resolve a missing intermediate product | CON ↔ SCI for its requirements; CON ↔ CAT for concrete dependencies; CON recursively repeats as needed |
 | Acquire missing L0 data | CON → CAT → external provider/storage; CAT preserves and registers original Source Asset representation, then reports outcome |
@@ -261,15 +261,15 @@ The SCI ↔ CAT interface is limited to generated-product registration and confi
 | Register a generated product | SCI writes result to object storage; SCI → CAT registers metadata/lineage; CAT → SCI confirms; SCI → CON reports computation/registration outcome; CON queries CAT later when it needs the canonical asset reference/location |
 | View a computed result | UI → GAT → CON (authorization); CON → CAT for the canonical product reference and current location; CON → SCI for the representation; result returns through CON → GAT → UI |
 | Inspect actual lineage | UI → GAT → CON → CAT; lineage returns via CON → GAT → UI |
-| Download final product only | UI → GAT → CON → CAT (canonical asset reference and current location) → object storage; delivery access returns through CON → GAT → UI |
-| Download result with dependency archive | UI → GAT → CON → CAT (actual lineage, canonical asset references and current locations); CON retrieves assets from object storage and assembles a temporary archive; access returns through GAT to UI |
+| Download final product only | UI → GAT → CON (asynchronous GC-08 delivery); CON → CAT for canonical asset reference/location, then CON retrieves the object from storage. UI-21 later exposes the delivery state/access on the same delivery resource. |
+| Download result with dependency archive | UI → GAT → CON (asynchronous GC-09 delivery); CON → CAT for actual lineage and canonical references/locations; CON retrieves objects and assembles a temporary archive. UI-21 later exposes state/access on the same delivery resource. |
 | Cancel a request | UI → GAT → CON; CON records cancellation and stops further orchestration, then returns the outcome through GAT to UI |
 
 ## 10. Supporting mechanisms and external infrastructure
 
 The following elements may appear in later sequence diagrams, but are not peer logical components in this matrix:
 
-- **Workers:** execution mechanisms for long-running ingestion, computation or archive assembly.
+- **Workers:** execution mechanisms for long-running ingestion, computation, final-product delivery or archive assembly.
 - **NATS:** candidate internal messaging infrastructure. It is not a logical component and is not part of the public UI interface.
 - **Object storage (S3-compatible storage is a candidate):** external infrastructure used for input/output objects and temporary archives. No backend is selected by this matrix.
 - **EO providers:** external systems queried/acquired by CAT for L0 source data.
@@ -287,4 +287,4 @@ REST remains the source of truth for request state. Notifications are optional U
 - Reconciliation of the GAT/GTW naming used by current discussion and existing drafts.
 - Authentication/trust mechanism, credential format, identity claims and integrity-protected internal context format/propagation. ENG-15 defines the required behavior; concrete contract/security choices are deferred to M0-E02-T03 and any necessary ADR.
 
-This matrix is the validated logical interaction inventory for the current component architecture design. Synchronization and communication mechanisms are deliberately not classified here; they belong to interface and contract design. The user-facing policy is that operations expected to take more than 5 seconds are exposed asynchronously, with REST remaining the source of truth for request state.
+This matrix is the validated logical interaction inventory for the current component architecture design. Logical Sync/Async modes are explicitly classified in §1.2. Proposal preparation, final-product delivery, dependency-archive delivery and the identified CON↔SCI/CON↔CAT operations are asynchronous regardless of estimated duration. ENG-03's five-second threshold remains a general minimum rule for other user-facing operations. Physical transport, messaging durability, acknowledgement, correlation, idempotency and recovery remain for interface and contract design; REST remains the source of truth for request and delivery state.
