@@ -6,7 +6,7 @@
 
 ## Purpose
 
-Describe three distinct failure cases during source preparation and scientific product execution:
+Describe four distinct failure cases across source preparation, scientific product execution and delivery:
 
 1. L0 harmonization fails after the original Source Asset has been acquired and registered.
 2. Scientific computation fails before a generated Derived Asset is registered.
