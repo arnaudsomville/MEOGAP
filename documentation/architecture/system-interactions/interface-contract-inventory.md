@@ -1,6 +1,6 @@
 # MEOGAP — Interface & Contract Inventory
 
-**Document status:** Revised working proposal — pending branch/source reconciliation  
+**Document status:** Working conceptual contract inventory — aligned with the current interaction matrix; explicit decision-alignment points remain open  
 **Scope:** Conceptual contracts for the logical interactions inventoried for M0  
 **Target branch:** `38-m0-e02-t04-identify-m0-interface-and-contract-boundaries`  
 **Purpose:** Define interface responsibilities and conceptual information exchanged, organized by the component that provides/owns each interface.
@@ -22,15 +22,7 @@ It does not define:
 
 ### 1.1 What “owner” means here
 
-The **interface owner** is the component responsible for providing the capability and defining the semantics of the information it exposes. The consumer invokes or uses that capability.
-
-This is distinct from:
-- the producer of an individual message;
-- the direction of a request or response;
-- the component that physically stores a copy of metadata;
-- the authority that defines the meaning of scientific information.
-
-For request/response interactions, both directions are shown in the same row or family. The owner is not inferred from the arrow direction alone.
+The **interface owner** is the component that provides/owns the logical capability. The consumer invokes or uses that capability. The owner is not necessarily the producer of every message: CAT owns its catalogue interface but emits responses to CON queries. For request/response families, both directions are shown together. Interface ownership is distinct from the scientific or business authority for individual metadata fields.
 
 ### 1.2 Status vocabulary
 
@@ -112,7 +104,7 @@ True zero, missing observation, quality-masked value, unknown quality and proces
 
 ### 2.5 Metadata authority versus metadata storage
 
-CAT is responsible for storing and retrieving metadata associated with registered assets/results and their representations. This does not make CAT the scientific authority for every field it stores.
+CAT is responsible for storing and retrieving metadata associated with registered assets/results and their representations. This does not make CAT the scientific authority for every field it stores. This follows catalogue-responsibilities.md §6 and the SCI → CAT registration handoff.
 
 - SCI defines scientific product meaning, method, units, assumptions, scientific validation and scientific limitations.
 - CAT registers and returns metadata attached to concrete assets/results, including scientific metadata supplied by SCI and asset/representation metadata managed by CAT.
@@ -131,46 +123,48 @@ At runtime, a particular result still has its own quality/coverage information. 
 
 # 3. GAT — Public interface owner
 
-**Primary consumer:** UI.  
-**Other internal dependency:** GAT consumes SCI's public scientific catalogue interface (GS-01/02); it does not own that scientific capability.
+**Consumer of GAT:** UI.  
+**Internal dependency:** SCI for the public scientific product catalogue (GS-01/02). GAT does not own the scientific definition.
 
-GAT is the only public REST boundary. UI does not call CON, SCI, CAT, object storage or NATS directly. Public REST state remains authoritative; notifications are optional.
+GAT is the only public REST boundary. UI does not call CON, SCI, CAT, object storage or NATS directly. The tables below preserve the matrix's interaction IDs and distinguish user-initiated requests from response interactions.
 
-## 3.1 Public UI interface table
+## 3.1 UI-consumed GAT interface
 
-| Interaction ID | Operation / purpose | Consumer | Direction | Conceptual request information | Conceptual response information | Contract invariants / notes |
-|---|---|---|---|---|---|---|
-| UI-01 / UI-16 | Browse product catalogue | UI | UI → GAT; response GAT → UI | Optional filters/pagination. Caller identity is derived by GAT. | Product identifiers, names, descriptions, requestability and catalogue metadata. | Catalogue presence means a scientific product is exposed; it does not mean data/result assets already exist. |
-| UI-02 / UI-16 | Retrieve product definition | UI | UI → GAT; response GAT → UI | Product identifier. | Scientific purpose/description, supported parameters and constraints, expected outputs, units, spatial/temporal characteristics, limitations, validation/documentation status where available. | SCI is authority for definition; GAT returns the authorized public representation. |
-| UI-11 / UI-16 | Retrieve theoretical input requirements | UI | UI → GAT; response GAT → UI | Product identifier. | Abstract bands/variables, spatial/spectral resolution, acquisition-period constraints, quality requirements and compatibility criteria. | These are theoretical scientific requirements, not concrete acquisitions or asset references. |
-| UI-05 / UI-17 / UI-18 | Submit analysis request and prepare proposal | UI | UI → GAT; response GAT → UI | Product identifier, spatial scope, optional buffer parameters, UTC temporal scope and product-specific parameters. | Persistent request ID, current proposal-preparation state, then feasibility/conditions, dependency summary and estimated cost when ready. | Submission creates the request and starts proposal preparation. It does not launch scientific computation and does not debit credits. |
-| UI-06 / UI-17 / UI-18 | Confirm proposed request | UI | UI → GAT; response GAT → UI | Request ID and explicit confirmation. | Accepted/rejected confirmation, updated request state and launch outcome. | Confirmation is the point where CON rechecks balance, debits credits and launches the computation if accepted. |
-| UI-07 / UI-18 | List requests | UI | UI → GAT; response GAT → UI | Optional filters, sorting and pagination. | Requests visible to the authenticated caller: IDs, product/scope summaries, timestamps, states, proposal/cost summary and result availability. | UI cannot select another owner by sending an owner ID. |
-| UI-08 / UI-18 | Retrieve request status | UI | UI → GAT; response GAT → UI | Request ID. | Authoritative current request/proposal/execution state, result reference/availability and user-visible failure/cancellation information. | REST is source of truth even if notifications are missed. |
-| UI-23 / UI-24 | Request cancellation | UI | UI → GAT; response GAT → UI | Request ID and cancellation intent. | Cancellation accepted/rejected/processed, current request state and limitations. | CON owns cancellation. Requesting cancellation does not guarantee instantaneous termination of already-running work. |
-| UI-09 / UI-19 | Retrieve map representation | UI | UI → GAT; response GAT → UI | Result ID and supported map/display selection (e.g. band, slice, display options). | Map payload or retrievable representation reference, extent, CRS/display metadata and nodata/validity information. | GAT obtains authorization through CON; CON coordinates metadata/reference retrieval and SCI representation generation/serving. |
-| UI-10 / UI-19 | Retrieve analytical representation / time series | UI | UI → GAT; response GAT → UI | Result ID, spatial selection (point, SAU, AOI summary), temporal window and representation options. | Values or representation reference, time coordinates, units, spatial support/aggregation, quality/coverage and missing/masked distinctions. | Point, SAU and AOI summary are not interchangeable. State the support and aggregation semantics. |
-| UI-12 / UI-20 | Retrieve actual result lineage and metadata | UI | UI → GAT; response GAT → UI | Result ID. | Actual source/intermediate assets consumed; dependency relationships; product/method/version metadata, parameters, scope, quality and limitations where recorded. | CON coordinates retrieval. CAT returns registered asset metadata and actual lineage; scientific metadata may have been defined by SCI and stored by CAT. Do not present CAT as scientific authority. |
-| UI-13 / UI-21 | Download final product only | UI | UI → GAT; response GAT → UI | Result ID and optional supported format/representation selection. | Delivery ID/state; secure, time-bounded access when ready. | Distinct from dependency archive. Physical storage paths are never public contract data. |
-| UI-14 / UI-21 | Request dependency archive | UI | UI → GAT; response GAT → UI | Result ID and optional archive options if supported. | Delivery ID/state; secure, time-bounded access when ready. | Archive is generated on demand from actual lineage, not merely the planned dependency graph. |
-| UI-15 / UI-22 | Retrieve credit balance | UI | UI → GAT; response GAT → UI | Authenticated caller context only. | Current credit balance and relevant timestamp/consistency information. | CON owns credit policy/accounting. No client-supplied owner identity. |
+| Interaction ID | Operation / purpose | Interface owner | Consumer | Direction | Conceptual request information | Conceptual response information | Contract invariants / notes |
+|---|---|---|---|---|---|---|---|
+| UI-01 | Browse product catalogue | GAT | UI | UI → GAT; catalogue data from SCI via GS-01/02 | Optional catalogue filters/pagination. Caller/trace context is derived by GAT. | Product identifiers, names, descriptions and requestability/catalogue information. | SCI is scientific authority for Product Definitions; GAT exposes the public catalogue. Catalogue availability does not imply asset/result availability. |
+| UI-02 | Retrieve product definition | GAT | UI | UI → GAT; catalogue data from SCI via GS-01/02 | Product identifier. | Scientific purpose, method description, supported parameters, outputs, units, spatial/temporal characteristics, assumptions, limitations, documentation and validation status where available. | SCI owns the definition. CAT may store/index metadata snapshots attached to concrete assets but does not define the product. |
+| UI-05 | Submit analysis request | GAT (public boundary); CON (lifecycle owner) | UI | UI → GAT → CON; response GAT → UI | Product identifier, original spatial input (AOI/POI/LOI), buffer parameters where applicable, UTC temporal scope and product-specific parameters. | Persistent request reference and current state; feasibility, conditions, execution proposal and estimated cost when proposal preparation completes. | Submission creates/persists the request and starts feasibility evaluation, dependency resolution and cost estimation. There is no separate pre-submission feasibility/cost call. No debit and no scientific computation launch at submission. |
+| UI-06 | Confirm proposed request | GAT (public boundary); CON (lifecycle owner) | UI | UI → GAT → CON; response GAT → UI | Request identifier and explicit confirmation. | Confirmation/admission outcome and current request state. | CON rechecks the balance at confirmation. If accepted, CON debits credits and launches execution; insufficient balance means no launch. |
+| UI-07 | List analysis requests | GAT (public boundary); CON (request owner) | UI | UI → GAT → CON; response GAT → UI | Optional filters, sorting and pagination. | Requests visible to authenticated caller, including identifiers, summary, timestamps and lifecycle state. | CON enforces caller ownership. UI cannot select another owner by supplying an owner ID. |
+| UI-08 | Retrieve request status | GAT (public boundary); CON (request owner) | UI | UI → GAT → CON; response GAT → UI | Request identifier. | Authoritative current request/proposal/execution state and user-visible status details. | REST is source of truth even if notifications are missed. |
+| UI-09 | Request map visualization | GAT (public boundary); SCI (representation provider) | UI | UI → GAT → CON (authorization) → SCI; response via CON → GAT → UI | Result identifier and supported map/display selection (e.g. variable, slice, display options). | SCI-generated map representation or access reference, with extent/CRS/display and validity metadata. | Specific-result visualization is not a direct GAT ↔ SCI catalogue call. CON checks access before asking SCI for the representation. |
+| UI-10 | Request analytical representation | GAT (public boundary); SCI (representation provider) | UI | UI → GAT → CON (authorization) → SCI; response via CON → GAT → UI | Result identifier, spatial selection (point or zonal/AOI summary), temporal window and supported representation options. | Values/representation, time coordinates, units, spatial support/aggregation, quality and missing/masked distinctions. | Specific-result analytical representation passes through CON. Point selection, SAU and AOI summary are distinct concepts; SYS-06 defines point and zonal analysis. |
+| UI-11 | Inspect scientific input requirements | GAT (public boundary); SCI (scientific definition owner) | UI | UI → GAT; GAT ↔ SCI through GS-01/02; response GAT → UI | Product identifier. | Abstract bands/variables, spatial/spectral resolution, acquisition-period constraints, quality requirements and compatibility criteria. | These are theoretical scientific requirements, not concrete acquisitions or asset references. |
+| UI-12 | Inspect actual result lineage | GAT (public boundary); CAT (lineage authority) | UI | UI → GAT → CON → CAT; response via CON → GAT → UI | Result identifier. | Actual source/intermediate assets, concrete product/acquisition instances and versions used, registered lineage and associated asset metadata. | CAT owns actual lineage and stores/retrieves asset metadata. SCI remains authority for scientific meaning/method metadata. |
+| UI-13 | Download final product | GAT (public boundary); CON (delivery owner) | UI | UI → GAT → CON; CON → CAT for canonical reference/location; CON → object storage | Result identifier and supported format/representation selection, if applicable. | Delivery reference/state; secure access when ready. | Final product only; no dependency archive. CAT supplies canonical references; CON retrieves the object and orchestrates delivery. |
+| UI-14 | Request dependency archive | GAT (public boundary); CON (delivery owner) | UI | UI → GAT → CON; CON → CAT for actual lineage/references; CON → object storage | Result identifier and supported archive options, if applicable. | Delivery reference/state; secure access when ready. | Archive is generated on demand and follows actual lineage, not merely CON's planned dependency graph. CON assembles it. |
+| UI-15 | Retrieve credit balance | GAT (public boundary); CON (accounting owner) | UI | UI → GAT → CON; response GAT → UI | Authenticated caller context only. | Current balance. | CON owns credit policy/accounting. No client-supplied owner identity. |
+| UI-23 | Request analysis cancellation | GAT (public boundary); CON (lifecycle owner) | UI | UI → GAT → CON; response GAT → UI | Request identifier and cancellation intent. | Cancellation outcome and current request state. | Cancellation may be requested in any request state except `COMPLETED`. CON coordinates interruption/reconciliation of work already running. |
 
-### 3.2 Public asynchronous behavior
+## 3.2 GAT-produced response interactions
 
-The public interface must not keep a REST request open for long-running work. Submission and delivery operations return a persistent reference and current state when they cannot complete promptly. The user retrieves the latest state through REST.
+These are response interactions in the matrix, not additional UI-initiated operations.
 
-The earlier draft used a five-second threshold. **This threshold must be checked against the authoritative engineering requirements before it is treated as a fixed project rule.** The invariant is asynchronous handling for long-running operations; the exact threshold is not confirmed by the decisions in this review.
+| Interaction ID | Interface owner | Consumer | Direction | Information returned | Notes |
+|---|---|---|---|---|---|
+| UI-16 | GAT | UI | GAT → UI | Product catalogue information and definitions. | Includes public scientific metadata obtained from SCI through GS-01/02. |
+| UI-17 | GAT | UI | GAT → UI | Feasibility decision, conditions/limitations and estimated cost proposal. | Returned when proposal preparation completes. |
+| UI-18 | GAT | UI | GAT → UI | Request identifiers, request-list entries and current status. | REST state remains authoritative. |
+| UI-19 | GAT | UI | GAT → UI | Requested map or analytical representation. | Result representation is obtained through CON → SCI after authorization. |
+| UI-20 | GAT | UI | GAT → UI | Actual lineage of a computed result. | Obtained through CON → CAT. |
+| UI-21 | GAT | UI | GAT → UI | Delivery status and secure access information when ready. | Separate delivery request for final product versus dependency archive. |
+| UI-22 | GAT | UI | GAT → UI | Current credit balance. | CON is accounting authority. |
+| UI-24 | GAT | UI | GAT → UI | Cancellation outcome and current request state. | CON is lifecycle authority. |
 
-### 3.3 Public response semantics
+## 3.3 Public asynchronous behavior
 
-- UI-16: catalogue/product-definition/input-requirement information.
-- UI-17: feasibility and cost proposal.
-- UI-18: request references and lifecycle information.
-- UI-19: map or analytical representation.
-- UI-20: actual lineage and result metadata.
-- UI-21: delivery status/access information.
-- UI-22: credit balance.
-- UI-24: cancellation outcome.
+ENG-03 and Component Interaction Matrix §1.2 establish the five-second threshold: user-facing operations expected to exceed five seconds are exposed asynchronously from the start. The API returns a persistent reference/current state; the outcome is retrieved through REST. This does not prescribe internal worker or messaging transport.
 
 Exact response envelopes, status vocabulary, pagination, error model and representation encoding remain implementation-level decisions.
 
@@ -183,21 +177,21 @@ Exact response envelopes, status vocabulary, pagination, error model and represe
 
 CON owns the business lifecycle. It coordinates SCI and CAT but does not take over their scientific or asset-catalogue responsibilities.
 
-## 4.1 GAT-consumed CON interface table
+## 4.1 CON-owned interface consumed by GAT
 
-| Interaction ID | Operation / purpose | Consumer | Direction | Conceptual request information | Conceptual response information | Contract invariants / notes |
-|---|---|---|---|---|---|---|
-| GC-02 / GC-02-R | Create request and prepare proposal | GAT | GAT → CON; response CON → GAT | Product ID, spatial/temporal scope, product parameters, trusted caller context, correlation context. | Request ID, preparation state; when ready, feasibility, conditions, dependency summary and estimated cost. | Submission starts proposal preparation only. No debit and no computation launch at this stage. |
-| GC-03 | Confirm proposal and launch computation | GAT | GAT → CON; response CON → GAT | Request ID, explicit confirmation, trusted caller context. | Confirmation accepted/rejected, current state and execution-start outcome. | At confirmation CON rechecks balance and performs debit plus admission/launch decision as one atomic business operation. |
-| GC-04 / GC-04-R | List requests | GAT | GAT → CON; response CON → GAT | Trusted caller context and optional filters/pagination. | Requests owned/visible to that caller, with summaries and current states. | CON enforces ownership scope; GAT does not implement a parallel ownership model. |
-| GC-05 / GC-05-R | Retrieve request status | GAT | GAT → CON; response CON → GAT | Request ID and trusted caller context. | Authoritative request/proposal/execution/cancellation state. | Access to another user's request is denied. |
-| GC-06 / GC-06-R | Retrieve credit balance | GAT | GAT → CON; response CON → GAT | Trusted caller context. | Current balance and relevant accounting/consistency information. | CON owns credit policy and accounting. |
-| GC-07 / GC-07-R | Decide access to result/resource | GAT | GAT → CON; response CON → GAT | Trusted caller context, target result/resource ID and requested action (map, series, lineage, download, etc.). | Allow/deny and a reason/category where needed. | CON is authority for user-facing authorization. |
-| GC-14 / GC-14-R | Request cancellation | GAT | GAT → CON; response CON → GAT | Request ID and trusted caller context. | Cancellation outcome and current state. | CON stops further orchestration and coordinates already-running work; exact interruption/reconciliation behavior remains to be specified. |
-| GC-08 | Request final-product delivery | GAT | GAT → CON | Result ID, optional format selection, trusted caller context. | Delivery ID and initial state. | CON authorizes, obtains canonical asset reference/location from CAT, then retrieves the object from storage and coordinates delivery. |
-| GC-09 | Request dependency archive | GAT | GAT → CON | Result ID, optional archive options, trusted caller context. | Delivery ID and initial state. | CON obtains actual lineage and canonical references from CAT, retrieves objects from storage and assembles the archive. |
-| GC-10 / GC-11 | Retrieve delivery status | GAT | GAT → CON; response CON → GAT | Delivery ID and trusted caller context. | Current delivery state and failure details suitable for the caller. | CON owns delivery lifecycle. |
-| GC-12 / GC-13 | Retrieve delivery access | GAT | GAT → CON; response CON → GAT | Delivery ID and trusted caller context. | Secure time-bounded access information when ready. | No internal physical storage path is exposed. |
+| Interaction ID | Operation / purpose | Interface owner | Consumer | Direction | Conceptual request information | Conceptual response information | Contract invariants / notes |
+|---|---|---|---|---|---|---|---|
+| GC-02 / GC-02-R | Create request and prepare proposal | CON | GAT | GAT → CON; response CON → GAT | Product ID, spatial/temporal scope, product parameters, trusted caller context, correlation context. | Request ID, preparation state; when ready, feasibility, conditions, dependency summary and estimated cost. | Submission starts proposal preparation only. No debit and no computation launch at this stage. |
+| GC-03 | Confirm proposal and launch computation | CON | GAT | GAT → CON; response CON → GAT | Request ID, explicit confirmation, trusted caller context. | Confirmation accepted/rejected, current state and execution-start outcome. | At confirmation CON rechecks balance and performs debit plus admission/launch decision as one atomic business operation. |
+| GC-04 / GC-04-R | List requests | CON | GAT | GAT → CON; response CON → GAT | Trusted caller context and optional filters/pagination. | Requests owned/visible to that caller, with summaries and current states. | CON enforces ownership scope; GAT does not implement a parallel ownership model. |
+| GC-05 / GC-05-R | Retrieve request status | CON | GAT | GAT → CON; response CON → GAT | Request ID and trusted caller context. | Authoritative request/proposal/execution/cancellation state. | Access to another user's request is denied. |
+| GC-06 / GC-06-R | Retrieve credit balance | CON | GAT | GAT → CON; response CON → GAT | Trusted caller context. | Current balance and relevant accounting/consistency information. | CON owns credit policy and accounting. |
+| GC-07 / GC-07-R | Decide access to result/resource | CON | GAT | GAT → CON; response CON → GAT | Trusted caller context, target result/resource ID and requested action (map, series, lineage, download, etc.). | Allow/deny and a reason/category where needed. | CON is authority for user-facing authorization. |
+| GC-14 / GC-14-R | Request cancellation | CON | GAT | GAT → CON; response CON → GAT | Request ID and trusted caller context. | Cancellation outcome and current state. | CON stops further orchestration and coordinates already-running work; exact interruption/reconciliation behavior remains to be specified. |
+| GC-08 | Request final-product delivery | CON | GAT | GAT → CON | Result ID, optional format selection, trusted caller context. | Delivery ID and initial state. | CON authorizes, obtains canonical asset reference/location from CAT, then retrieves the object from storage and coordinates delivery. |
+| GC-09 | Request dependency archive | CON | GAT | GAT → CON | Result ID, optional archive options, trusted caller context. | Delivery ID and initial state. | CON obtains actual lineage and canonical references from CAT, retrieves objects from storage and assembles the archive. |
+| GC-10 / GC-11 | Retrieve delivery status | CON | GAT | GAT → CON; response CON → GAT | Delivery ID and trusted caller context. | Current delivery state and failure details suitable for the caller. | CON owns delivery lifecycle. |
+| GC-12 / GC-13 | Retrieve delivery access | CON | GAT | GAT → CON; response CON → GAT | Delivery ID and trusted caller context. | Secure time-bounded access information when ready. | No internal physical storage path is exposed. |
 
 ## 4.2 Proposal preparation and confirmation lifecycle
 
@@ -219,7 +213,7 @@ Submission is not financial commitment and does not start the scientific computa
 
 **Confirmed decision:** debit occurs at confirmation, not at submission/proposal preparation.
 
-**Required technical guarantee:** the balance check and debit must be atomic with the confirmation/admission decision. Concurrent confirmations must not spend the same available balance twice. A rejected confirmation due to insufficient balance must not launch execution or leave a partial debit.
+**Required technical guarantee:** the balance check and debit must be atomic with the confirmation/admission decision. Concurrent confirmations must not spend the same available balance twice. A rejected confirmation due to insufficient balance must not launch execution or leave a partial debit. This is a concurrency safeguard for the confirmation contract; it does not imply a production-grade ledger is already implemented.
 
 Whether a debit is later refunded for cancellation/failure, and the exact ledger model, remain separate financial-policy decisions not defined here.
 
@@ -241,7 +235,7 @@ For dependency archive:
 4. CON assembles the on-demand archive and coordinates its temporary availability.
 5. GAT exposes delivery state/access information.
 
-**CAT does not retrieve or serve the files for CON.** CAT resolves metadata, lineage and references. CON performs delivery orchestration and object retrieval.
+**CAT does not retrieve or serve the files for CON.** CAT resolves metadata, actual lineage and canonical references/current locations. CON performs delivery orchestration, object retrieval and archive assembly.
 
 ---
 
@@ -251,14 +245,14 @@ For dependency archive:
 
 SCI owns the meaning and behavior of scientific products. SCI does not resolve abstract input requirements to concrete available assets. That resolution is performed by CAT under CON orchestration.
 
-## 5.1 CON-consumed scientific interface table
+## 5.1 SCI-owned interfaces consumed by CON
 
-| Interaction ID | Operation / purpose | Consumer | Direction | Conceptual request information | Conceptual response information | Contract invariants / notes |
-|---|---|---|---|---|---|---|
-| CS-01 / CS-02 | Scientific feasibility evaluation and abstract input requirements | CON | CON → SCI; response SCI → CON | Product ID, product parameters, spatial scope, temporal scope and correlation/request context. | Feasibility, conditions/limitations, reasons for infeasibility and abstract input requirements (bands/variables, resolution, period and quality criteria). | Product ID is sufficient to identify the SCI-defined product. SCI selects its applicable definition/version internally and records it as metadata. No concrete asset references in this exchange. |
-| CS-03 / CS-04 | Technical computation-complexity estimate | CON | CON → SCI; response SCI → CON | Self-contained product ID, parameters, spatial/temporal scope, computation options affecting resource use and correlation context. | Complexity/resource estimate, expected data volume or effort, indicative duration if available, assumptions and limitations. | CS-03 must be independently understandable; it does not depend on a prior CS-01/02 call. SCI estimates technical effort; CON calculates user-facing credits. |
-| CS-05 / CS-06 | Execute scientific product computation | CON | CON → SCI; response SCI → CON | Product ID, parameters, spatial/temporal scope, concrete input asset/representation references and execution context. | Execution outcome, result metadata, method/version metadata, actual inputs consumed, quality/coverage/limitations, diagnostics and registration outcome. | CON resolves inputs through CAT. SCI performs computation and writes output; SCI registers the resulting Derived Asset with CAT. Successful computation and successful CAT registration are distinct. |
-| CS-07 / CS-08 | Harmonize original L0 Source Asset representation | CON | CON → SCI; response SCI → CON | Existing Source Asset ID, original representation reference/location from CAT, harmonization options/requirements and processing context. | Harmonization outcome, generated representation metadata, method/version/provenance, quality/coverage and CAT registration status. | Original provider representation is already registered/preserved by CAT. SCI creates harmonized representations against that Source Asset; this does not create a Derived Asset. CON checks availability through CC-14. |
+| Interaction ID | Operation / purpose | Interface owner | Consumer | Direction | Conceptual request information | Conceptual response information | Contract invariants / notes |
+|---|---|---|---|---|---|---|---|
+| CS-01 / CS-02 | Scientific feasibility evaluation and abstract input requirements | SCI | CON | CON → SCI; response SCI → CON | Product ID, product parameters, spatial scope, temporal scope and correlation/request context. | Feasibility, conditions/limitations, reasons for infeasibility and abstract input requirements (bands/variables, resolution, period and quality criteria). | Product ID is sufficient to identify the SCI-defined product. SCI selects its applicable definition/version internally and records it as metadata. No concrete asset references in this exchange. |
+| CS-03 / CS-04 | Technical computation-complexity estimate | SCI | CON | CON → SCI; response SCI → CON | Self-contained product ID, parameters, spatial/temporal scope, computation options affecting resource use and correlation context. | Complexity/resource estimate, expected data volume or effort, indicative duration if available, assumptions and limitations. | CS-03 must be independently understandable; it does not depend on a prior CS-01/02 call. SCI estimates technical effort; CON calculates user-facing credits. |
+| CS-05 / CS-06 | Execute scientific product computation | SCI | CON | CON → SCI; response SCI → CON | Product ID, product-definition/version context as currently described by the matrix, parameters, spatial/temporal scope, concrete input asset/representation references and execution context. | Execution outcome, result metadata, method/version metadata, actual inputs consumed, quality/coverage/limitations, diagnostics and registration outcome. | The matrix currently lists product definition/version in CS-05. This is an alignment point with the confirmed decision that SCI resolves the applicable version internally and records it as metadata. CON resolves inputs through CAT. SCI computes, writes output and registers the Derived Asset with CAT. |
+| CS-07 / CS-08 | Harmonize original L0 Source Asset representation | SCI | CON | CON → SCI; response SCI → CON | Existing Source Asset ID, original representation reference/location from CAT, harmonization options/requirements and processing context. | Harmonization outcome, generated representation metadata, method/version/provenance, quality/coverage and CAT registration status. | Original provider representation is already registered/preserved by CAT. SCI creates harmonized representations against that Source Asset; this does not create a Derived Asset. CON checks availability through CC-14. |
 
 ### 5.2 Product identity and version metadata
 
@@ -268,7 +262,7 @@ SCI records the definition/method version actually used in the result metadata a
 
 The contract does not require the user or CON to provide a version string merely to ask SCI to evaluate or estimate a known product.
 
-### 5.3 CS-01/02 — evaluation semantics
+### 5.4 CS-01/02 — evaluation semantics
 
 SCI returns:
 - whether the product request is scientifically feasible;
@@ -282,13 +276,13 @@ SCI does not:
 - decide user access;
 - calculate user credit price.
 
-### 5.4 CS-03/04 — estimation semantics
+### 5.5 CS-03/04 — estimation semantics
 
 CS-03 is self-contained. It includes the context required to estimate the requested computation without relying on a previous evaluation call.
 
 SCI returns technical complexity/resource information. CON converts this into a user-facing credit estimate using its own policy. Duration is indicative, not a service-level guarantee. Complexity estimation is not the same as scientific feasibility.
 
-### 5.5 CS-05/06 — computation and registration semantics
+### 5.6 CS-05/06 — computation and registration semantics
 
 SCI:
 1. receives concrete input references/locations resolved by CON through CAT;
@@ -310,17 +304,17 @@ Preserve these outcomes:
 | Successful | Failed | Output may physically exist, but no registered Derived Asset is confirmed. |
 | Partial | Successful or failed | Partial result/coverage must be explicitly characterized; not automatically equivalent to total failure. |
 
-### 5.6 CS-07/08 — harmonization semantics
+### 5.7 CS-07/08 — harmonization semantics
 
 SCI harmonizes an already registered Source Asset's original provider representation. It submits generated representations to CAT for registration against that existing Source Asset (SC-03/04). It does not create a Derived Asset for this operation.
 
 A Source Asset may remain registered and its original representation may remain available while harmonized representations are pending, unavailable or failed. Registration confirmation is not by itself proof that a representation is already available for consumption; CON checks required availability with CC-14.
 
-### 5.7 GAT-consumed scientific catalogue table
+### 5.8 SCI-owned scientific catalogue interface consumed by GAT
 
-| Interaction ID | Operation / purpose | Consumer | Direction | Conceptual request information | Conceptual response information | Contract invariants / notes |
-|---|---|---|---|---|---|---|
-| GS-01 / GS-02 | Query and return scientific product catalogue/definition information | GAT | GAT → SCI; response SCI → GAT | Product ID or catalogue filters/pagination as supported. | Product identifiers, definitions, supported parameters, scientific characteristics, input requirements and scientific documentation/validation metadata. | SCI is the scientific authority. GAT exposes the public view; CAT may store metadata associated with concrete assets but does not define the scientific product. |
+| Interaction ID | Operation / purpose | Interface owner | Consumer | Direction | Conceptual request information | Conceptual response information | Contract invariants / notes |
+|---|---|---|---|---|---|---|---|
+| GS-01 / GS-02 | Query and return scientific product catalogue/definition information | SCI | GAT | GAT → SCI; response SCI → GAT | Product ID or catalogue filters/pagination as supported. | Product identifiers, definitions, supported parameters, scientific characteristics, input requirements and scientific documentation/validation metadata. | SCI is the scientific authority. GAT exposes the public view; CAT may store metadata associated with concrete assets but does not define the scientific product. |
 
 Scientific product validation status belongs to the product design/development lifecycle. Result-specific quality and coverage belong to each computed result. The catalogue should not imply that every result from a validated product is itself high quality.
 
@@ -332,41 +326,41 @@ Scientific product validation status belongs to the product design/development l
 
 CAT owns concrete asset discovery, source acquisition/ingestion, asset and representation registration, metadata persistence/retrieval, canonical asset references and actual lineage. CAT does not define scientific product semantics, perform scientific computation or make user-facing authorization decisions.
 
-## 6.1 CON-consumed CAT interface table
+## 6.1 CAT-owned interfaces consumed by CON
 
-| Interaction ID | Operation / purpose | Consumer | Direction | Conceptual request information | Conceptual response information | Contract invariants / notes |
-|---|---|---|---|---|---|---|
-| CC-01 / CC-02 | Resolve abstract requirements to concrete dependencies | CON | CON → CAT; response CAT → CON | SCI abstract input criteria, requested spatial/temporal scope, compatibility/quality constraints and correlation context. | Matching concrete Source/Derived Asset instances, IDs, acquisition/product identity, spatial/temporal support, quality/coverage metadata and representation availability. | CAT resolves concrete candidates against explicit criteria. SCI owns scientific thresholds; CON orchestrates selection/dependencies. |
-| CC-03 | Report missing intermediate products | CON | CAT → CON | Not applicable as an independent request if returned as part of dependency resolution; exact triggering semantics remain to be confirmed against matrix. | Missing intermediate product identity, required scope/parameters and dependency context. | CAT reports missing products; CON asks SCI for requirements and orchestrates their generation. CAT does not compute them. |
-| CC-04 | Report missing L0 acquisitions | CON | CAT → CON | Not applicable as an independent request if returned as part of dependency resolution; exact triggering semantics remain to be confirmed against matrix. | Missing acquisition identity/provider/mission, tile or acquisition context, spatial/temporal support and constraints. | CAT identifies missing source acquisitions; CON orchestrates acquisition/ingestion. |
-| CC-05 / CC-06 | Obtain itemized L0 acquisition costs | CON | CON → CAT; response CAT → CON | List of missing source acquisitions and provider context. | Cost per acquisition, cost unit and assumptions/limitations. | CAT reports source/provider acquisition cost. CON applies its own user-facing credit/pricing policy. |
-| CC-07 / CC-08 | Request and report L0 ingestion | CON | CON → CAT; response CAT → CON | Acquisition identifiers, provider references and ingestion context. | Ingestion outcome, registered Source Asset identifiers, original representation metadata/references and diagnostics. | CAT preserves/registers original provider data. Acquisition/ingestion state is distinct from harmonization and scientific quality. |
-| CC-09 / CC-10 | Resolve canonical asset references and locations | CON | CON → CAT; response CAT → CON | Logical asset/representation IDs. | Canonical asset and representation references, current locations, metadata needed for authorized processing/delivery. | Logical IDs are not physical paths. CAT is authority for canonical asset/representation references and current location. |
-| CC-11 / CC-12 | Retrieve actual result lineage | CON | CON → CAT; response CAT → CON | Result/Derived Asset identifier. | Exact source and intermediate assets actually consumed, relationships and relevant registered metadata. | Actual lineage is distinct from CON's planned dependency graph. |
-| CC-13 | Resolve original Source Asset representation | CON | CON → CAT | Source Asset ID and original-provider representation selection/context. | Original representation reference/location and associated metadata. | Used before SCI harmonization. Original provider representation remains preserved and distinguishable. |
-| CC-14 | Check harmonized representation availability | CON | CON → CAT | Source Asset ID and required representation characteristics/identifiers. | Availability state for each required representation, plus metadata/location where available. | Registration and availability are separate. CON only unblocks dependent work when the required representation is actually available. |
+| Interaction ID | Operation / purpose | Interface owner | Consumer | Direction | Conceptual request information | Conceptual response information | Contract invariants / notes |
+|---|---|---|---|---|---|---|---|
+| CC-01 / CC-02 | Resolve abstract requirements to concrete dependencies | CAT | CON | CON → CAT; response CAT → CON | SCI abstract input criteria, requested spatial/temporal scope, compatibility/quality constraints and correlation context. | Matching concrete Source/Derived Asset instances, IDs, acquisition/product identity, spatial/temporal support, quality/coverage metadata and representation availability. | CAT resolves concrete candidates against explicit criteria. SCI owns scientific thresholds; CON orchestrates selection/dependencies. |
+| CC-03 | Report missing intermediate products | CAT | CON | CAT → CON | N/A as a separate request; CAT reports this condition in the dependency-resolution outcome. | Missing intermediate product identity, required scope/parameters and dependency context. | CAT reports missing products; CON asks SCI for requirements and orchestrates their generation. CAT does not compute them. |
+| CC-04 | Report missing L0 acquisitions | CAT | CON | CAT → CON | N/A as a separate request; CAT reports this condition in the dependency-resolution outcome. | Missing acquisition identity/provider/mission, tile or acquisition context, spatial/temporal support and constraints. | CAT identifies missing source acquisitions; CON orchestrates acquisition/ingestion. |
+| CC-05 / CC-06 | Obtain itemized L0 acquisition costs | CAT | CON | CON → CAT; response CAT → CON | List of missing source acquisitions and provider context. | Cost per acquisition, cost unit and assumptions/limitations. | CAT reports source/provider acquisition cost. CON applies its own user-facing credit/pricing policy. |
+| CC-07 / CC-08 | Request and report L0 ingestion | CAT | CON | CON → CAT; response CAT → CON | Acquisition identifiers, provider references and ingestion context. | Ingestion outcome, registered Source Asset identifiers, original representation metadata/references and diagnostics. | CAT preserves/registers original provider data. Acquisition/ingestion state is distinct from harmonization and scientific quality. |
+| CC-09 / CC-10 | Resolve canonical asset references and locations | CAT | CON | CON → CAT; response CAT → CON | Logical asset/representation IDs. | Canonical asset and representation references, current locations, metadata needed for authorized processing/delivery. | Logical IDs are not physical paths. CAT is authority for canonical asset/representation references and current location. |
+| CC-11 / CC-12 | Retrieve actual result lineage | CAT | CON | CON → CAT; response CAT → CON | Result/Derived Asset identifier. | Exact source and intermediate assets actually consumed, relationships and relevant registered metadata. | Actual lineage is distinct from CON's planned dependency graph. |
+| CC-13 | Resolve original Source Asset representation | CAT | CON | CON → CAT | Source Asset ID and original-provider representation selection/context. | Original representation reference/location and associated metadata. | Used before SCI harmonization. Original provider representation remains preserved and distinguishable. |
+| CC-14 | Check harmonized representation availability | CAT | CON | CON → CAT | Source Asset ID and required representation characteristics/identifiers. | Availability state for each required representation, plus metadata/location where available. | Registration and availability are separate. CON only unblocks dependent work when the required representation is actually available. |
 
-**Open point:** CC-02's exact selection semantics (one selected asset versus a candidate set) must follow the authoritative matrix and dependency-planning design. Do not silently assume CAT makes the final scientific selection if the matrix assigns that decision to CON.
+**Matrix baseline:** CC-02 returns the exact available assets/products that satisfy the criteria. catalogue-responsibilities.md §3 states that CAT matches concrete metadata against SCI's compatibility constraints and returns the exact source/product instances satisfying them. CON owns recursive dependency planning/orchestration; CAT does not orchestrate missing product generation.
 
-## 6.2 SCI-consumed CAT registration interface table
+## 6.2 CAT-owned registration interface consumed by SCI
 
-| Interaction ID | Operation / purpose | Consumer | Direction | Conceptual request information | Conceptual response information | Contract invariants / notes |
-|---|---|---|---|---|---|---|
-| SC-01 / SC-02 | Register a Derived Asset and confirm registration | SCI | SCI → CAT; response CAT → SCI | New output metadata, initial object reference/location, product identity, method/version metadata, parameters/scope/period, quality metadata and exact input asset references actually consumed. | Registration outcome, canonical logical asset ID and registration diagnostics. | CAT registers the Derived Asset and actual lineage. SCI remains owner of scientific meaning/method; CAT owns registration and canonical asset identity. |
-| SC-03 / SC-04 | Register harmonized representations against an existing Source Asset and confirm | SCI | SCI → CAT; response CAT → SCI | Existing Source Asset ID, generated representation metadata, object reference/location, harmonization method/version and quality/coverage metadata. | Registration outcome and representation identifiers/registration diagnostics. | This adds representations to an existing Source Asset. It does not create a Derived Asset. |
+| Interaction ID | Operation / purpose | Interface owner | Consumer | Direction | Conceptual request information | Conceptual response information | Contract invariants / notes |
+|---|---|---|---|---|---|---|---|
+| SC-01 / SC-02 | Register a Derived Asset and confirm registration | CAT | SCI | SCI → CAT; response CAT → SCI | New output metadata, initial object reference/location, product identity, method/version metadata, parameters/scope/period, quality metadata and exact input asset references actually consumed. | Registration outcome, canonical logical asset ID and registration diagnostics. | CAT registers the Derived Asset and actual lineage. SCI remains owner of scientific meaning/method; CAT owns registration and canonical asset identity. |
+| SC-03 / SC-04 | Register harmonized representations against an existing Source Asset and confirm | CAT | SCI | SCI → CAT; response CAT → SCI | Existing Source Asset ID, generated representation metadata, object reference/location, harmonization method/version and quality/coverage metadata. | Registration outcome and representation identifiers/registration diagnostics. | This adds representations to an existing Source Asset. It does not create a Derived Asset. |
 
 ### 6.3 Metadata responsibilities
 
-CAT stores and returns metadata associated with concrete registered assets and representations. This includes metadata supplied by SCI when registering a computed product or harmonized representation.
+CAT stores and returns metadata associated with concrete registered assets and representations. This includes scientific metadata supplied by SCI when registering a computed product or harmonized representation. Product Definitions themselves remain owned by SCI and are exposed to GAT through GS-01/GS-02.
 
 Responsibility is split as follows:
 
 | Metadata category | Semantic authority / producer | Storage and retrieval responsibility |
 |---|---|---|
-| Product definition and scientific meaning | SCI | SCI catalogue; CAT may store a copy/snapshot when attached to an asset. |
+| Product definition and scientific meaning | SCI | SCI Product Catalogue; CAT may store/index a metadata snapshot when attached to a concrete asset. |
 | Method and product-definition version actually used | SCI / computation provenance | SCI supplies it; CAT stores it with the registered result asset; CON retrieves/assembles it for request/result views. |
 | Scientific parameters, assumptions and limitations | SCI | SCI supplies; CAT stores with the asset/result metadata where applicable. |
-| Scientific validation status/reference for the product | SCI product lifecycle | SCI defines; public catalogue exposes it. CAT may retain associated metadata with an asset snapshot. |
+| Scientific validation status/reference for the product | SCI product lifecycle | SCI defines; public catalogue exposes it through GS-01/GS-02. CAT may retain/index associated metadata with an asset snapshot. |
 | Asset identity, representation identity and registration state | CAT | CAT |
 | Native CRS, dimensions, resolution, format, size, actual extent and actual temporal coverage | Source metadata and processing metadata; CAT validates/records asset facts | CAT |
 | Current object reference/location and representation availability | CAT | CAT |
@@ -543,7 +537,7 @@ This conceptual inventory does not fix:
 - [ ] Product scientific validation and individual result quality remain distinct.
 - [ ] Public UI operations go through GAT; private result access is authorized through CON.
 - [ ] Download flow correctly separates CAT reference resolution from CON object retrieval/delivery.
-- [ ] Long-running public operations are asynchronous at the REST boundary.
+- [x] User-facing operations expected to exceed five seconds are asynchronous from the start at the REST boundary (ENG-03 and matrix §1.2).
 - [ ] No route, payload schema or transport is frozen prematurely.
 - [ ] M0 mock behavior is distinguished from planned real capabilities.
 
@@ -551,19 +545,15 @@ This conceptual inventory does not fix:
 
 ## 13. Source and reconciliation notes
 
-The previous draft identified these branch sources as its basis:
+The following branch documents were used as the authority and supporting context:
 
 - `documentation/architecture/system-interactions/component-interaction-matrix.md` — logical interaction inventory and routes.
 - `documentation/architecture/system-interactions/component-interaction-design.md` — interaction design rationale and sequence flows.
 - `documentation/architecture/catalogue-responsibilities.md` — Product Catalogue versus Data/Asset Catalogue, registration and lineage responsibilities.
-- `documentation/specifications/components/gtw.md`, `con.md`, `sci.md`, `cat.md`, `ui.md` — component responsibilities and requirements; older component drafts may require reconciliation.
-- `documentation/specifications/eng.md` — cross-cutting engineering requirements.
-- `documentation/specifications/sys.md` — system-level behavior and M0 requirements.
+- `documentation/specifications/components/gtw.md`, `con.md`, `sci.md`, `cat.md`, `ui.md` — earlier component drafts; not authoritative where they conflict with the newer interaction design.
+- `documentation/specifications/eng.md` — cross-cutting engineering requirements, including ENG-03 (five-second asynchronous API policy) and ENG-15 (trusted caller context).
+- `documentation/specifications/sys.md` — system-level behavior and M0 requirements, including SYS-14a/14b (product validation record), SYS-19 (versioned definitions), SYS-24/25 (credit proposal/admission), SYS-31 (component boundaries).
 
-The target branch could not be reopened during this revision because GitHub access returned `404` for the repository contents on both the target branch and `main`. Therefore:
-- the interaction IDs and responsibility model are carried forward from the prior draft;
-- this file is a revised proposal, not a verified replacement for the branch's current source documents;
-- the five-second threshold and CC-02 candidate/selection semantics are explicitly left for source reconciliation;
-- no repository file has been modified or committed by this operation.
+The target branch sources were reopened for this revision. The Component Interaction Matrix is authoritative for interaction IDs, producers/consumers and logical routes. The Component Interaction Design note is authoritative for the refined responsibility model, request lifecycle, execution orchestration and delivery route. catalogue-responsibilities.md is authoritative for the Product Catalogue versus Data/Asset Catalogue distinction, scientific metadata storage, asset registration and actual lineage. Older component specifications are early drafts and may conflict with this refined architecture; those conflicts are not silently treated as validated decisions. This document does not prescribe routes, schemas, protocols or deployment topology.
 
 The Component Interaction Matrix remains the authority for the set of validated logical interactions. This document defines conceptual contracts and must not silently override that matrix.
