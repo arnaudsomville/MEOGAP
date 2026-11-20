@@ -440,14 +440,14 @@ SCI ↔ CAT is used for registration/confirmation of generated Derived Assets an
 
 ## 10.1 Synchronization overview
 
-| Interface family | Conceptual behavior | Open implementation detail |
-|---|---|---|
-| UI ↔ GAT | Public REST; user-facing operations expected to exceed five seconds are asynchronous from the start (ENG-03). | Routes, payloads, status vocabulary and error envelope. |
-| GAT ↔ CON | Request/proposal, confirmation, retrieval, access, credits, cancellation and delivery operations. | Internal transport and timeout/retry details. |
-| GAT ↔ SCI | Scientific product catalogue and theoretical input requirements. | Internal transport and catalogue caching/version freshness. |
-| CON ↔ SCI | Evaluation/estimate request-response; computation/harmonization dispatched and outcomes reported later. | Dispatch protocol, acknowledgements, durability, idempotency and recovery. |
-| CON ↔ CAT | Dependency, acquisition-cost, references, lineage and availability; ingestion may be long-running. | Ingestion dispatch/outcome, candidate selection semantics and recovery. |
-| SCI ↔ CAT | Registration request and confirmation. | Synchronous/asynchronous behavior, idempotency and retry. |
+| Interface family | Logical mode | Included interactions / behavior | Open implementation detail |
+|---|---|---|---|
+| UI ↔ GAT | Mixed, fixed per interaction | **Async:** UI-05, UI-13, UI-14, UI-21. **Sync:** other UI↔GAT operations and responses. Proposal preparation and delivery are asynchronous from the start. | REST resource shape, routes, status vocabulary and error envelope. |
+| GAT ↔ CON | Mixed, fixed per interaction | **Async:** GC-02/GC-02-R, GC-08, GC-09. **Sync:** GC-03, GC-04/04-R, GC-05/05-R, GC-06/06-R, GC-07/07-R and GC-14/14-R. | Internal transport, delivery resource read semantics and timeout/retry details. |
+| GAT ↔ SCI | Sync | GS-01/GS-02 for scientific catalogue and theoretical input requirements. | Internal transport and catalogue caching/version freshness. |
+| CON ↔ SCI | Async | CS-01/02 feasibility and input requirements; CS-03/04 complexity estimate; CS-05/06 computation; CS-07/08 harmonization. All return correlated outcomes later. | Dispatch protocol, acknowledgements, durability, idempotency and recovery. |
+| CON ↔ CAT | Mixed, fixed per interaction | **Async:** CC-01/02 (including CC-03/04 outcome details), CC-05/06 acquisition-cost estimate, CC-07/08 L0 ingestion. **Sync:** CC-09/10 canonical references, CC-11/12 actual lineage, CC-13 original representation reference, CC-14 harmonized availability. | Dispatch/outcome mechanism for asynchronous operations, candidate selection semantics and recovery. |
+| SCI ↔ CAT | Sync | SC-01/02 Derived Asset registration; SC-03/04 harmonized representation registration. | Idempotency and retry guarantees. |
 
 ## 10.2 Reliability requirements
 
@@ -544,7 +544,7 @@ This conceptual inventory does not fix:
 - [ ] Product scientific validation and individual result quality remain distinct.
 - [ ] Public UI operations go through GAT; private result access is authorized through CON.
 - [ ] Download flow correctly separates CAT reference resolution from CON object retrieval/delivery.
-- [x] User-facing operations expected to exceed five seconds are asynchronous from the start at the REST boundary (ENG-03 and matrix §1.2).
+- [x] Explicitly classified operations (proposal preparation, both delivery types, SCI feasibility/estimation/computation/harmonization, and CAT dependency resolution/acquisition pricing/ingestion) are asynchronous from the start, regardless of an estimated sub-five-second duration. ENG-03's five-second rule remains a general minimum for other user-facing operations.
 - [ ] No route, payload schema or transport is frozen prematurely.
 - [ ] M0 mock behavior is distinguished from planned real capabilities.
 
