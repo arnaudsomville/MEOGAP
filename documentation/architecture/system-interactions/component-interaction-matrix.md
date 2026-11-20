@@ -10,7 +10,7 @@
 
 - **Producer → consumer** indicates the direction in which the interaction is initiated or information is supplied.
 - A response in the reverse direction is shown as a separate row when it is a meaningful interaction.
-- Synchronization is described at the **interaction-family** level in §1.2 rather than repeated on every row. This distinguishes known user-facing API behavior from internal transport choices that remain open. A REST operation being asynchronous at the API boundary does not, by itself, specify whether its internal interaction uses a worker, messaging or another mechanism.
+- Synchronization is classified as **Sync** or **Async** in §1.2 at the interaction-family level. The classification is a logical contract decision; it does not prescribe internal transport, worker topology or messaging mechanisms.
 - A component boundary represents a logical responsibility boundary. It does not imply a separate process, service, package or deployment.
 - Where an interaction crosses several components, the end-to-end route is stated explicitly. An indirect route does not create a direct interface between non-adjacent components.
 - Identity and correlation context are cross-cutting metadata propagated with applicable interactions, as defined in §1.1; they are not additional logical components or business interactions.
@@ -30,18 +30,26 @@ Identity context accompanies interactions; it is not modelled as a standalone bu
 - The validated context, not the raw external credential, is propagated by default. Credentials and secrets must not appear in logs or traces.
 - Authentication provider, credential format (including whether to use a Bearer token), claims and internal context format remain open for interface/security contract design. This behavior is required by ENG-15 and supports SYS-17/SYS-18.
 
-### 1.2 Synchronization knowns and open points
+### 1.2 Synchronization classification
 
-| Interaction family | Known interaction behavior | Still open |
-|---|---|---|
-| UI ↔ GAT | Public REST request/response. User-facing operations expected to exceed 5 seconds are exposed asynchronously from the start: return a reference/current state, then retrieve the outcome through REST. | Concrete endpoint contracts and status vocabulary. |
-| GAT ↔ CON | GAT routes user operations; operations expected to exceed 5 seconds use the asynchronous API pattern above. | Whether each internal GAT–CON call is direct request/response or uses an internal asynchronous mechanism. |
-| GAT ↔ SCI | Product catalogue and theoretical input requirements are conceptually request/response. | Internal synchronization/transport; this does not concern private result access. |
-| CON ↔ SCI | Scientific evaluation and complexity estimation return information to CON. Product computation is dispatched asynchronously and reports a later outcome. | Dispatch/outcome transport, acknowledgement, durability, correlation and recovery contracts. |
-| CON ↔ CAT | Dependency, pricing and asset-reference interactions are request/response at the conceptual level. L0 ingestion is a potentially long-running operation with a later outcome. | Exact ingestion dispatch/outcome mechanism and guarantees for partial or failed acquisitions. |
-| SCI ↔ CAT | SCI requests registration; CAT returns registration confirmation. | Whether registration/confirmation is synchronous or event-driven internally, and its idempotency/retry guarantees. |
+Every interaction family is classified as **Sync** or **Async**. No conditional mode is used.
 
-The table describes conceptual interaction semantics only. It does not prescribe protocols, workers, messaging subjects or deployment topology.
+- **Sync:** the interaction completes as a request/response exchange. This describes the logical contract, not a guarantee about physical latency.
+- **Async:** the initiating interaction starts or submits persistent work; its business outcome is produced later and correlated with the original request/operation. The caller holds a persistent identifier and retrieves the current state/outcome through REST where the user-facing flow is involved.
+- The selected mode does not prescribe REST routes, internal RPC, NATS, a worker system or another transport. Those implementation mechanisms remain open.
+
+| Interaction family | Mode | Interactions covered | Contract behavior | Still open |
+|---|---|---|---|---|
+| UI ↔ GAT | Mixed, fixed per interaction | **Async:** UI-05, UI-13, UI-14 and UI-21. **Sync:** UI-01, UI-02, UI-06, UI-07, UI-08, UI-09, UI-10, UI-11, UI-12, UI-15, UI-16, UI-18, UI-19, UI-20, UI-22, UI-23 and UI-24. | UI-05 always starts asynchronous proposal preparation. Final-product delivery and dependency-archive creation are asynchronous. UI-21 represents the later delivery state/access outcome. Other listed operations are synchronous. | REST resource shape, endpoint details and status vocabulary. |
+| GAT ↔ CON | Mixed, fixed per interaction | **Async:** GC-02/GC-02-R, GC-08 and GC-09. **Sync:** GC-03, GC-04/GC-04-R, GC-05/GC-05-R, GC-06/GC-06-R, GC-07/GC-07-R and GC-14/GC-14-R. | Proposal preparation and both delivery types are asynchronous. Confirmation, list/status/balance/access/cancellation operations are synchronous. Delivery state and access belong to the GC-08/GC-09 delivery resource; GC-10 through GC-13 are not separate interactions. | Internal GAT–CON transport and delivery-resource retrieval details. |
+| GAT ↔ SCI | Sync | GS-01/GS-02 | Scientific catalogue and theoretical input requirements are returned in the same request/response interaction. | Internal transport, caching and catalogue freshness. |
+| CON ↔ SCI | Async | CS-01/CS-02, CS-03/CS-04, CS-05/CS-06 and CS-07/CS-08 | Feasibility/input evaluation, complexity estimation, computation and harmonization all produce outcomes asynchronously. CS-01/02 and CS-03/04 are part of asynchronous proposal preparation, not synchronous internal subcalls. | Dispatch/outcome transport, acknowledgement, durability, correlation, idempotency and recovery. |
+| CON ↔ CAT | Mixed, fixed per interaction | **Async:** CC-01/CC-02 (including CC-03/CC-04 details), CC-05/CC-06 and CC-07/CC-08. **Sync:** CC-09/CC-10, CC-11/CC-12, CC-13 and CC-14. | Dependency resolution, missing-acquisition cost estimation and L0 ingestion are asynchronous. Canonical-reference lookup, actual-lineage lookup, original-representation lookup and harmonized-representation availability checks are synchronous. | Dispatch/outcome mechanisms for asynchronous operations, selection semantics and recovery guarantees. |
+| SCI ↔ CAT | Sync | SC-01/SC-02 and SC-03/SC-04 | Registration requests and confirmations are one synchronous logical exchange. | Idempotency, retry guarantees and physical mechanism. |
+
+UI-21 is the asynchronous delivery-state/access outcome tied to the delivery identifier returned by GC-08 or GC-09. The current status and eventual secure access are properties of that same delivery resource; they do not create GC-10 through GC-13 interactions. A short REST read of that resource is a synchronous retrieval, while the underlying delivery lifecycle and final outcome remain asynchronous.
+
+The classification is a logical contract decision. It does not prescribe implementation protocols, workers, messaging subjects or deployment topology.
 
 ## 2. UI ↔ GAT — User-facing REST interface
 
@@ -110,23 +118,21 @@ CON is authoritative for request lifecycle, proposal preparation and cost coordi
 
 ### 3.2 Delivery Management
 
-GC-08 to GC-13 form a distinct **Delivery Management** family. CON orchestrates deliveries; it retrieves asset references and actual lineage from CAT and does not expose physical storage paths as public UI contracts.
+GC-08 and GC-09 are the two asynchronous delivery operations. CON orchestrates delivery; it retrieves asset references and actual lineage from CAT and does not expose physical storage paths as public UI contracts. The delivery identifier returned by either operation identifies a persistent delivery resource whose state and eventual access information are exposed through UI-21. GC-10 through GC-13 are deliberately removed as separate logical interactions.
 
 | ID | Producer → Consumer | Interaction | Purpose / information |
 |---|---|---|---|
-| GC-08 | GAT → CON | Request final-product delivery | Request delivery of the final product file only. |
-| GC-09 | GAT → CON | Request dependency-archive delivery | Request on-demand assembly of an archive containing the result and assets in its actual lineage. |
-| GC-10 | GAT → CON | Retrieve delivery status | Retrieve the current state of a previously requested delivery. |
-| GC-11 | CON → GAT | Return delivery status | Return whether the delivery is pending, being prepared, ready or failed. Exact status vocabulary remains to be defined. |
-| GC-12 | GAT → CON | Retrieve delivery access | Request access information for a completed delivery. |
-| GC-13 | CON → GAT | Provide delivery access | Return secure, time-bounded download access when the delivery is ready. |
+| GC-08 | GAT → CON | Request final-product delivery | Asynchronously request the final product file alone. The response provides a delivery identifier and initial state. |
+| GC-09 | GAT → CON | Request dependency-archive delivery | Asynchronously request an on-demand archive containing the result and assets in its actual lineage. The response provides a delivery identifier and initial state. |
 
 **Validated delivery rules**
 
-- CON owns the delivery lifecycle and coordinates ZIP creation.
+- GC-08 (final product) and GC-09 (dependency archive) are asynchronous from the start and return a persistent delivery identifier plus its initial state.
+- CON owns the delivery lifecycle and coordinates final-object retrieval or ZIP creation.
 - For an archive, CON asks CAT for the actual lineage and the references to the associated assets.
-- CON uses the references returned by CAT to retrieve objects from the object-storage infrastructure and assemble the temporary archive.
+- CON uses the references returned by CAT to retrieve objects from object storage and assemble the temporary archive.
 - The archive is created on demand rather than pre-generated.
+- UI-21 exposes the asynchronous delivery outcome, current state and secure access when ready through the delivery resource identified by GC-08/GC-09. GC-10 through GC-13 are not separate interactions.
 - Temporary storage, access security, expiration and cleanup policy remain to be designed.
 
 ## 4. CON ↔ SCI — Scientific evaluation and computation
@@ -146,8 +152,8 @@ SCI owns scientific product definitions and methods, scientific feasibility, inp
 
 **Validated rules**
 
-- CS-01 / CS-02 combine scientific feasibility and scientific input requirements into one logical request/response interaction. It is triggered by the submitted analysis request, not by a separate pre-submission evaluation call.
-- CS-05 / CS-06 represent derived-product execution and its outcome; completion progress is not a required business notification.
+- CS-01 / CS-02 combine scientific feasibility and scientific input requirements into one asynchronous interaction. It is triggered by the submitted analysis request, not by a separate pre-submission evaluation call.
+- CS-01/02, CS-03/04, CS-05/06 and CS-07/08 are asynchronous interactions. Completion progress is not a required business notification.
 - CS-07 / CS-08 represent source harmonization as a distinct SCI processing operation after CAT has acquired, preserved and registered the original L0 representation. CON orchestrates this operation.
 - Computation progress belongs to technical observability (for example traces or a workflow visualizer), not to a mandatory SCI → CON business interaction.
 - CON remains responsible for request state and cost policy.
