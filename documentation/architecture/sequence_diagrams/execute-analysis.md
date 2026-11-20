@@ -1,6 +1,6 @@
 # Execute Analysis
 
-**Status:** Validated sequence diagram — design baseline  
+**Status:** Validated sequence diagram — updated synchronization decisions  
 **Companion documents:** [Component Interaction Design](../system-interactions/component-interaction-design.md) · [Component Interaction Matrix](../system-interactions/component-interaction-matrix.md) · [Submit Analysis Request](./submit-analysis-request.md)  
 **Last updated:** 20 November 2026
 
@@ -37,9 +37,9 @@ sequenceDiagram
     SCI->>SCI: Generate harmonized product and quality representations
     SCI->>S3: Write harmonized representations
     S3-->>SCI: Return harmonized representation locations
-    SCI->>CAT: Register harmonized representations and method/provenance metadata
+    SCI->>CAT: SC-03 Sync register harmonized representations and method/provenance metadata
     CAT->>CAT: Attach representations to existing Source Assets
-    CAT-->>SCI: Confirm representation registration
+    CAT-->>SCI: SC-04 Sync confirm representation registration
     SCI-->>CON: CS-08 Async harmonization outcome and Source Asset identifiers
     CON->>CAT: CC-14 Sync check required harmonized representation availability
     CAT-->>CON: Return representation availability
