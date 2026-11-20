@@ -79,7 +79,7 @@ GAT is the single public REST entry point for UI. UI does not access CON, SCI, C
 | UI-18 | GAT → UI | Return request information | Return request identifiers, list data and current status. |
 | UI-19 | GAT → UI | Return map or analytical representation | Return the requested representation for display. |
 | UI-20 | GAT → UI | Return actual lineage | Return the concrete provenance of a computed result. |
-| UI-21 | GAT → UI | Return download information | Return delivery status and, when ready, secure access to the final product or generated archive. |
+| UI-21 | GAT → UI | Return asynchronous delivery outcome | Return the current state and, when ready, secure access for the same persistent delivery resource created by UI-13 or UI-14. |
 | UI-22 | GAT → UI | Return credit balance | Return the current balance. |
 | UI-24 | GAT → UI | Return cancellation outcome | Return whether cancellation was accepted/processed and the current request state. |
 
@@ -103,7 +103,7 @@ CON is authoritative for request lifecycle, proposal preparation and cost coordi
 | ID | Producer → Consumer | Interaction | Purpose / information |
 |---|---|---|---|
 | GC-02 | GAT → CON | Submit an analysis request and start proposal preparation | Create and persist the request, then initiate scientific feasibility evaluation, dependency resolution and cost estimation. This is the start of the user journey, not a follow-up to a separate evaluation operation. |
-| GC-02-R | CON → GAT | Return request/proposal information | Return the request reference and current state. Once proposal preparation is complete, return feasibility, conditions, execution proposal and estimated cost. For operations expected to exceed 5 seconds, the initial response returns the reference/state and the result is retrieved through REST. |
+| GC-02-R | CON → GAT | Return request/proposal information | Always return the persistent request reference and current preparation state first. When asynchronous proposal preparation completes, make the feasibility decision, conditions, execution proposal and estimated cost available through the request resource and REST. |
 | GC-03 | GAT → CON | Confirm a proposed request | Record explicit user acceptance and trigger the transition to execution. This is separate from GC-02. |
 | GC-04 | GAT → CON | List analysis requests | Retrieve the authenticated user's request list. |
 | GC-04-R | CON → GAT | Return request list | Return the relevant request summaries. |
