@@ -27,17 +27,17 @@ sequenceDiagram
     participant SCI
     participant S3 as Object Storage
 
-    CON->>CAT: Request original Source Asset acquisition
+    CON->>CAT: CC-07 Async request original Source Asset acquisition
     CAT->>S3: Preserve original provider representation
     CAT->>CAT: Register Source Asset and original representation
-    CAT-->>CON: Original Source Asset registered
-    CON->>CAT: Resolve original representation reference
+    CAT-->>CON: CC-08 Async original Source Asset registration outcome
+    CON->>CAT: CC-13 Sync resolve original representation reference
     CAT-->>CON: Return original representation reference
-    CON->>SCI: Request L0 harmonization
+    CON->>SCI: CS-07 Async request L0 harmonization
     SCI->>S3: Read original provider representation
     S3-->>SCI: Return original data and native quality layers
     SCI->>SCI: Attempt harmonization
-    SCI-->>CON: Report harmonization failure
+    SCI-->>CON: CS-08 Async report harmonization failure
     CON->>CON: Keep dependent scientific tasks BLOCKED
     Note over CAT,CON: Original Source Asset remains registered
     Note over CON,SCI: Required harmonized representations are unavailable
@@ -56,20 +56,20 @@ sequenceDiagram
     participant CAT
     participant S3 as Object Storage
 
-    CON->>SCI: Dispatch Task A and independent Task B
+    CON->>SCI: CS-05 Async dispatch Task A and independent Task B
     SCI->>S3: Read input objects for Task A and Task B
     S3-->>SCI: Return input data
     SCI->>SCI: Execute Task A
-    SCI-->>CON: Report scientific computation failure for Task A
+    SCI-->>CON: CS-06 Async report scientific computation failure for Task A
     CON->>CON: Mark Task A as FAILED
     CON->>CON: Keep Task A descendants BLOCKED
 
     SCI->>SCI: Finish already eligible independent Task B
     SCI->>S3: Write Task B result
     S3-->>SCI: Return initial object location
-    SCI->>CAT: Register Task B metadata and actual input lineage
-    CAT-->>SCI: Confirm Task B registration
-    SCI-->>CON: Report Task B success
+    SCI->>CAT: SC-01 Sync register Task B metadata and actual input lineage
+    CAT-->>SCI: SC-02 Sync confirm Task B registration
+    SCI-->>CON: CS-06 Async report Task B success
     CON->>CON: Mark Task B as SUCCEEDED
 
     CON->>CON: Wait for other already eligible or running independent tasks to settle
@@ -92,25 +92,25 @@ sequenceDiagram
     participant CAT
     participant S3 as Object Storage
 
-    CON->>SCI: Dispatch Task A and independent Task B
+    CON->>SCI: CS-05 Async dispatch Task A and independent Task B
     SCI->>S3: Read input objects for Task A and Task B
     S3-->>SCI: Return input data
     SCI->>SCI: Complete scientific computation for Task A
     SCI->>S3: Write Task A result object
     S3-->>SCI: Return initial object location
-    SCI->>CAT: Register Task A metadata and actual input lineage
+    SCI->>CAT: SC-01 Sync register Task A metadata and actual input lineage
     CAT->>CAT: Attempt Task A asset registration
-    CAT-->>SCI: Report registration failure
-    SCI-->>CON: Report computation succeeded but registration failed
+    CAT-->>SCI: SC-02 Sync report registration failure
+    SCI-->>CON: CS-06 Async report computation succeeded but registration failed
     CON->>CON: Mark Task A as FAILED
     CON->>CON: Keep Task A descendants BLOCKED
 
     SCI->>SCI: Finish already eligible independent Task B
     SCI->>S3: Write Task B result
     S3-->>SCI: Return initial object location
-    SCI->>CAT: Register Task B metadata and actual input lineage
-    CAT-->>SCI: Confirm Task B registration
-    SCI-->>CON: Report Task B success
+    SCI->>CAT: SC-01 Sync register Task B metadata and actual input lineage
+    CAT-->>SCI: SC-02 Sync confirm Task B registration
+    SCI-->>CON: CS-06 Async report Task B success
     CON->>CON: Mark Task B as SUCCEEDED
 
     CON->>CON: Wait for other already eligible or running independent tasks to settle
