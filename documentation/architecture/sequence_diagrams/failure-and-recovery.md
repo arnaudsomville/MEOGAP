@@ -11,8 +11,9 @@ Describe four distinct failure cases across source preparation, scientific produ
 1. L0 harmonization fails after the original Source Asset has been acquired and registered.
 2. Scientific computation fails before a generated Derived Asset is registered.
 3. Scientific computation succeeds, but CAT fails to register the generated Derived Asset.
+4. Final-product retrieval or dependency-archive preparation fails during asynchronous delivery.
 
-The distinction matters because a file may exist in object storage even though no usable catalogue asset exists. Both scenarios run under the trusted identity/correlation context persisted with the originating request; workers restore it, and SCI/CAT outcomes retain the request and processing-run correlation without carrying the external credential.
+The distinction matters because a file may exist in object storage even though no usable catalogue asset exists. All scenarios run under the trusted identity/correlation context persisted with the originating request; workers restore it, and SCI/CAT outcomes retain the request and processing-run correlation without carrying the external credential.
 
 ## 1. L0 harmonization failure
 
