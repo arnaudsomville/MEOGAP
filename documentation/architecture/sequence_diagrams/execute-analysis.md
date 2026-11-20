@@ -2,7 +2,7 @@
 
 **Status:** Validated sequence diagram — design baseline  
 **Companion documents:** [Component Interaction Design](../system-interactions/component-interaction-design.md) · [Component Interaction Matrix](../system-interactions/component-interaction-matrix.md) · [Submit Analysis Request](./submit-analysis-request.md)  
-**Last updated:** 16 November 2026
+**Last updated:** 20 November 2026
 
 ## Purpose
 
@@ -20,18 +20,18 @@ sequenceDiagram
     participant SCI
     participant S3 as Object Storage
 
-    CON->>CAT: Request missing source acquisition with persisted trusted identity context
+    CON->>CAT: CC-07 Async request for missing source acquisition with persisted trusted identity context
     CAT->>EO: Acquire complete source tile(s)
     EO-->>CAT: Return original provider products and native quality layers
     CAT->>S3: Preserve original source representations
     S3-->>CAT: Return original representation locations
     CAT->>CAT: Register Source Assets and original representations
-    CAT-->>CON: Return original Source Asset identifiers and acquisition outcome
+    CAT-->>CON: CC-08 Async acquisition outcome: original Source Asset identifiers
 
     CON->>CON: Record original Source Assets in execution state
-    CON->>CAT: Resolve original representation references for harmonization
+    CON->>CAT: CC-13 Sync resolve original representation references for harmonization
     CAT-->>CON: Return canonical original representation references and locations
-    CON->>SCI: Request L0 harmonization with original references and trusted context
+    CON->>SCI: CS-07 Async request L0 harmonization with original references and trusted context
     SCI->>S3: Read original provider products and native quality layers
     S3-->>SCI: Return original source data
     SCI->>SCI: Generate harmonized product and quality representations
@@ -40,25 +40,25 @@ sequenceDiagram
     SCI->>CAT: Register harmonized representations and method/provenance metadata
     CAT->>CAT: Attach representations to existing Source Assets
     CAT-->>SCI: Confirm representation registration
-    SCI-->>CON: Return harmonization outcome and Source Asset identifiers
-    CON->>CAT: Check required harmonized representation availability
+    SCI-->>CON: CS-08 Async harmonization outcome and Source Asset identifiers
+    CON->>CAT: CC-14 Sync check required harmonized representation availability
     CAT-->>CON: Return representation availability
 
     CON->>CON: Evaluate dependencies
     CON->>CON: Identify READY tasks
-    CON->>CAT: Request canonical references and locations for task inputs with trusted identity context
-    CAT-->>CON: Return canonical references, current locations and request correlation
-    CON->>SCI: Dispatch READY computations with input references, locations and trusted identity context
+    CON->>CAT: CC-09 Sync request canonical references and locations for task inputs with trusted identity context
+    CAT-->>CON: CC-10 Sync canonical references, current locations and request correlation
+    CON->>SCI: CS-05 Async dispatch READY computations with input references, locations and trusted identity context
 
     SCI->>S3: Read input objects
     S3-->>SCI: Return input data
     SCI->>SCI: Execute scientific computations
     SCI->>S3: Write generated products
     S3-->>SCI: Return initial product locations
-    SCI->>CAT: Register product metadata, actual input references and request identity/correlation context
+    SCI->>CAT: SC-01 Sync register product metadata, actual input references and request identity/correlation context
     CAT->>CAT: Register products and actual lineage
-    CAT-->>SCI: Confirm product registration
-    SCI-->>CON: Return computation outcomes and registered product identifiers with task/request correlation
+    CAT-->>SCI: SC-02 Sync confirm product registration
+    SCI-->>CON: CS-06 Async computation outcomes and registered product identifiers with task/request correlation
     CON->>CON: Record task outcomes
     CON->>CON: Reevaluate dependencies
     CON->>CON: Identify newly READY tasks
@@ -101,9 +101,9 @@ The request can remain IN_EXECUTION while some tasks are BLOCKED and others are 
 
 - The sequence covers the nominal path. Acquisition failure, computation failure, asset-registration failure, cancellation during execution and recovery are handled in the dedicated failure/recovery sequence.
 - The diagram shows one scheduling pass. CON repeats dependency evaluation, dispatch and outcome processing until the execution plan is complete. If no task is READY while work remains outstanding, CON waits for an ingestion/computation outcome and reevaluates the plan; it does not repeatedly requeue blocked tasks.
-- The exact granularity of CAT's original-acquisition outcome is still open: CAT may report each acquisition independently or return a consolidated outcome. The outcome must identify the Source Assets whose original representations were registered.
+- The exact granularity of the asynchronous CC-08 original-acquisition outcome is still open: CAT may report each acquisition independently or return a consolidated outcome. The outcome must identify the Source Assets whose original representations were registered.
 - Harmonization is a distinct SCI operation after original registration. Its outcome must identify the Source Assets processed; CON must check CAT for the availability of each required harmonized representation before scheduling dependent tasks.
 - The detailed harmonization failure/recovery policy, retry behavior and partial success granularity remain open.
 - The sequence does not prescribe whether internal dispatch and completion use NATS, REST or another transport. It does not model workers as logical components.
-- The precise concurrency limit, retry/backoff policy, duplicate-task prevention, idempotency and scheduler recovery behavior belong to interface/execution contract design.
+- The asynchronous CC-07/08, CS-05/06 and CS-07/08 outcomes require correlation, persistence, idempotency, bounded retries and scheduler recovery. The precise concurrency limit, retry/backoff policy and duplicate-task prevention belong to interface/execution contract design.
 - Object storage is infrastructure. SCI accesses input objects and writes output objects directly; CAT owns catalogue registration, actual lineage, canonical asset references and current storage locations. CON requests those references and locations from CAT when it needs to dispatch a dependent computation or deliver a result; it does not maintain a duplicate catalogue or storage mapping.
