@@ -2,7 +2,7 @@
 
 **Status:** Validated logical interaction inventory — design baseline  
 **Companion design note:** [Component Interaction Design](./component-interaction-design.md)  
-**Last updated:** 16 November 2026
+**Last updated:** 20 November 2026
 
 > This document records the logical interactions validated during the component architecture design discussion. It is an interaction inventory, not an API specification: routes, payload schemas, authentication mechanisms, protocols and implementation details remain outside its scope.
 
@@ -47,7 +47,7 @@ Every interaction family is classified as **Sync** or **Async**. No conditional 
 | CON ↔ CAT | Mixed, fixed per interaction | **Async:** CC-01/CC-02 (including CC-03/CC-04 details), CC-05/CC-06 and CC-07/CC-08. **Sync:** CC-09/CC-10, CC-11/CC-12, CC-13 and CC-14. | Dependency resolution, missing-acquisition cost estimation and L0 ingestion are asynchronous. Canonical-reference lookup, actual-lineage lookup, original-representation lookup and harmonized-representation availability checks are synchronous. | Dispatch/outcome mechanisms for asynchronous operations, selection semantics and recovery guarantees. |
 | SCI ↔ CAT | Sync | SC-01/SC-02 and SC-03/SC-04 | Registration requests and confirmations are one synchronous logical exchange. | Idempotency, retry guarantees and physical mechanism. |
 
-UI-21 is the asynchronous delivery-state/access outcome tied to the delivery identifier returned by GC-08 or GC-09. The current status and eventual secure access are properties of that same delivery resource; they do not create GC-10 through GC-13 interactions. A short REST read of that resource is a synchronous retrieval, while the underlying delivery lifecycle and final outcome remain asynchronous.
+UI-21 is classified **Async** because it represents the deferred delivery-state/access outcome tied to the delivery identifier returned by GC-08 or GC-09. The current status and eventual secure access are properties of that same delivery resource; they do not create GC-10 through GC-13 interactions. A REST read of the persisted delivery resource is a synchronous retrieval mechanism, not a separate logical delivery interaction.
 
 The classification is a logical contract decision. It does not prescribe implementation protocols, workers, messaging subjects or deployment topology.
 
