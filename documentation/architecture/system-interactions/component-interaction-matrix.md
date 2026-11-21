@@ -145,7 +145,7 @@ SCI owns scientific product definitions and methods, scientific feasibility, inp
 | CS-02 | SCI → CON | Return scientific evaluation | Return feasibility, conditions or limitations, and input requirements (for example spectral bands, spatial/spectral resolution, acquisition period and quality constraints). SCI describes requirements; it does not select concrete assets. |
 | CS-03 | CON → SCI | Request computation-complexity estimate | Request information about the computational effort/resources required for a product computation. |
 | CS-04 | SCI → CON | Return computation-complexity estimate | Return technical complexity/resource information. CON applies its pricing policy and calculates the user-facing computation cost. |
-| CS-05 | CON → SCI | Request product computation | Dispatch a derived-product computation with the product definition/version, parameters and concrete input references already resolved by CON through CAT. |
+| CS-05 | CON → SCI | Request product computation | Dispatch a derived-product computation with the Product ID, parameters and concrete input references already resolved by CON through CAT. SCI resolves or pins the applicable definition/version internally and records the version actually used as provenance. |
 | CS-06 | SCI → CON | Return computation outcome | Report success or failure, distinguishing scientific computation failure from asset-registration failure. A successful outcome confirms that CAT registration completed; CON queries CAT separately when it needs the canonical asset reference or storage location. |
 | CS-07 | CON → SCI | Request L0 source harmonization | Request harmonization of a registered Source Asset's original provider representation. CON supplies the original representation reference and the required request/correlation context. |
 | CS-08 | SCI → CON | Return L0 harmonization outcome | Report harmonization success/failure and identify the logical Source Asset and processing run. Successful completion means SCI has generated the harmonized representations and submitted them to CAT for registration; CON must verify required representation availability through CAT before unblocking dependent computations. |
@@ -154,6 +154,7 @@ SCI owns scientific product definitions and methods, scientific feasibility, inp
 
 - CS-01 / CS-02 combine scientific feasibility and scientific input requirements into one asynchronous interaction. It is triggered by the submitted analysis request, not by a separate pre-submission evaluation call.
 - CS-01/02, CS-03/04, CS-05/06 and CS-07/08 are asynchronous interactions. Completion progress is not a required business notification.
+- Product ID is the functional selector for CS-05. A product-definition version is not a mandatory caller/CON selector; SCI resolves or pins the applicable definition internally and records the version actually used as provenance.
 - CS-07 / CS-08 represent source harmonization as a distinct SCI processing operation after CAT has acquired, preserved and registered the original L0 representation. CON orchestrates this operation.
 - Computation progress belongs to technical observability (for example traces or a workflow visualizer), not to a mandatory SCI → CON business interaction.
 - CON remains responsible for request state and cost policy.
