@@ -133,19 +133,18 @@ The exact task-state vocabulary, proposal-preparation and infeasibility states, 
 
 ## 6. Delivery orchestration and dependency archive
 
-CON owns **delivery orchestration**.
+CON owns **delivery orchestration**. Both delivery operations are asynchronous from the start:
 
-For a request to download a product together with its dependencies:
+- **GC-08:** request delivery of the final product alone.
+- **GC-09:** request on-demand assembly of an archive containing the result and assets in its actual lineage.
 
-1. GAT forwards the delivery request to CON.
-2. CON checks the caller's access rights.
-3. CON asks CAT for the actual dependency lineage of the requested result, then requests the canonical asset references and current storage locations for the assets in that lineage.
-4. CON coordinates archive generation from those actual assets.
-5. GAT exposes the resulting download access to UI.
+Each operation returns a persistent delivery identifier and its initial state. CON performs authorization, resolves canonical references and locations through CAT, retrieves the relevant objects from object storage, and orchestrates delivery preparation. When the delivery is ready or has failed, its state and, when ready, secure access information are exposed through **UI-21** using the same delivery resource identified by GC-08/GC-09.
 
-The archive is generated **on demand**, rather than pre-generated for every product, to avoid unnecessary storage consumption. It is temporary and must expire/ be cleaned up according to a retention policy.
+**GC-10 through GC-13 are removed as separate logical interactions.** Status and access are properties of the delivery resource, not independent interface families. The exact REST resource shape remains implementation-level work.
 
-CON owns the delivery lifecycle. CAT remains the sole authority for canonical asset references, current storage locations and actual lineage. CON queries CAT when required and uses the returned information for the current delivery operation; it does not maintain a duplicate product/asset catalogue or persistent storage mapping. The mechanism that physically assembles the ZIP (for example, a worker executing a CON-orchestrated task), temporary archive registration/location, secure asset access references and the exact TTL/cleanup policy remain open. Physical storage paths must not leak into the public UI contract.
+The archive is generated **on demand**, rather than pre-generated for every product, to avoid unnecessary storage consumption. It is temporary and must expire/be cleaned up according to a retention policy.
+
+CAT remains the sole authority for canonical asset references, current storage locations and actual lineage. CON queries CAT when required and uses the returned information for the current delivery operation; it does not maintain a duplicate product/asset catalogue or persistent storage mapping. The mechanism that physically retrieves objects and assembles the ZIP (for example, a worker executing a CON-orchestrated task), temporary archive registration/location, secure access references and the exact TTL/cleanup policy remain open. Physical storage paths must not leak into the public UI contract.
 
 Archive contents must be based on the **actual lineage** of the result, not merely the planned execution graph.
 
@@ -157,13 +156,37 @@ The user should be able to display and overlay multiple product layers. Visual o
 
 ## 8. Execution and messaging mechanisms
 
+### 8.1 Fixed interaction modes
+
+| Interface family | Mode | Included interactions |
+|---|---|---|
+| UI ↔ GAT | Mixed, fixed per interaction | **Async:** UI-05, UI-13, UI-14, UI-21. **Sync:** UI-01, UI-02, UI-06, UI-07, UI-08, UI-09, UI-10, UI-11, UI-12, UI-15, UI-16, UI-18, UI-19, UI-20, UI-22, UI-23, UI-24. |
+| GAT ↔ CON | Mixed, fixed per interaction | **Async:** GC-02/GC-02-R, GC-08, GC-09. **Sync:** GC-03, GC-04/GC-04-R, GC-05/GC-05-R, GC-06/GC-06-R, GC-07/GC-07-R, GC-14/GC-14-R. |
+| GAT ↔ SCI | Sync | GS-01/GS-02. |
+| CON ↔ SCI | Async | CS-01/CS-02, CS-03/CS-04, CS-05/CS-06, CS-07/CS-08. |
+| CON ↔ CAT | Mixed, fixed per interaction | **Async:** CC-01/CC-02 (CC-03/CC-04 are included in the dependency-resolution outcome), CC-05/CC-06, CC-07/CC-08. **Sync:** CC-09/CC-10, CC-11/CC-12, CC-13, CC-14. |
+| SCI ↔ CAT | Sync | SC-01/SC-02, SC-03/SC-04. |
+
+No conditional mode is used. **Async** means the initiating operation starts persistent work and its business outcome arrives later, correlated with the original operation. The classification does not prescribe an internal worker, RPC, NATS or other transport. **Sync** means the logical interaction completes as a request/response exchange.
+
+### 8.2 User-facing asynchronous behavior and long-running operations
+
+Proposal preparation is asynchronous end-to-end from submission. UI-05 starts the request; GC-02 creates/persists it and returns a request identifier/current preparation state. CON then performs CS-01/02, CS-03/04 and CC-01/06 as asynchronous interactions. The eventual proposal or infeasibility result is exposed through the request resource and UI-17. There is no execution path that waits to see whether proposal preparation happens to finish within five seconds.
+
+Final-product delivery (UI-13/GC-08) and dependency-archive delivery (UI-14/GC-09) are also asynchronous from the start. GC-08/GC-09 return a delivery identifier and initial state. UI-21 exposes the subsequent delivery state and secure access through that same delivery resource. GC-10 through GC-13 are not separate logical interactions.
+
+The five-second ENG-03 threshold remains a general rule for other user-facing operations not explicitly fixed by these decisions. Notifications are optional refresh mechanisms; REST remains the source of truth. This policy does not select a worker technology, messaging transport or internal protocol.
+
+### 8.3 Internal asynchronous outcomes and reliability
+
 - Workers may execute long-running L0 ingestion, scientific computation and archive-generation tasks. They are mechanisms, not logical components.
 - NATS is a candidate internal messaging transport, not a logical component and never a UI-facing interface.
-- User-facing API policy: an operation expected to take more than **5 seconds** is exposed asynchronously from the start. GAT returns a request reference and current state; UI retrieves state and the eventual outcome through REST. Notifications are optional refresh mechanisms; REST remains the source of truth. This policy does not determine whether the internal work uses a worker, NATS or another mechanism.
-- CON is expected to dispatch scientific computation to SCI through an asynchronous interaction.
-- SCI reports one business outcome to CON: success or failure, distinguishing scientific computation failure from asset-registration failure. The outcome does not carry a canonical asset-to-location mapping. CON queries CAT when it needs a canonical reference or current location. Completion transport (for example a durable NATS event) remains undecided. A key concern is avoiding lost completion notifications if CON is unavailable; durability, acknowledgement, correlation, idempotency and recovery must be examined in the contract/execution design.
+- CON submits asynchronous scientific operations to SCI: feasibility (CS-01/02), complexity estimate (CS-03/04), harmonization (CS-07/08) and computation (CS-05/06). SCI reports the corresponding outcome with request/operation correlation.
+- CON submits asynchronous dependency-resolution, itemized acquisition-cost and L0-ingestion operations to CAT (CC-01/02, CC-05/06, CC-07/08). CAT reports their outcomes with correlation.
+- SCI ↔ CAT registration (SC-01/02 and SC-03/04) remains synchronous in the logical model. The actual implementation may use an internal mechanism that preserves the same request/confirmation semantics.
+- SCI's computation outcome distinguishes scientific execution failure from CAT asset-registration failure. It does not carry a canonical asset-to-location mapping. CON queries CAT when it needs a canonical reference or current location. Completion transport remains undecided; durability, acknowledgement, correlation, idempotency and recovery must be examined in contract/execution design.
 - Computation progress is not a required SCI → CON business notification. Use technical observability (traces or a workflow visualizer) to inspect execution progress.
-- The precise CAT original-acquisition dispatch and outcome-notification mechanism remains to be specified. The CON → SCI harmonization dispatch/outcome and SCI → CAT representation-registration interaction also require contract definition.
+- The precise internal dispatch, outcome and retry guarantees for each asynchronous interaction remain to be specified.
 
 ## 9. Decisions still open
 

@@ -2,7 +2,7 @@
 
 **Status:** Validated logical interaction inventory — design baseline  
 **Companion design note:** [Component Interaction Design](./component-interaction-design.md)  
-**Last updated:** 16 November 2026
+**Last updated:** 20 November 2026
 
 > This document records the logical interactions validated during the component architecture design discussion. It is an interaction inventory, not an API specification: routes, payload schemas, authentication mechanisms, protocols and implementation details remain outside its scope.
 
@@ -10,7 +10,7 @@
 
 - **Producer → consumer** indicates the direction in which the interaction is initiated or information is supplied.
 - A response in the reverse direction is shown as a separate row when it is a meaningful interaction.
-- Synchronization is described at the **interaction-family** level in §1.2 rather than repeated on every row. This distinguishes known user-facing API behavior from internal transport choices that remain open. A REST operation being asynchronous at the API boundary does not, by itself, specify whether its internal interaction uses a worker, messaging or another mechanism.
+- Synchronization is classified as **Sync** or **Async** in §1.2 at the interaction-family level. The classification is a logical contract decision; it does not prescribe internal transport, worker topology or messaging mechanisms.
 - A component boundary represents a logical responsibility boundary. It does not imply a separate process, service, package or deployment.
 - Where an interaction crosses several components, the end-to-end route is stated explicitly. An indirect route does not create a direct interface between non-adjacent components.
 - Identity and correlation context are cross-cutting metadata propagated with applicable interactions, as defined in §1.1; they are not additional logical components or business interactions.
@@ -30,18 +30,26 @@ Identity context accompanies interactions; it is not modelled as a standalone bu
 - The validated context, not the raw external credential, is propagated by default. Credentials and secrets must not appear in logs or traces.
 - Authentication provider, credential format (including whether to use a Bearer token), claims and internal context format remain open for interface/security contract design. This behavior is required by ENG-15 and supports SYS-17/SYS-18.
 
-### 1.2 Synchronization knowns and open points
+### 1.2 Synchronization classification
 
-| Interaction family | Known interaction behavior | Still open |
-|---|---|---|
-| UI ↔ GAT | Public REST request/response. User-facing operations expected to exceed 5 seconds are exposed asynchronously from the start: return a reference/current state, then retrieve the outcome through REST. | Concrete endpoint contracts and status vocabulary. |
-| GAT ↔ CON | GAT routes user operations; operations expected to exceed 5 seconds use the asynchronous API pattern above. | Whether each internal GAT–CON call is direct request/response or uses an internal asynchronous mechanism. |
-| GAT ↔ SCI | Product catalogue and theoretical input requirements are conceptually request/response. | Internal synchronization/transport; this does not concern private result access. |
-| CON ↔ SCI | Scientific evaluation and complexity estimation return information to CON. Product computation is dispatched asynchronously and reports a later outcome. | Dispatch/outcome transport, acknowledgement, durability, correlation and recovery contracts. |
-| CON ↔ CAT | Dependency, pricing and asset-reference interactions are request/response at the conceptual level. L0 ingestion is a potentially long-running operation with a later outcome. | Exact ingestion dispatch/outcome mechanism and guarantees for partial or failed acquisitions. |
-| SCI ↔ CAT | SCI requests registration; CAT returns registration confirmation. | Whether registration/confirmation is synchronous or event-driven internally, and its idempotency/retry guarantees. |
+Every interaction family is classified as **Sync** or **Async**. No conditional mode is used.
 
-The table describes conceptual interaction semantics only. It does not prescribe protocols, workers, messaging subjects or deployment topology.
+- **Sync:** the interaction completes as a request/response exchange. This describes the logical contract, not a guarantee about physical latency.
+- **Async:** the initiating interaction starts or submits persistent work; its business outcome is produced later and correlated with the original request/operation. The caller holds a persistent identifier and retrieves the current state/outcome through REST where the user-facing flow is involved.
+- The selected mode does not prescribe REST routes, internal RPC, NATS, a worker system or another transport. Those implementation mechanisms remain open.
+
+| Interaction family | Mode | Interactions covered | Contract behavior | Still open |
+|---|---|---|---|---|
+| UI ↔ GAT | Mixed, fixed per interaction | **Async:** UI-05, UI-13, UI-14 and UI-21. **Sync:** UI-01, UI-02, UI-06, UI-07, UI-08, UI-09, UI-10, UI-11, UI-12, UI-15, UI-16, UI-18, UI-19, UI-20, UI-22, UI-23 and UI-24. | UI-05 always starts asynchronous proposal preparation. Final-product delivery and dependency-archive creation are asynchronous. UI-21 represents the later delivery state/access outcome. Other listed operations are synchronous. | REST resource shape, endpoint details and status vocabulary. |
+| GAT ↔ CON | Mixed, fixed per interaction | **Async:** GC-02/GC-02-R, GC-08 and GC-09. **Sync:** GC-03, GC-04/GC-04-R, GC-05/GC-05-R, GC-06/GC-06-R, GC-07/GC-07-R and GC-14/GC-14-R. | Proposal preparation and both delivery types are asynchronous. Confirmation, list/status/balance/access/cancellation operations are synchronous. Delivery state and access belong to the GC-08/GC-09 delivery resource; GC-10 through GC-13 are not separate interactions. | Internal GAT–CON transport and delivery-resource retrieval details. |
+| GAT ↔ SCI | Sync | GS-01/GS-02 | Scientific catalogue and theoretical input requirements are returned in the same request/response interaction. | Internal transport, caching and catalogue freshness. |
+| CON ↔ SCI | Async | CS-01/CS-02, CS-03/CS-04, CS-05/CS-06 and CS-07/CS-08 | Feasibility/input evaluation, complexity estimation, computation and harmonization all produce outcomes asynchronously. CS-01/02 and CS-03/04 are part of asynchronous proposal preparation, not synchronous internal subcalls. | Dispatch/outcome transport, acknowledgement, durability, correlation, idempotency and recovery. |
+| CON ↔ CAT | Mixed, fixed per interaction | **Async:** CC-01/CC-02 (including CC-03/CC-04 details), CC-05/CC-06 and CC-07/CC-08. **Sync:** CC-09/CC-10, CC-11/CC-12, CC-13 and CC-14. | Dependency resolution, missing-acquisition cost estimation and L0 ingestion are asynchronous. Canonical-reference lookup, actual-lineage lookup, original-representation lookup and harmonized-representation availability checks are synchronous. | Dispatch/outcome mechanisms for asynchronous operations, selection semantics and recovery guarantees. |
+| SCI ↔ CAT | Sync | SC-01/SC-02 and SC-03/SC-04 | Registration requests and confirmations are one synchronous logical exchange. | Idempotency, retry guarantees and physical mechanism. |
+
+UI-21 is classified **Async** because it represents the deferred delivery-state/access outcome tied to the delivery identifier returned by GC-08 or GC-09. The current status and eventual secure access are properties of that same delivery resource; they do not create GC-10 through GC-13 interactions. A REST read of the persisted delivery resource is a synchronous retrieval mechanism, not a separate logical delivery interaction.
+
+The classification is a logical contract decision. It does not prescribe implementation protocols, workers, messaging subjects or deployment topology.
 
 ## 2. UI ↔ GAT — User-facing REST interface
 
@@ -71,7 +79,7 @@ GAT is the single public REST entry point for UI. UI does not access CON, SCI, C
 | UI-18 | GAT → UI | Return request information | Return request identifiers, list data and current status. |
 | UI-19 | GAT → UI | Return map or analytical representation | Return the requested representation for display. |
 | UI-20 | GAT → UI | Return actual lineage | Return the concrete provenance of a computed result. |
-| UI-21 | GAT → UI | Return download information | Return delivery status and, when ready, secure access to the final product or generated archive. |
+| UI-21 | GAT → UI | Return asynchronous delivery outcome | Return the current state and, when ready, secure access for the same persistent delivery resource created by UI-13 or UI-14. |
 | UI-22 | GAT → UI | Return credit balance | Return the current balance. |
 | UI-24 | GAT → UI | Return cancellation outcome | Return whether cancellation was accepted/processed and the current request state. |
 
@@ -95,7 +103,7 @@ CON is authoritative for request lifecycle, proposal preparation and cost coordi
 | ID | Producer → Consumer | Interaction | Purpose / information |
 |---|---|---|---|
 | GC-02 | GAT → CON | Submit an analysis request and start proposal preparation | Create and persist the request, then initiate scientific feasibility evaluation, dependency resolution and cost estimation. This is the start of the user journey, not a follow-up to a separate evaluation operation. |
-| GC-02-R | CON → GAT | Return request/proposal information | Return the request reference and current state. Once proposal preparation is complete, return feasibility, conditions, execution proposal and estimated cost. For operations expected to exceed 5 seconds, the initial response returns the reference/state and the result is retrieved through REST. |
+| GC-02-R | CON → GAT | Return request/proposal information | Always return the persistent request reference and current preparation state first. When asynchronous proposal preparation completes, make the feasibility decision, conditions, execution proposal and estimated cost available through the request resource and REST. |
 | GC-03 | GAT → CON | Confirm a proposed request | Record explicit user acceptance and trigger the transition to execution. This is separate from GC-02. |
 | GC-04 | GAT → CON | List analysis requests | Retrieve the authenticated user's request list. |
 | GC-04-R | CON → GAT | Return request list | Return the relevant request summaries. |
@@ -110,23 +118,21 @@ CON is authoritative for request lifecycle, proposal preparation and cost coordi
 
 ### 3.2 Delivery Management
 
-GC-08 to GC-13 form a distinct **Delivery Management** family. CON orchestrates deliveries; it retrieves asset references and actual lineage from CAT and does not expose physical storage paths as public UI contracts.
+GC-08 and GC-09 are the two asynchronous delivery operations. CON orchestrates delivery; it retrieves asset references and actual lineage from CAT and does not expose physical storage paths as public UI contracts. The delivery identifier returned by either operation identifies a persistent delivery resource whose state and eventual access information are exposed through UI-21. GC-10 through GC-13 are deliberately removed as separate logical interactions.
 
 | ID | Producer → Consumer | Interaction | Purpose / information |
 |---|---|---|---|
-| GC-08 | GAT → CON | Request final-product delivery | Request delivery of the final product file only. |
-| GC-09 | GAT → CON | Request dependency-archive delivery | Request on-demand assembly of an archive containing the result and assets in its actual lineage. |
-| GC-10 | GAT → CON | Retrieve delivery status | Retrieve the current state of a previously requested delivery. |
-| GC-11 | CON → GAT | Return delivery status | Return whether the delivery is pending, being prepared, ready or failed. Exact status vocabulary remains to be defined. |
-| GC-12 | GAT → CON | Retrieve delivery access | Request access information for a completed delivery. |
-| GC-13 | CON → GAT | Provide delivery access | Return secure, time-bounded download access when the delivery is ready. |
+| GC-08 | GAT → CON | Request final-product delivery | Asynchronously request the final product file alone. The response provides a delivery identifier and initial state. |
+| GC-09 | GAT → CON | Request dependency-archive delivery | Asynchronously request an on-demand archive containing the result and assets in its actual lineage. The response provides a delivery identifier and initial state. |
 
 **Validated delivery rules**
 
-- CON owns the delivery lifecycle and coordinates ZIP creation.
+- GC-08 (final product) and GC-09 (dependency archive) are asynchronous from the start and return a persistent delivery identifier plus its initial state.
+- CON owns the delivery lifecycle and coordinates final-object retrieval or ZIP creation.
 - For an archive, CON asks CAT for the actual lineage and the references to the associated assets.
-- CON uses the references returned by CAT to retrieve objects from the object-storage infrastructure and assemble the temporary archive.
+- CON uses the references returned by CAT to retrieve objects from object storage and assemble the temporary archive.
 - The archive is created on demand rather than pre-generated.
+- UI-21 exposes the asynchronous delivery outcome, current state and secure access when ready through the delivery resource identified by GC-08/GC-09. GC-10 through GC-13 are not separate interactions.
 - Temporary storage, access security, expiration and cleanup policy remain to be designed.
 
 ## 4. CON ↔ SCI — Scientific evaluation and computation
@@ -139,15 +145,16 @@ SCI owns scientific product definitions and methods, scientific feasibility, inp
 | CS-02 | SCI → CON | Return scientific evaluation | Return feasibility, conditions or limitations, and input requirements (for example spectral bands, spatial/spectral resolution, acquisition period and quality constraints). SCI describes requirements; it does not select concrete assets. |
 | CS-03 | CON → SCI | Request computation-complexity estimate | Request information about the computational effort/resources required for a product computation. |
 | CS-04 | SCI → CON | Return computation-complexity estimate | Return technical complexity/resource information. CON applies its pricing policy and calculates the user-facing computation cost. |
-| CS-05 | CON → SCI | Request product computation | Dispatch a derived-product computation with the product definition/version, parameters and concrete input references already resolved by CON through CAT. |
+| CS-05 | CON → SCI | Request product computation | Dispatch a derived-product computation with the Product ID, parameters and concrete input references already resolved by CON through CAT. SCI resolves or pins the applicable definition/version internally and records the version actually used as provenance. |
 | CS-06 | SCI → CON | Return computation outcome | Report success or failure, distinguishing scientific computation failure from asset-registration failure. A successful outcome confirms that CAT registration completed; CON queries CAT separately when it needs the canonical asset reference or storage location. |
 | CS-07 | CON → SCI | Request L0 source harmonization | Request harmonization of a registered Source Asset's original provider representation. CON supplies the original representation reference and the required request/correlation context. |
 | CS-08 | SCI → CON | Return L0 harmonization outcome | Report harmonization success/failure and identify the logical Source Asset and processing run. Successful completion means SCI has generated the harmonized representations and submitted them to CAT for registration; CON must verify required representation availability through CAT before unblocking dependent computations. |
 
 **Validated rules**
 
-- CS-01 / CS-02 combine scientific feasibility and scientific input requirements into one logical request/response interaction. It is triggered by the submitted analysis request, not by a separate pre-submission evaluation call.
-- CS-05 / CS-06 represent derived-product execution and its outcome; completion progress is not a required business notification.
+- CS-01 / CS-02 combine scientific feasibility and scientific input requirements into one asynchronous interaction. It is triggered by the submitted analysis request, not by a separate pre-submission evaluation call.
+- CS-01/02, CS-03/04, CS-05/06 and CS-07/08 are asynchronous interactions. Completion progress is not a required business notification.
+- Product ID is the functional selector for CS-05. A product-definition version is not a mandatory caller/CON selector; SCI resolves or pins the applicable definition internally and records the version actually used as provenance.
 - CS-07 / CS-08 represent source harmonization as a distinct SCI processing operation after CAT has acquired, preserved and registered the original L0 representation. CON orchestrates this operation.
 - Computation progress belongs to technical observability (for example traces or a workflow visualizer), not to a mandatory SCI → CON business interaction.
 - CON remains responsible for request state and cost policy.
@@ -246,7 +253,7 @@ The SCI ↔ CAT interface is limited to generated-product registration and confi
 | User/system need | Logical route |
 |---|---|
 | Browse calculable products and their theoretical input requirements | UI → GAT → SCI → GAT → UI |
-| Submit an analysis request and obtain the feasibility/cost proposal | UI → GAT → CON; CON ↔ SCI; CON ↔ CAT; CON → GAT → UI (or later REST retrieval when preparation is asynchronous) |
+| Submit an analysis request and obtain the feasibility/cost proposal | UI → GAT → CON; CON asynchronously coordinates SCI feasibility/complexity and CAT dependency/acquisition-cost operations; the proposal outcome is exposed later through the request resource and REST (UI-17). |
 | Submit then explicitly confirm a request | UI → GAT → CON (submission and proposal preparation); later UI → GAT → CON (confirmation) |
 | Resolve a missing intermediate product | CON ↔ SCI for its requirements; CON ↔ CAT for concrete dependencies; CON recursively repeats as needed |
 | Acquire missing L0 data | CON → CAT → external provider/storage; CAT preserves and registers original Source Asset representation, then reports outcome |
@@ -255,15 +262,15 @@ The SCI ↔ CAT interface is limited to generated-product registration and confi
 | Register a generated product | SCI writes result to object storage; SCI → CAT registers metadata/lineage; CAT → SCI confirms; SCI → CON reports computation/registration outcome; CON queries CAT later when it needs the canonical asset reference/location |
 | View a computed result | UI → GAT → CON (authorization); CON → CAT for the canonical product reference and current location; CON → SCI for the representation; result returns through CON → GAT → UI |
 | Inspect actual lineage | UI → GAT → CON → CAT; lineage returns via CON → GAT → UI |
-| Download final product only | UI → GAT → CON → CAT (canonical asset reference and current location) → object storage; delivery access returns through CON → GAT → UI |
-| Download result with dependency archive | UI → GAT → CON → CAT (actual lineage, canonical asset references and current locations); CON retrieves assets from object storage and assembles a temporary archive; access returns through GAT to UI |
+| Download final product only | UI → GAT → CON (asynchronous GC-08 delivery); CON → CAT for canonical asset reference/location, then CON retrieves the object from storage. UI-21 later exposes the delivery state/access on the same delivery resource. |
+| Download result with dependency archive | UI → GAT → CON (asynchronous GC-09 delivery); CON → CAT for actual lineage and canonical references/locations; CON retrieves objects and assembles a temporary archive. UI-21 later exposes state/access on the same delivery resource. |
 | Cancel a request | UI → GAT → CON; CON records cancellation and stops further orchestration, then returns the outcome through GAT to UI |
 
 ## 10. Supporting mechanisms and external infrastructure
 
 The following elements may appear in later sequence diagrams, but are not peer logical components in this matrix:
 
-- **Workers:** execution mechanisms for long-running ingestion, computation or archive assembly.
+- **Workers:** execution mechanisms for long-running ingestion, computation, final-product delivery or archive assembly.
 - **NATS:** candidate internal messaging infrastructure. It is not a logical component and is not part of the public UI interface.
 - **Object storage (S3-compatible storage is a candidate):** external infrastructure used for input/output objects and temporary archives. No backend is selected by this matrix.
 - **EO providers:** external systems queried/acquired by CAT for L0 source data.
@@ -281,4 +288,4 @@ REST remains the source of truth for request state. Notifications are optional U
 - Reconciliation of the GAT/GTW naming used by current discussion and existing drafts.
 - Authentication/trust mechanism, credential format, identity claims and integrity-protected internal context format/propagation. ENG-15 defines the required behavior; concrete contract/security choices are deferred to M0-E02-T03 and any necessary ADR.
 
-This matrix is the validated logical interaction inventory for the current component architecture design. Synchronization and communication mechanisms are deliberately not classified here; they belong to interface and contract design. The user-facing policy is that operations expected to take more than 5 seconds are exposed asynchronously, with REST remaining the source of truth for request state.
+This matrix is the validated logical interaction inventory for the current component architecture design. Logical Sync/Async modes are explicitly classified in §1.2. Proposal preparation, final-product delivery, dependency-archive delivery and the identified CON↔SCI/CON↔CAT operations are asynchronous regardless of estimated duration. ENG-03's five-second threshold remains a general minimum rule for other user-facing operations. Physical transport, messaging durability, acknowledgement, correlation, idempotency and recovery remain for interface and contract design; REST remains the source of truth for request and delivery state.
