@@ -1,6 +1,6 @@
 # MEOGAP — Interface & Contract Inventory
 
-**Document status:** Working conceptual contract inventory — aligned with the current interaction matrix; explicit decision-alignment points remain open  
+**Document status:** Reviewed conceptual interface inventory — aligned with the validated interaction matrix; detailed contract definitions are scheduled for M1  
 **Scope:** Conceptual contracts for the logical interactions inventoried for M0  
 **Target branch:** `38-m0-e02-t04-identify-m0-interface-and-contract-boundaries`  
 **Purpose:** Define interface responsibilities and conceptual information exchanged, organized by the component that provides/owns each interface.
@@ -44,6 +44,26 @@ The **interface owner** is the component that provides/owns the logical capabili
 Workers, NATS, object storage and EO providers are mechanisms or infrastructure, not logical interface-owning components in this inventory.
 
 ---
+
+### 1.4 Interaction style versus synchronization mode
+
+Two independent axes are used throughout the architecture:
+
+- **Interaction style** describes the logical form of the boundary.
+- **Sync/Async** describes when the business outcome is produced relative to initiation.
+
+The interaction styles currently established are:
+
+| Boundary | Logical interaction style | Sync/Async classification | Physical transport |
+|---|---|---|---|
+| UI ↔ GAT | Public REST API | Fixed per UI operation as listed in §3.3 | HTTP REST |
+| GAT ↔ CON | Internal component operation / request-response boundary | Fixed per GC interaction in the matrix; proposal and delivery initiation are Async | Unresolved |
+| GAT ↔ SCI (GS-01/02 only) | Internal component operation / request-response boundary for catalogue access | Sync | Unresolved |
+| CON ↔ SCI | Internal operation with deferred outcome for evaluation, estimation, computation and harmonization | Async | Unresolved |
+| CON ↔ CAT | Internal operation with deferred outcome for dependency resolution, acquisition-cost estimation and ingestion; direct query/response for reference/lineage/availability | Fixed per CC interaction in the matrix | Unresolved |
+| SCI ↔ CAT | Internal registration operation and confirmation | Sync | Unresolved |
+
+The physical style/transport of internal boundaries is not selected by this inventory. In particular, Async does not automatically mean NATS or a message broker, and Sync does not automatically mean in-process calls or RPC. Workers, NATS and storage remain mechanisms/infrastructure, not logical components. Any choice that constrains implementation is recorded separately through an ADR.
 
 ## 2. Cross-cutting contract rules
 
@@ -254,7 +274,7 @@ SCI owns the meaning and behavior of scientific products. SCI does not resolve a
 |---|---|---|---|---|---|---|--- | --- |
 | CS-01 / CS-02 | Scientific feasibility evaluation and abstract input requirements | SCI | CON | CON → SCI; response SCI → CON | Product ID, product parameters, spatial scope, temporal scope and correlation/request context. | Feasibility, conditions/limitations, reasons for infeasibility and abstract input requirements (bands/variables, resolution, period and quality criteria). | Product ID is sufficient to identify the SCI-defined product. SCI selects its applicable definition/version internally and records it as metadata. No concrete asset references in this exchange.  | Async |
 | CS-03 / CS-04 | Technical computation-complexity estimate | SCI | CON | CON → SCI; response SCI → CON | Self-contained product ID, parameters, spatial/temporal scope, computation options affecting resource use and correlation context. | Complexity/resource estimate, expected data volume or effort, indicative duration if available, assumptions and limitations. | CS-03 must be independently understandable; it does not depend on a prior CS-01/02 call. SCI estimates technical effort; CON calculates user-facing credits.  | Async |
-| CS-05 / CS-06 | Execute scientific product computation | SCI | CON | CON → SCI; response SCI → CON | Product ID, product-definition/version context as currently described by the matrix, parameters, spatial/temporal scope, concrete input asset/representation references and execution context. | Execution outcome, result metadata, method/version metadata, actual inputs consumed, quality/coverage/limitations, diagnostics and registration outcome. | The matrix currently lists product definition/version in CS-05. This is an alignment point with the confirmed decision that SCI resolves the applicable version internally and records it as metadata. CON resolves inputs through CAT. SCI computes, writes output and registers the Derived Asset with CAT.  | Async |
+| CS-05 / CS-06 | Execute scientific product computation | SCI | CON | CON → SCI; response SCI → CON | Product ID, product parameters, spatial/temporal scope, concrete input asset/representation references resolved through CAT, and execution/correlation context. | Execution outcome, result metadata, method/version metadata, actual inputs consumed, quality/coverage/limitations, diagnostics and registration outcome. | Product ID identifies the requested scientific product. SCI resolves or pins the applicable definition internally; the version actually used is recorded as provenance. CON resolves concrete inputs through CAT. SCI computes, writes output and registers the Derived Asset with CAT. | Async |
 | CS-07 / CS-08 | Harmonize original L0 Source Asset representation | SCI | CON | CON → SCI; response SCI → CON | Existing Source Asset ID, original representation reference/location from CAT, harmonization options/requirements and processing context. | Harmonization outcome, generated representation metadata, method/version/provenance, quality/coverage and CAT registration status. | Original provider representation is already registered/preserved by CAT. SCI creates harmonized representations against that Source Asset; this does not create a Derived Asset. CON checks availability through CC-14.  | Async |
 
 ### 5.2 Product identity and version metadata
@@ -265,11 +285,7 @@ SCI records the definition/method version actually used in the result metadata a
 
 The contract does not require the user or CON to provide a version string merely to ask SCI to evaluate or estimate a known product.
 
-### 5.3 Alignment point — product-definition version in CS-05
-
-The current Component Interaction Matrix describes CS-05 as carrying the product definition/version. The confirmed design decision is that SCI resolves the definition associated with the product identifier and stores the selected version as traceability metadata. These can be reconciled if a version is passed internally as a pinned execution context rather than as a product selector supplied by the caller. If SCI is expected to select the version entirely internally at execution time, the matrix's CS-05 wording should be updated. This document does not silently choose between those two interpretations.
-
-### 5.4 CS-01/02 — evaluation semantics
+### 5.3 CS-01/02 — evaluation semantics
 
 SCI returns:
 - whether the product request is scientifically feasible;
@@ -486,9 +502,20 @@ Missing observation is not a processing failure. A cloud/quality mask is not a z
 
 # 11. M0 scope versus deferred detail
 
-## 11.1 M0 behavior
+## 11.1 M0 functional coverage — all interfaces are in scope
 
-M0 should exercise the logical boundaries with deterministic/mock behavior where necessary:
+**Every logical interface family and interaction listed in the authoritative Component Interaction Matrix is in the M0 functional scope.** Every boundary must be exercised by functional tests as part of the reference journey and its failure/recovery cases. This does not require every underlying capability to use a real EO provider or scientific implementation in M0: a deterministic mock is acceptable when it preserves the interface behavior, ownership, state distinctions, error semantics and end-to-end route.
+
+| Interface family | Interaction IDs | M0 functional expectation | Permitted M0 realization |
+|---|---|---|---|
+| UI ↔ GAT | UI-01, UI-02, UI-05…UI-15, UI-16…UI-24 (the IDs present in the matrix) | Public product, request, representation, lineage, credit, cancellation and delivery journeys are exercised through GAT REST. | Real UI/API boundary with deterministic synthetic data and mock-backed downstream behavior where needed. |
+| GAT ↔ CON | GC-02…GC-09, GC-14 and response interactions | Request lifecycle, proposal preparation, confirmation, credit decision, access, cancellation and delivery initiation are exercised. | Deterministic CON implementation/mock with persistent demo state where required by M0. |
+| GAT ↔ SCI | GS-01/GS-02 | Scientific catalogue and product descriptor lookup are exercised. | Small deterministic synthetic Product Catalogue. |
+| CON ↔ SCI | CS-01…CS-08 | Feasibility, complexity estimate, computation, and harmonization boundaries and outcomes are exercised. | Deterministic SCI mock/product implementation; this is not real EO processing or scientific validation. |
+| CON ↔ CAT | CC-01…CC-14 | Dependency resolution, missing-data conditions, acquisition-cost, ingestion, asset-reference, lineage and representation-availability boundaries are exercised. | Deterministic CAT mock/catalogue fixtures; provider acquisition may be simulated. |
+| SCI ↔ CAT | SC-01…SC-04 | Derived Asset registration and harmonized Source Asset representation registration/confirmation are exercised. | Mock registration and metadata catalogue preserving the SCI/CAT ownership boundary. |
+
+The M0 acceptance target is **functional coverage of each logical boundary**, not production infrastructure or real EO data for every family. Mocking a component must not remove its interface from test coverage.
 - UI uses GAT as the only public API.
 - GAT derives and propagates deterministic demo identity context.
 - Request submission persists a request and starts proposal preparation.
@@ -507,7 +534,22 @@ M0 should exercise the logical boundaries with deterministic/mock behavior where
 
 M0 mock behavior must not be presented as real EO processing, validated scientific quality, production authentication or production-grade financial accounting.
 
-## 11.2 Deferred
+## 11.2 Detailed contract work scheduled for M1
+
+M1 formalizes, versions and hardens the contracts already exercised functionally in M0. The work is grouped under [M1-E07 — Formalize Interface Contracts for Real EO Integration](https://github.com/arnaudsomville/MEOGAP/issues/123):
+
+| Interface/contract scope | M1 ticket | Coverage |
+|---|---|---|
+| Product Catalogue / Product Definition and Analysis Request | [M1-E07-T01](https://github.com/arnaudsomville/MEOGAP/issues/118) | GS-01/02; public product/request input contract. |
+| Result, Representation, Asset Reference and Delivery | [M1-E07-T02](https://github.com/arnaudsomville/MEOGAP/issues/119) | Result retrieval and visualization; UI-09…UI-14, UI-19…UI-21; delivery resource semantics. |
+| CON–CAT source acquisition and ingestion | [M1-E07-T03](https://github.com/arnaudsomville/MEOGAP/issues/120) | CC-07/08; CON orchestrates, CAT owns acquisition/ingestion. |
+| GAT–CON request lifecycle and user operations | [M1-E07-T04](https://github.com/arnaudsomville/MEOGAP/issues/124) | GC-02…GC-09 and GC-14; proposal, confirmation, credits, access, cancellation and delivery initiation. |
+| CON–SCI evaluation and processing | [M1-E07-T05](https://github.com/arnaudsomville/MEOGAP/issues/125) | CS-01…CS-08 and required GS-01/02 interaction with T01. |
+| CON–CAT dependency/assets and SCI–CAT registration | [M1-E07-T06](https://github.com/arnaudsomville/MEOGAP/issues/126) | CC-01…CC-06, CC-09…CC-14, SC-01…SC-04. |
+
+These M1 tickets define contracts and their boundary tests as real EO processing is integrated. They do not defer M0 functional interface coverage.
+
+## 11.3 Deferred implementation detail
 
 This conceptual inventory does not fix:
 - exact JSON/Pydantic schemas and serialization;
@@ -528,25 +570,27 @@ This conceptual inventory does not fix:
 
 # 12. Review checklist
 
-- [ ] Every interaction ID in the authoritative Component Interaction Matrix is represented.
-- [ ] Each interface has one clearly identified owner/provider and explicit consumer(s).
-- [ ] Request and response directions are explicit.
-- [ ] Product identifiers are not confused with product-definition version metadata.
-- [ ] SCI remains authority for scientific definitions and methods.
-- [ ] CAT stores/retrieves registered asset metadata without becoming scientific authority.
-- [ ] Submission prepares a proposal; confirmation checks balance, debits and launches execution.
-- [ ] Credit balance check and debit/admission are atomic.
-- [ ] SCI abstract input requirements and CAT concrete asset resolution remain distinct.
-- [ ] Planned dependency graph and actual lineage remain distinct.
-- [ ] Derived Asset registration and harmonized Source Asset representation registration remain distinct.
-- [ ] Registration and representation availability remain distinct.
-- [ ] Request state, task state, asset registration, representation availability and scientific quality remain distinct.
-- [ ] Product scientific validation and individual result quality remain distinct.
-- [ ] Public UI operations go through GAT; private result access is authorized through CON.
-- [ ] Download flow correctly separates CAT reference resolution from CON object retrieval/delivery.
-- [x] Explicitly classified operations (proposal preparation, both delivery types, SCI feasibility/estimation/computation/harmonization, and CAT dependency resolution/acquisition pricing/ingestion) are asynchronous from the start, regardless of an estimated sub-five-second duration. ENG-03's five-second rule remains a general minimum for other user-facing operations.
-- [ ] No route, payload schema or transport is frozen prematurely.
-- [ ] M0 mock behavior is distinguished from planned real capabilities.
+- [x] Every interaction ID in the authoritative Component Interaction Matrix is represented in the inventory.
+- [x] Each interface family has a clearly identified owner/provider and explicit consumer(s).
+- [x] Request and response directions are explicit.
+- [x] Product identifiers are not confused with product-definition version metadata; SCI resolves the version and records it as provenance.
+- [x] SCI remains authority for scientific definitions and methods.
+- [x] CAT stores/retrieves registered asset metadata without becoming scientific authority.
+- [x] Submission prepares a proposal; confirmation checks balance, debits and launches execution.
+- [x] Credit balance check and debit/admission are atomic.
+- [x] SCI abstract input requirements and CAT concrete asset resolution remain distinct.
+- [x] Planned dependency graph and actual lineage remain distinct.
+- [x] Derived Asset registration and harmonized Source Asset representation registration remain distinct.
+- [x] Registration and representation availability remain distinct.
+- [x] Request state, task state, asset registration, representation availability and scientific quality remain distinct.
+- [x] Product scientific validation and individual result quality remain distinct.
+- [x] Public UI operations go through GAT; private result access is authorized through CON.
+- [x] Download flow correctly separates CAT reference resolution from CON object retrieval/delivery.
+- [x] Sync/Async classifications are fixed per interaction and separate from the unresolved internal physical transport.
+- [x] Every interface family is in M0 functional-test scope; deterministic mocks are permitted without omitting boundary coverage.
+- [x] Detailed contract formalization is mapped to M1-E07 child tickets #118–#120 and #124–#126.
+- [x] No route, payload schema or transport is frozen prematurely.
+- [x] M0 mock behavior is distinguished from planned real EO capabilities.
 
 ---
 
