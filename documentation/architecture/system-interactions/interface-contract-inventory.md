@@ -299,13 +299,13 @@ SCI does not:
 - decide user access;
 - calculate user credit price.
 
-### 5.5 CS-03/04 — estimation semantics
+### 5.4 CS-03/04 — estimation semantics
 
 CS-03 is self-contained. It includes the context required to estimate the requested computation without relying on a previous evaluation call.
 
 SCI returns technical complexity/resource information. CON converts this into a user-facing credit estimate using its own policy. Duration is indicative, not a service-level guarantee. Complexity estimation is not the same as scientific feasibility.
 
-### 5.6 CS-05/06 — computation and registration semantics
+### 5.5 CS-05/06 — computation and registration semantics
 
 SCI:
 1. receives concrete input references/locations resolved by CON through CAT;
@@ -327,13 +327,13 @@ Preserve these outcomes:
 | Successful | Failed | Output may physically exist, but no registered Derived Asset is confirmed. |
 | Partial | Successful or failed | Partial result/coverage must be explicitly characterized; not automatically equivalent to total failure. |
 
-### 5.7 CS-07/08 — harmonization semantics
+### 5.6 CS-07/08 — harmonization semantics
 
 SCI harmonizes an already registered Source Asset's original provider representation. It submits generated representations to CAT for registration against that existing Source Asset (SC-03/04). It does not create a Derived Asset for this operation.
 
 A Source Asset may remain registered and its original representation may remain available while harmonized representations are pending, unavailable or failed. Registration confirmation is not by itself proof that a representation is already available for consumption; CON checks required availability with CC-14.
 
-### 5.8 SCI-owned scientific catalogue interface consumed by GAT
+### 5.7 SCI-owned scientific catalogue interface consumed by GAT
 
 | Interaction ID | Operation / purpose | Interface owner | Consumer | Direction | Conceptual request information | Conceptual response information | Contract invariants / notes  | Interaction mode |
 |---|---|---|---|---|---|---|--- | --- |
@@ -516,6 +516,8 @@ Missing observation is not a processing failure. A cloud/quality mask is not a z
 | SCI ↔ CAT | SC-01…SC-04 | Derived Asset registration and harmonized Source Asset representation registration/confirmation are exercised. | Mock registration and metadata catalogue preserving the SCI/CAT ownership boundary. |
 
 The M0 acceptance target is **functional coverage of each logical boundary**, not production infrastructure or real EO data for every family. Mocking a component must not remove its interface from test coverage.
+
+At minimum, the functional scenarios exercise:
 - UI uses GAT as the only public API.
 - GAT derives and propagates deterministic demo identity context.
 - Request submission persists a request and starts proposal preparation.
