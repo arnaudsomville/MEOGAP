@@ -1,10 +1,11 @@
 import { act, render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const leafletState = vi.hoisted(() => ({
   click: undefined as undefined | ((event: { latlng: { lat: number; lng: number } }) => void),
   flyTo: vi.fn(),
+  fitBounds: vi.fn(),
   setView: vi.fn(),
   polygonClicks: [] as Array<(() => void) | undefined>,
 }))
@@ -25,7 +26,11 @@ vi.mock('react-leaflet', () => ({
     return <output>{JSON.stringify(positions)}</output>
   },
   ImageOverlay: ({ url }: { url: string }) => <img alt="Result map" src={url} />,
-  useMap: () => ({ flyTo: leafletState.flyTo, setView: leafletState.setView }),
+  useMap: () => ({
+    flyTo: leafletState.flyTo,
+    fitBounds: leafletState.fitBounds,
+    setView: leafletState.setView,
+  }),
   useMapEvents: (handlers: {
     click: (event: { latlng: { lat: number; lng: number } }) => void
   }) => {
@@ -56,6 +61,13 @@ const AOI = {
 }
 
 describe('LeafletMapSurface', () => {
+  beforeEach(() => {
+    leafletState.flyTo.mockClear()
+    leafletState.fitBounds.mockClear()
+    leafletState.setView.mockClear()
+    leafletState.polygonClicks.length = 0
+  })
+
   it(
     'wires Leaflet map events, OSM attribution, AOIs, and result overlays',
     { tags: ['unit'] },
@@ -70,7 +82,8 @@ describe('LeafletMapSurface', () => {
             { lat: 10.45, lng: -84.9 },
           ]}
           drawing
-          focus={{ lat: 10.43, lng: -84.91, zoom: 10 }}
+          focus={{ type: 'point', lat: 10.43, lng: -84.91, zoom: 10 }}
+          focusRevision={1}
           resultMap={{
             url: 'https://example.test/map.png',
             bounds: [
@@ -85,7 +98,7 @@ describe('LeafletMapSurface', () => {
       )
 
       expect(screen.getByTestId('map-container')).toBeInTheDocument()
-      expect(screen.getByText(/OpenStreetMap/)).toBeInTheDocument()
+      expect(screen.getByText(/EOxCloudless/)).toBeInTheDocument()
       expect(screen.getByRole('img', { name: 'Result map' })).toHaveAttribute(
         'src',
         'https://example.test/map.png',
@@ -106,6 +119,7 @@ describe('LeafletMapSurface', () => {
         draftVertices={[]}
         drawing={false}
         focus={null}
+        focusRevision={0}
         resultMap={null}
         selectedAoiId="another-aoi"
         onMapClick={onMapClick}
@@ -116,5 +130,37 @@ describe('LeafletMapSurface', () => {
     act(() => leafletState.click?.({ latlng: { lat: 10.48, lng: -84.88 } }))
     expect(onMapClick).not.toHaveBeenCalled()
     expect(leafletState.setView).toHaveBeenCalledWith([20, 0], 3)
+  })
+
+  it('fits the complete AOI bounds instead of a single point', { tags: ['unit'] }, () => {
+    render(
+      <LeafletMapSurface
+        aois={[AOI]}
+        draftVertices={[]}
+        drawing={false}
+        focus={{
+          type: 'bounds',
+          bounds: { south: 10.35, west: -85, north: 10.5, east: -84.82 },
+          maxZoom: 13,
+          paddingTopLeft: [470, 96],
+          paddingBottomRight: [48, 130],
+        }}
+        focusRevision={2}
+        resultMap={null}
+        selectedAoiId="aoi-1"
+        onMapClick={vi.fn()}
+        onAoiSelect={vi.fn()}
+      />,
+    )
+
+    expect(leafletState.fitBounds).toHaveBeenCalledWith(
+      [
+        [10.35, -85],
+        [10.5, -84.82],
+      ],
+      { maxZoom: 13, paddingTopLeft: [470, 96], paddingBottomRight: [48, 130] },
+    )
+    expect(leafletState.flyTo).not.toHaveBeenCalled()
+    expect(leafletState.setView).not.toHaveBeenCalled()
   })
 })

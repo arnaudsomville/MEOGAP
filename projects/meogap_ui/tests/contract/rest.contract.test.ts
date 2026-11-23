@@ -26,8 +26,12 @@ ajv.addSchema(contract, 'gateway')
 
 const validateHealth = ajv.getSchema('gateway#/components/schemas/HealthResponse')
 const validateError = ajv.getSchema('gateway#/components/schemas/ErrorResponse')
+const validateProduct = ajv.getSchema('gateway#/components/schemas/ProductResponse')
+const validateCreateRequest = ajv.getSchema(
+  'gateway#/components/schemas/AnalysisRequestCreateRequest',
+)
 
-if (!validateHealth || !validateError) {
+if (!validateHealth || !validateError || !validateProduct || !validateCreateRequest) {
   throw new Error('The reference contract is missing a shared schema.')
 }
 
@@ -117,6 +121,46 @@ describe('REST reference contract', () => {
         operation: 'gateway_list_products',
       }),
     ).toThrow('Invalid payload')
+  })
+
+  it('accepts product preview and controlled source metadata', { tags: ['contract'] }, () => {
+    const payload = {
+      product_id: 'ndvi',
+      name: 'NDVI',
+      description: 'Vegetation index',
+      level: 'L1',
+      category: 'Vegetation',
+      native_resolution: '10 m',
+      temporal_resolution: '5 days',
+      availability: 'DEMO',
+      validation_status: 'NOT_VALIDATED',
+      inputs: ['Red reflectance'],
+      parameters: [],
+      limitations: ['Deterministic M0 descriptor.'],
+      supported_sources: ['Sentinel', 'Landsat'],
+      supported_resolutions_m: [10, 20],
+      preview: {
+        url: 'data:image/svg+xml,preview',
+        alt: 'NDVI illustrative preview',
+        attribution: 'MEOGAP synthetic illustration',
+      },
+    }
+    expect(validateProduct(payload)).toBe(true)
+    expect(validateProduct({ ...payload, supported_sources: ['Unknown mission'] })).toBe(false)
+    expect(validateProduct({ ...payload, preview: null })).toBe(true)
+  })
+
+  it('accepts constrained request configuration', { tags: ['contract'] }, () => {
+    const payload = {
+      product_id: 'ndvi',
+      aoi_id: 'aoi-1',
+      period: { start_month: '2026-01', end_month: '2026-02' },
+      spatial_resolution_m: 20,
+      sources: ['Sentinel', 'Landsat'],
+    }
+    expect(validateCreateRequest(payload)).toBe(true)
+    expect(validateCreateRequest({ ...payload, sources: ['Unknown mission'] })).toBe(false)
+    expect(validateCreateRequest({ ...payload, spatial_resolution_m: 0 })).toBe(false)
   })
 
   it(

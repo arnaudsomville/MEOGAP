@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from '../src/App'
@@ -24,12 +24,52 @@ const AOI = {
   updated_at: '2026-01-01T00:00:00Z',
 }
 
+const MULTI_AOI = {
+  ...AOI,
+  name: 'Guanacaste study area',
+  geometry: {
+    type: 'MultiPolygon',
+    coordinates: [
+      [
+        [
+          [1.38, 43.56],
+          [1.45, 43.56],
+          [1.45, 43.6],
+          [1.38, 43.56],
+        ],
+      ],
+      [
+        [
+          [1.46, 43.62],
+          [1.49, 43.62],
+          [1.49, 43.66],
+          [1.46, 43.62],
+        ],
+      ],
+    ],
+  },
+}
+
 const PRODUCT = {
   product_id: 'ndvi',
   name: 'NDVI',
   description: 'Vegetation index',
   level: 'L1',
-  validation_status: 'unvalidated',
+  category: 'Vegetation',
+  native_resolution: '10 m',
+  temporal_resolution: '5 days',
+  availability: 'DEMO',
+  validation_status: 'NOT_VALIDATED',
+  inputs: ['Red reflectance', 'Near-infrared reflectance'],
+  parameters: [],
+  limitations: ['Deterministic M0 descriptor.'],
+  supported_sources: ['Sentinel', 'Landsat', 'MODIS', 'VIIRS'],
+  supported_resolutions_m: [10, 20, 30],
+  preview: {
+    url: 'data:image/svg+xml,preview-ndvi',
+    alt: 'NDVI illustrative preview',
+    attribution: 'MEOGAP synthetic illustration',
+  },
 }
 
 const PROPOSED_REQUEST = {
@@ -39,6 +79,8 @@ const PROPOSED_REQUEST = {
   aoi_id: 'aoi-1',
   start_month: '2026-01',
   end_month: '2026-02',
+  requested_sources: ['Sentinel'],
+  requested_spatial_resolution_m: 20,
   proposal: { estimated_credits: 3 },
   result_id: 'result-1',
 }
@@ -60,10 +102,19 @@ function gatewayResponse(payload: unknown, demo = false): Response {
   } as unknown as Response
 }
 
+function describeFocus(focus: MapSurfaceProps['focus']): string {
+  if (!focus) return 'No map focus'
+  if (focus.type === 'bounds') {
+    const { south, west, north, east } = focus.bounds
+    return `Bounds ${south},${west},${north},${east}`
+  }
+  return `${focus.lat},${focus.lng}`
+}
+
 function fakeMapSurface({ drawing, focus, onMapClick, onAoiSelect, aois }: MapSurfaceProps) {
   return (
     <section aria-label="Test map">
-      <output>{focus ? `${focus.lat},${focus.lng}` : 'No map focus'}</output>
+      <output aria-label="Map focus">{describeFocus(focus)}</output>
       {drawing ? (
         <button
           type="button"
@@ -94,29 +145,42 @@ function stubGateway(
     demo?: boolean
     deliveryPreparing?: boolean
     product?: Record<string, unknown>
+    aoi?: Record<string, unknown>
   } = {},
 ) {
   const completed = { ...PROPOSED_REQUEST, state: 'COMPLETED', actual_credits: 2 }
-  const request = options.request ?? PROPOSED_REQUEST
+  let currentRequest = options.request ?? PROPOSED_REQUEST
   const product = options.product ?? PRODUCT
+  const aoi = options.aoi ?? AOI
   const fetchMock = vi.fn(async (path: string, init?: RequestInit) => {
     if (path === '/api/v1/health')
       return gatewayResponse({ status: 'ok', service: 'gateway', version: '0.2.0' }, options.demo)
     if (path === '/api/v1/aois' && init?.method === 'POST')
-      return gatewayResponse({ ...AOI, name: 'New area' })
-    if (path === '/api/v1/aois') return gatewayResponse({ items: [AOI] })
-    if (path === '/api/v1/aois/aoi-1') return gatewayResponse(AOI)
-    if (path === '/api/v1/catalogue/products') return gatewayResponse({ items: [product] })
+      return gatewayResponse({ ...aoi, name: 'New area' })
+    if (path === '/api/v1/aois') return gatewayResponse({ items: [aoi] })
+    if (path === '/api/v1/aois/aoi-1') return gatewayResponse(aoi)
+    if (path === '/api/v1/catalogue/products')
+      return gatewayResponse({ items: [product] }, options.demo)
     if (path === '/api/v1/catalogue/products/ndvi') return gatewayResponse(product)
     if (path === '/api/v1/catalogue/products/ndvi/input-requirements')
-      return gatewayResponse({ source: 'Sentinel-2' })
+      return gatewayResponse({
+        product_id: 'ndvi',
+        inputs: ['Red reflectance', 'Near-infrared reflectance'],
+        limitations: ['Deterministic M0 descriptor.'],
+        note: 'No real acquisition or validation is implemented.',
+      })
     if (path === '/api/v1/analysis-requests' && init?.method === 'POST')
       return gatewayResponse({ ...PROPOSED_REQUEST, request_id: 'request-new', state: 'PREPARING' })
-    if (path === '/api/v1/analysis-requests') return gatewayResponse({ items: [request] })
-    if (path === '/api/v1/analysis-requests/request-1/confirm') return gatewayResponse(completed)
-    if (path === '/api/v1/analysis-requests/request-1/cancel')
-      return gatewayResponse({ ...PROPOSED_REQUEST, state: 'CANCELLED' })
-    if (path === '/api/v1/analysis-requests/request-1') return gatewayResponse(request)
+    if (path === '/api/v1/analysis-requests') return gatewayResponse({ items: [currentRequest] })
+    if (path === '/api/v1/analysis-requests/request-1/confirm') {
+      currentRequest = completed
+      return gatewayResponse(completed)
+    }
+    if (path === '/api/v1/analysis-requests/request-1/cancel') {
+      currentRequest = { ...PROPOSED_REQUEST, state: 'CANCELLED' }
+      return gatewayResponse(currentRequest)
+    }
+    if (path === '/api/v1/analysis-requests/request-1') return gatewayResponse(currentRequest)
     if (path === '/api/v1/results/result-1/map')
       return gatewayResponse({
         map_url: 'https://example.test/map.png',
@@ -164,10 +228,11 @@ describe('App', () => {
 
       await user.click(screen.getByRole('button', { name: 'Explore' }))
       await user.click(await screen.findByRole('button', { name: /NDVI/ }))
-      expect(await screen.findByText('Vegetation index')).toBeInTheDocument()
+      expect((await screen.findAllByText('Vegetation index')).length).toBeGreaterThan(0)
       expect(
         screen.getByText('Demo data: this workspace is not showing real EO processing.'),
       ).toBeInTheDocument()
+      expect(screen.queryByText(/Gateway ok/i)).not.toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Configure request' }))
       await user.selectOptions(screen.getByLabelText('Saved AOI'), 'aoi-1')
       await user.type(screen.getByLabelText('Start month (UTC)'), '2026-01')
@@ -223,7 +288,7 @@ describe('App', () => {
       expect(await screen.findByText('COMPLETED')).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Display on map' }))
       expect(
-        await screen.findByText('Map representation loaded from the Gateway.'),
+        await screen.findByText('Map representation loaded for this result.'),
       ).toBeInTheDocument()
       expect(screen.getByText('43.61,1.435')).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Requests' }))
@@ -277,9 +342,15 @@ describe('App', () => {
       await user.click(screen.getByRole('button', { name: 'Locate' }))
       const library = await screen.findByLabelText('AOI library')
       await user.click(within(library).getByRole('button', { name: /Toulouse/ }))
+      await waitFor(() =>
+        expect(screen.getByLabelText('Map focus')).toHaveTextContent(
+          'Bounds 43.56,1.38,43.66,1.49',
+        ),
+      )
       expect(await screen.findByRole('button', { name: 'Edit selected' })).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Edit selected' }))
-      await user.click(screen.getByRole('button', { name: 'Clear boundary' }))
+      await user.click(screen.getByRole('button', { name: 'Reset drawing' }))
+      expect(within(library).getByRole('button', { name: /Toulouse/ })).toBeInTheDocument()
       const point = screen.getByRole('button', { name: 'Add map point' })
       await user.click(point)
       await user.click(point)
@@ -298,6 +369,18 @@ describe('App', () => {
       expect(screen.queryByRole('button', { name: 'Delete selected' })).not.toBeInTheDocument()
     },
   )
+
+  it('fits a MultiPolygon AOI to its complete geometry bounds', { tags: ['unit'] }, async () => {
+    stubGateway({ aoi: MULTI_AOI })
+    const user = userEvent.setup()
+    render(<App MapSurface={fakeMapSurface} />)
+
+    await user.click(await screen.findByRole('button', { name: 'Select Guanacaste study area' }))
+
+    await waitFor(() =>
+      expect(screen.getByLabelText('Map focus')).toHaveTextContent('Bounds 43.56,1.38,43.66,1.49'),
+    )
+  })
 
   it(
     'returns to the request form after creating an AOI and can cancel a request',
@@ -342,11 +425,12 @@ describe('App', () => {
       render(<App MapSurface={fakeMapSurface} />)
 
       expect(await screen.findByRole('alert')).toHaveTextContent('network unavailable')
-      expect(screen.getByText('Gateway unavailable')).toBeInTheDocument()
+      expect(screen.queryByText(/Gateway ok/i)).not.toBeInTheDocument()
+      expect(screen.queryByText(/Gateway unavailable/i)).not.toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Dismiss error' }))
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Explore' }))
-      expect(screen.getByText('No products are available from the Gateway.')).toBeInTheDocument()
+      expect(screen.getByText('The product catalogue is unavailable.')).toBeInTheDocument()
     },
   )
 
@@ -358,9 +442,7 @@ describe('App', () => {
       stubGateway({ request: { ...PROPOSED_REQUEST, state: 'PREPARING', result_id: undefined } })
       const preparing = render(<App MapSurface={fakeMapSurface} />)
       await user.click(screen.getByRole('button', { name: 'Requests' }))
-      expect(
-        await screen.findByText('Preparing a proposal. Refresh to retrieve the current state.'),
-      ).toBeInTheDocument()
+      expect(await screen.findByText('Preparing a proposal.')).toBeInTheDocument()
       preparing.unmount()
 
       vi.unstubAllGlobals()
@@ -379,7 +461,7 @@ describe('App', () => {
       stubGateway({ request: { request_id: 'request-1', state: 'COMPLETED' } })
       render(<App MapSurface={fakeMapSurface} />)
       await user.click(screen.getByRole('button', { name: 'Requests' }))
-      expect(await screen.findByText(/did not provide a result identifier/)).toBeInTheDocument()
+      expect(await screen.findByText(/no result identifier was provided/)).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Display on map' })).toBeDisabled()
       expect(screen.getByRole('button', { name: 'Prepare download' })).toBeDisabled()
     },
@@ -404,8 +486,12 @@ describe('App', () => {
       await user.click(screen.getByRole('button', { name: 'Submit request' }))
       expect(await screen.findByRole('alert')).toHaveTextContent('start month must be on or before')
       expect(
-        fetchMock.mock.calls.filter(([path]) => path === '/api/v1/analysis-requests').length,
-      ).toBe(1)
+        fetchMock.mock.calls.filter(
+          ([path, init]) =>
+            path === '/api/v1/analysis-requests' &&
+            (init as RequestInit | undefined)?.method === 'POST',
+        ).length,
+      ).toBe(0)
     },
   )
 
@@ -418,12 +504,99 @@ describe('App', () => {
       render(<App MapSurface={fakeMapSurface} />)
 
       await user.click(screen.getByRole('button', { name: 'Explore' }))
-      expect(await screen.findByText('Processing level unavailable')).toBeInTheDocument()
+      expect(await screen.findByText('Level unavailable')).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: /Bare product/ }))
       expect(
-        await screen.findByText('No product description was supplied by the Gateway.'),
+        (await screen.findAllByText('No product description was supplied.')).length,
+      ).toBeGreaterThan(0)
+      expect(screen.getAllByText('Unavailable')).toHaveLength(7)
+      expect(screen.queryByRole('checkbox', { name: 'Sentinel' })).not.toBeInTheDocument()
+    },
+  )
+
+  it(
+    'renders product illustrations and falls back when no preview is available',
+    { tags: ['unit'] },
+    async () => {
+      const user = userEvent.setup()
+      stubGateway()
+      const withPreview = render(<App MapSurface={fakeMapSurface} />)
+      await user.click(screen.getByRole('button', { name: 'Explore' }))
+      expect((await screen.findAllByAltText('NDVI illustrative preview')).length).toBeGreaterThan(0)
+      withPreview.unmount()
+
+      vi.unstubAllGlobals()
+      stubGateway({ product: { ...PRODUCT, preview: null } })
+      render(<App MapSurface={fakeMapSurface} />)
+      await user.click(screen.getByRole('button', { name: 'Explore' }))
+      expect(
+        await screen.findByRole('img', { name: 'No preview available for NDVI' }),
       ).toBeInTheDocument()
-      expect(screen.getAllByText('Unavailable')).toHaveLength(2)
+    },
+  )
+
+  it(
+    'configures spatial resolution and source missions in the request payload',
+    { tags: ['unit'] },
+    async () => {
+      const fetchMock = stubGateway()
+      const user = userEvent.setup()
+      render(<App MapSurface={fakeMapSurface} />)
+
+      await user.click(screen.getByRole('button', { name: 'Explore' }))
+      await user.click(await screen.findByRole('button', { name: /NDVI/ }))
+      await user.click(await screen.findByRole('button', { name: 'Configure request' }))
+      expect(screen.getByRole('checkbox', { name: 'Sentinel' })).toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: 'Landsat' })).toBeInTheDocument()
+      expect(screen.getByLabelText('Maximum allowed pixel size (m)')).toBeInTheDocument()
+      await user.selectOptions(screen.getByLabelText('Saved AOI'), 'aoi-1')
+      await user.type(screen.getByLabelText('Start month (UTC)'), '2026-01')
+      await user.type(screen.getByLabelText('End month (UTC)'), '2026-02')
+      await user.selectOptions(screen.getByLabelText('Maximum allowed pixel size (m)'), '20')
+      await user.click(screen.getByRole('checkbox', { name: 'Sentinel' }))
+      await user.click(screen.getByRole('button', { name: 'Submit request' }))
+
+      const postCall = fetchMock.mock.calls.find(
+        ([path, init]) =>
+          path === '/api/v1/analysis-requests' &&
+          (init as RequestInit | undefined)?.method === 'POST',
+      )
+      expect(postCall).toBeDefined()
+      const body = JSON.parse(String((postCall?.[1] as RequestInit).body))
+      expect(body).toMatchObject({
+        product_id: 'ndvi',
+        aoi_id: 'aoi-1',
+        spatial_resolution_m: 20,
+        sources: ['Sentinel'],
+      })
+    },
+  )
+
+  it(
+    'polls active request states while the requests panel is open',
+    { tags: ['unit'] },
+    async () => {
+      const fetchMock = stubGateway()
+      const user = userEvent.setup()
+      render(<App MapSurface={fakeMapSurface} pollIntervalMs={20} />)
+
+      const listCalls = () =>
+        fetchMock.mock.calls.filter(
+          ([path, init]) =>
+            path === '/api/v1/analysis-requests' &&
+            (init as RequestInit | undefined)?.method === undefined,
+        ).length
+      const initialCalls = listCalls()
+
+      await user.click(screen.getByRole('button', { name: 'Requests' }))
+      await waitFor(() => expect(listCalls()).toBeGreaterThan(initialCalls))
+      expect(screen.getByText('Active request states update automatically.')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Confirm execution' }))
+      await screen.findByText('COMPLETED')
+      expect(
+        screen.queryByText('Active request states update automatically.'),
+      ).not.toBeInTheDocument()
     },
   )
 })

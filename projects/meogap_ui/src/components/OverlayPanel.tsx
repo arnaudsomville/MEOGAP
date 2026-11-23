@@ -5,9 +5,16 @@ type OverlayPanelProps = {
   onClose: () => void
   children: ReactNode
   position?: 'left' | 'right'
+  icon?: ReactNode
 }
 
-export function OverlayPanel({ title, onClose, children, position = 'left' }: OverlayPanelProps) {
+export function OverlayPanel({
+  title,
+  onClose,
+  children,
+  position = 'left',
+  icon,
+}: OverlayPanelProps) {
   const closeButton = useRef<HTMLButtonElement>(null)
   const onCloseRef = useRef(onClose)
 
@@ -31,15 +38,19 @@ export function OverlayPanel({ title, onClose, children, position = 'left' }: Ov
   return (
     <aside className={`overlay-panel overlay-panel-${position}`} aria-label={title}>
       <header className="panel-header">
-        <h2>{title}</h2>
+        <div className="panel-title">
+          {icon ? <span className="panel-title-icon">{icon}</span> : null}
+          <h2>{title}</h2>
+        </div>
         <button
           ref={closeButton}
           className="icon-button"
           type="button"
           onClick={onClose}
           aria-label={`Close ${title}`}
+          title={`Close ${title}`}
         >
-          x
+          <span aria-hidden="true">×</span>
         </button>
       </header>
       <div className="panel-body">{children}</div>

@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import {
   cancelAnalysisRequest,
   confirmAnalysisRequest,
@@ -10,7 +10,6 @@ import {
   getAoi,
   getCreditBalance,
   getDelivery,
-  getHealth,
   getProduct,
   getProductRequirements,
   getResultMap,
@@ -19,22 +18,26 @@ import {
   listProducts,
   updateAoi,
   type AnalysisRequest,
+  type AnalysisState,
   type ApiResponse,
   type Aoi,
   type CreditBalance,
   type Delivery,
-  type Health,
   type Position,
   type Product,
   type ProductRequirements,
   type ResultMap,
 } from './api/client'
+import { Icon, type IconName } from './components/Icon'
 import { OverlayPanel } from './components/OverlayPanel'
+import { ProductCard, ProductPreview } from './components/ProductCard'
 import { LeafletMapSurface, type MapSurfaceComponent } from './map/LeafletMapSurface'
 import {
+  geometryBounds,
   geometryToVertices,
   parseCoordinates,
   verticesToPolygon,
+  type MapBounds,
   type MapFocus,
 } from './map/coordinates'
 
@@ -42,14 +45,30 @@ type Panel = 'catalogue' | 'aois' | 'requests' | 'indicators' | 'account' | 'req
 
 type AppProps = {
   MapSurface?: MapSurfaceComponent
+  pollIntervalMs?: number
+}
+
+type LoadingState = {
+  catalogue: boolean
+  aois: boolean
+  requests: boolean
+  balance: boolean
+}
+
+type LoadErrors = {
+  catalogue: boolean
+  aois: boolean
+  requests: boolean
 }
 
 const INITIAL_AOI_NAME = ''
 const EMPTY_DESCRIPTION = ''
 const EMPTY_MONTH = ''
+const DEFAULT_POLL_INTERVAL_MS = 5000
+const TERMINAL_STATES: ReadonlySet<AnalysisState> = new Set(['COMPLETED', 'FAILED', 'CANCELLED'])
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'The Gateway returned an unexpected error.'
+  return error instanceof Error ? error.message : 'The request could not be completed.'
 }
 
 function replaceById<T extends { id: string }>(items: T[], nextItem: T): T[] {
@@ -66,8 +85,35 @@ function StatusPill({ state }: { state: string }) {
   )
 }
 
+function NavButton({
+  active,
+  icon,
+  label,
+  onClick,
+}: {
+  active: boolean
+  icon: IconName
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      className={active ? 'nav-active' : ''}
+      onClick={onClick}
+      aria-pressed={active}
+      title={label}
+    >
+      <Icon name={icon} />
+      <span>{label}</span>
+    </button>
+  )
+}
+
 function RequestCard({
   request,
+  productName,
+  aoiName,
   onRefresh,
   onConfirm,
   onCancel,
@@ -75,6 +121,8 @@ function RequestCard({
   onDelivery,
 }: {
   request: AnalysisRequest
+  productName: string | null
+  aoiName: string | null
   onRefresh: (id: string) => void
   onConfirm: (id: string) => void
   onCancel: (id: string) => void
@@ -83,26 +131,59 @@ function RequestCard({
 }) {
   const canCancel = !['COMPLETED', 'FAILED', 'CANCELLED'].includes(request.state)
   const hasResult = request.resultId !== null
+  const sources = request.requestedSources.length
+    ? request.requestedSources.join(', ')
+    : 'No source restriction'
+
   return (
     <article className="request-card">
       <div className="request-card-heading">
-        <strong>{request.productId ?? 'Analysis request'}</strong>
+        <div>
+          <strong>{productName ?? request.productId ?? 'Analysis request'}</strong>
+          <span className="request-id">Request {request.id}</span>
+        </div>
         <StatusPill state={request.state} />
       </div>
-      <p className="muted">Request {request.id}</p>
-      {request.startMonth && request.endMonth ? (
-        <p>
-          UTC months: {request.startMonth} to {request.endMonth}
-        </p>
-      ) : null}
-      {request.estimatedCredits !== null ? (
-        <p>Estimated cost: {request.estimatedCredits} credits</p>
-      ) : null}
-      {request.actualCredits !== null ? <p>Actual cost: {request.actualCredits} credits</p> : null}
+      <dl className="request-facts">
+        <div>
+          <dt>AOI</dt>
+          <dd>{aoiName ?? request.aoiId ?? 'Not available'}</dd>
+        </div>
+        <div>
+          <dt>Period</dt>
+          <dd>
+            {request.startMonth && request.endMonth
+              ? `${request.startMonth} to ${request.endMonth} UTC`
+              : 'Not available'}
+          </dd>
+        </div>
+        <div>
+          <dt>Sources</dt>
+          <dd>{sources}</dd>
+        </div>
+        <div>
+          <dt>Max pixel size</dt>
+          <dd>
+            {request.requestedSpatialResolutionM != null
+              ? `${request.requestedSpatialResolutionM} m`
+              : 'Not restricted'}
+          </dd>
+        </div>
+        {request.estimatedCredits !== null ? (
+          <div>
+            <dt>Estimated</dt>
+            <dd>{request.estimatedCredits} credits</dd>
+          </div>
+        ) : null}
+        {request.actualCredits !== null ? (
+          <div>
+            <dt>Actual</dt>
+            <dd>{request.actualCredits} credits</dd>
+          </div>
+        ) : null}
+      </dl>
       {request.message ? <p className="notice-text">{request.message}</p> : null}
-      {request.state === 'PREPARING' ? (
-        <p>Preparing a proposal. Refresh to retrieve the current state.</p>
-      ) : null}
+      {request.state === 'PREPARING' ? <p>Preparing a proposal.</p> : null}
       {request.state === 'PROPOSED' ? (
         <p>Review the estimate, then explicitly confirm execution.</p>
       ) : null}
@@ -110,17 +191,16 @@ function RequestCard({
         <p>Execution is in progress. Result availability is not yet guaranteed.</p>
       ) : null}
       {request.state === 'COMPLETED' && !hasResult ? (
-        <p>
-          Completed, but the Gateway response did not provide a result identifier for map or
-          delivery access.
-        </p>
+        <p>Completed, but no result identifier was provided for map or delivery access.</p>
       ) : null}
       <div className="card-actions">
         <button
           type="button"
           className="button button-secondary"
           onClick={() => onRefresh(request.id)}
+          title="Refresh this request from the server"
         >
+          <Icon name="refresh" />
           Refresh
         </button>
         {request.state === 'PROPOSED' ? (
@@ -129,6 +209,7 @@ function RequestCard({
             className="button button-primary"
             onClick={() => onConfirm(request.id)}
           >
+            <Icon name="check" />
             Confirm execution
           </button>
         ) : null}
@@ -138,6 +219,7 @@ function RequestCard({
             className="button button-danger"
             onClick={() => onCancel(request.id)}
           >
+            <Icon name="close" />
             Cancel request
           </button>
         ) : null}
@@ -158,6 +240,7 @@ function RequestCard({
             disabled={!hasResult}
             onClick={() => onDelivery(request)}
           >
+            <Icon name="download" />
             Prepare download
           </button>
         ) : null}
@@ -166,9 +249,31 @@ function RequestCard({
   )
 }
 
-export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
+function StateNotice({
+  icon,
+  children,
+  tone = 'muted',
+}: {
+  icon: IconName
+  children: ReactNode
+  tone?: 'muted' | 'error'
+}) {
+  return (
+    <div
+      className={`state-notice state-notice-${tone}`}
+      role={tone === 'error' ? 'alert' : undefined}
+    >
+      <Icon name={icon} />
+      <div>{children}</div>
+    </div>
+  )
+}
+
+export default function App({
+  MapSurface = LeafletMapSurface,
+  pollIntervalMs = DEFAULT_POLL_INTERVAL_MS,
+}: AppProps) {
   const [panel, setPanel] = useState<Panel>(null)
-  const [health, setHealth] = useState<Health | null>(null)
   const [products, setProducts] = useState<Product[]>([])
   const [aois, setAois] = useState<Aoi[]>([])
   const [requests, setRequests] = useState<AnalysisRequest[]>([])
@@ -179,6 +284,7 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
   const [aoiQuery, setAoiQuery] = useState('')
   const [locationQuery, setLocationQuery] = useState('')
   const [focus, setFocus] = useState<MapFocus | null>(null)
+  const [focusRevision, setFocusRevision] = useState(0)
   const [draftVertices, setDraftVertices] = useState<Position[]>([])
   const [drawing, setDrawing] = useState(false)
   const [editingAoiId, setEditingAoiId] = useState<string | null>(null)
@@ -188,81 +294,125 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
   const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(null)
   const [requestProductId, setRequestProductId] = useState('')
   const [requestAoiId, setRequestAoiId] = useState('')
+  const [requestSources, setRequestSources] = useState<string[]>([])
+  const [requestResolution, setRequestResolution] = useState('')
   const [startMonth, setStartMonth] = useState(EMPTY_MONTH)
   const [endMonth, setEndMonth] = useState(EMPTY_MONTH)
   const [resultMap, setResultMap] = useState<ResultMap | null>(null)
   const [displayedRequest, setDisplayedRequest] = useState<AnalysisRequest | null>(null)
   const [delivery, setDelivery] = useState<Delivery | null>(null)
   const [creditBalance, setCreditBalance] = useState<CreditBalance | null>(null)
-  const [isLoading, setIsLoading] = useState({
+  const [isLoading, setIsLoading] = useState<LoadingState>({
     catalogue: true,
     aois: true,
     requests: true,
     balance: false,
   })
+  const [loadErrors, setLoadErrors] = useState<LoadErrors>({
+    catalogue: false,
+    aois: false,
+    requests: false,
+  })
   const [error, setError] = useState<string | null>(null)
   const [isDemo, setIsDemo] = useState(false)
   const [inspectorOpen, setInspectorOpen] = useState(false)
 
-  function receive<T>(response: ApiResponse<T>): T {
+  const receive = useCallback(function receiveResponse<T>(response: ApiResponse<T>): T {
     if (response.isDemo) setIsDemo(true)
     return response.data
-  }
+  }, [])
 
-  function showError(action: string, reason: unknown): void {
+  const showError = useCallback((action: string, reason: unknown): void => {
     setError(`${action}: ${errorMessage(reason)}`)
-  }
+  }, [])
+
+  const loadCatalogue = useCallback(async (): Promise<void> => {
+    try {
+      setProducts(receive(await listProducts()))
+      setLoadErrors((current) => ({ ...current, catalogue: false }))
+    } catch (reason) {
+      setLoadErrors((current) => ({ ...current, catalogue: true }))
+      showError('Catalogue could not be loaded', reason)
+    } finally {
+      setIsLoading((current) => ({ ...current, catalogue: false }))
+    }
+  }, [receive, showError])
+
+  const loadAois = useCallback(async (): Promise<void> => {
+    try {
+      setAois(receive(await listAois()))
+      setLoadErrors((current) => ({ ...current, aois: false }))
+    } catch (reason) {
+      setLoadErrors((current) => ({ ...current, aois: true }))
+      showError('AOI library could not be loaded', reason)
+    } finally {
+      setIsLoading((current) => ({ ...current, aois: false }))
+    }
+  }, [receive, showError])
+
+  const loadRequests = useCallback(async (): Promise<void> => {
+    try {
+      setRequests(receive(await listAnalysisRequests()))
+      setLoadErrors((current) => ({ ...current, requests: false }))
+    } catch (reason) {
+      setLoadErrors((current) => ({ ...current, requests: true }))
+      showError('Requests could not be loaded', reason)
+    } finally {
+      setIsLoading((current) => ({ ...current, requests: false }))
+    }
+  }, [receive, showError])
 
   useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadCatalogue()
+      void loadAois()
+      void loadRequests()
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [loadCatalogue, loadAois, loadRequests])
+
+  const hasActiveRequests = requests.some((request) => !TERMINAL_STATES.has(request.state))
+
+  useEffect(() => {
+    if (panel !== 'requests' || !hasActiveRequests) return
     let active = true
-    void getHealth()
-      .then((response) => {
-        if (!active) return
-        setHealth(receive(response))
-      })
-      .catch((reason: unknown) => {
-        if (active) showError('Gateway health check failed', reason)
-      })
-    void listProducts()
-      .then((response) => {
-        if (!active) return
-        setProducts(receive(response))
-      })
-      .catch((reason: unknown) => {
-        if (active) showError('Catalogue could not be loaded', reason)
-      })
-      .finally(() => {
-        if (active) setIsLoading((current) => ({ ...current, catalogue: false }))
-      })
-    void listAois()
-      .then((response) => {
-        if (!active) return
-        setAois(receive(response))
-      })
-      .catch((reason: unknown) => {
-        if (active) showError('AOI library could not be loaded', reason)
-      })
-      .finally(() => {
-        if (active) setIsLoading((current) => ({ ...current, aois: false }))
-      })
-    void listAnalysisRequests()
-      .then((response) => {
-        if (!active) return
-        setRequests(receive(response))
-      })
-      .catch((reason: unknown) => {
-        if (active) showError('Requests could not be loaded', reason)
-      })
-      .finally(() => {
-        if (active) setIsLoading((current) => ({ ...current, requests: false }))
-      })
+    const timer = window.setInterval(() => {
+      void listAnalysisRequests()
+        .then((response) => {
+          if (active) setRequests(receive(response))
+        })
+        .catch((reason: unknown) => {
+          if (active) showError('Request status could not be refreshed', reason)
+        })
+    }, pollIntervalMs)
     return () => {
       active = false
+      window.clearInterval(timer)
     }
-  }, [])
+  }, [panel, hasActiveRequests, pollIntervalMs, receive, showError])
+
+  function applyFocus(nextFocus: MapFocus | null): void {
+    setFocus(nextFocus)
+    setFocusRevision((revision) => revision + 1)
+  }
+
+  function focusBounds(bounds: MapBounds): void {
+    const wide = typeof window === 'undefined' || window.innerWidth >= 900
+    const leftPanelOpen = panel === 'aois' || panel === 'catalogue'
+    const rightPanelOpen =
+      panel === 'requests' || panel === 'indicators' || panel === 'account' || panel === 'request'
+    applyFocus({
+      type: 'bounds',
+      bounds,
+      maxZoom: 13,
+      paddingTopLeft: [wide && leftPanelOpen ? 470 : 48, 96],
+      paddingBottomRight: [wide && rightPanelOpen ? 470 : 48, inspectorOpen ? 200 : 130],
+    })
+  }
 
   async function selectProduct(id: string): Promise<void> {
     setSelectedProductId(id)
+    setSelectedProduct(null)
     setRequirements(null)
     try {
       const [productResult, requirementsResult] = await Promise.all([
@@ -282,7 +432,8 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
       const response = await getAoi(id)
       const aoi = receive(response)
       setAois((current) => replaceById(current, aoi))
-      setFocus(geometryToVertices(aoi.geometry)[0] ?? null)
+      const bounds = geometryBounds(aoi.geometry)
+      if (bounds) focusBounds(bounds)
     } catch (reason) {
       showError('AOI details could not be loaded', reason)
     }
@@ -317,6 +468,10 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
     setResumeRequestAfterAoi(false)
   }
 
+  function resetDraftBoundary(): void {
+    setDraftVertices([])
+  }
+
   async function saveAoi(): Promise<void> {
     const name = aoiName.trim()
     const geometry = verticesToPolygon(draftVertices)
@@ -332,6 +487,8 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
       setAois((current) => replaceById(current, aoi))
       setSelectedAoiId(aoi.id)
       discardDraft()
+      const bounds = geometryBounds(aoi.geometry)
+      if (bounds) focusBounds(bounds)
       if (resumeRequest) {
         setRequestAoiId(aoi.id)
         setPanel('request')
@@ -356,7 +513,21 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
   function openRequest(productId = selectedProductId ?? ''): void {
     setRequestProductId(productId)
     setRequestAoiId(selectedAoiId ?? '')
+    setRequestSources([])
+    setRequestResolution('')
     setPanel('request')
+  }
+
+  function changeRequestProduct(productId: string): void {
+    setRequestProductId(productId)
+    setRequestSources([])
+    setRequestResolution('')
+  }
+
+  function toggleRequestSource(source: string): void {
+    setRequestSources((current) =>
+      current.includes(source) ? current.filter((item) => item !== source) : [...current, source],
+    )
   }
 
   async function submitRequest(): Promise<void> {
@@ -368,6 +539,7 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
       setError('The start month must be on or before the end month.')
       return
     }
+    const resolution = requestResolution ? Number(requestResolution) : null
     try {
       const request = receive(
         await createAnalysisRequest({
@@ -375,6 +547,8 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
           aoiId: requestAoiId,
           startMonth,
           endMonth,
+          spatialResolutionM: resolution,
+          sources: requestSources,
         }),
       )
       setRequests((current) => replaceById(current, request))
@@ -418,7 +592,8 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
       setResultMap(representation)
       if (representation.bounds) {
         const [southwest, northeast] = representation.bounds
-        setFocus({
+        applyFocus({
+          type: 'point',
           lat: (southwest.lat + northeast.lat) / 2,
           lng: (southwest.lng + northeast.lng) / 2,
           zoom: 11,
@@ -473,15 +648,29 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
     event.preventDefault()
     const coordinates = parseCoordinates(locationQuery)
     if (coordinates) {
-      setFocus(coordinates)
+      applyFocus(coordinates)
       return
     }
     setAoiQuery(locationQuery)
     setPanel('aois')
   }
 
+  function togglePanel(nextPanel: Panel): void {
+    setPanel((current) => (current === nextPanel ? null : nextPanel))
+  }
+
   const selectedAoi = aois.find((aoi) => aoi.id === selectedAoiId) ?? null
   const visibleAois = aois.filter((aoi) => aoi.name.toLowerCase().includes(aoiQuery.toLowerCase()))
+  const requestProduct =
+    products.find((product) => product.id === requestProductId) ??
+    (selectedProduct?.id === requestProductId ? selectedProduct : null)
+  const displayedProductName = (id: string | null): string | null =>
+    products.find((product) => product.id === id)?.name ?? null
+  const displayedAoiName = (id: string | null): string | null =>
+    aois.find((aoi) => aoi.id === id)?.name ?? null
+  const nativeResolutionNote = requestProduct?.nativeResolution
+    ? `Declared native resolution: ${requestProduct.nativeResolution}. A request cannot reveal detail finer than the source data.`
+    : 'Selecting a pixel size cannot reveal detail finer than the source data.'
 
   return (
     <main className="workspace">
@@ -490,6 +679,7 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
         draftVertices={draftVertices}
         drawing={drawing}
         focus={focus}
+        focusRevision={focusRevision}
         resultMap={resultMap}
         selectedAoiId={selectedAoiId}
         onMapClick={(position) =>
@@ -509,43 +699,37 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
           </div>
         </div>
         <nav className="main-nav" aria-label="Main navigation">
-          <button
-            type="button"
-            className={panel === 'catalogue' ? 'nav-active' : ''}
-            onClick={() => setPanel('catalogue')}
-          >
-            Explore
-          </button>
-          <button
-            type="button"
-            className={panel === 'requests' ? 'nav-active' : ''}
-            onClick={() => setPanel('requests')}
-          >
-            Requests
-          </button>
-          <button
-            type="button"
-            className={panel === 'indicators' ? 'nav-active' : ''}
-            onClick={() => setPanel('indicators')}
-          >
-            Indicators
-          </button>
-          <button
-            type="button"
-            className={panel === 'account' ? 'nav-active' : ''}
+          <NavButton
+            active={panel === 'catalogue'}
+            icon="compass"
+            label="Explore"
+            onClick={() => togglePanel('catalogue')}
+          />
+          <NavButton
+            active={panel === 'requests'}
+            icon="clipboard"
+            label="Requests"
+            onClick={() => togglePanel('requests')}
+          />
+          <NavButton
+            active={panel === 'indicators'}
+            icon="activity"
+            label="Indicators"
+            onClick={() => togglePanel('indicators')}
+          />
+          <NavButton
+            active={panel === 'account'}
+            icon="user"
+            label="Account"
             onClick={openAccount}
-          >
-            Account
-          </button>
+          />
         </nav>
-        <span className={health ? 'gateway-state gateway-online' : 'gateway-state'}>
-          {health ? `Gateway ${health.status}` : 'Gateway unavailable'}
-        </span>
       </header>
 
-      <form className="location-search" onSubmit={locate}>
+      <form className="location-search" onSubmit={locate} role="search">
         <label htmlFor="location-search">Coordinates or saved AOI</label>
         <div>
+          <Icon name="search" className="search-icon" />
           <input
             id="location-search"
             value={locationQuery}
@@ -559,84 +743,159 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
       </form>
 
       <aside className="map-toolbar" aria-label="Map tools">
-        <button type="button" onClick={() => setPanel('aois')} aria-label="Open AOI library">
-          Areas
+        <button
+          type="button"
+          onClick={() => setPanel('aois')}
+          aria-label="Open AOI library"
+          title="Open AOI library"
+        >
+          <Icon name="layers" />
+          <span>Areas</span>
         </button>
-        <button type="button" onClick={() => beginNewAoi()} aria-label="Draw a new AOI polygon">
-          Draw
-        </button>
-        <button type="button" onClick={() => setFocus(null)} aria-label="Reset map view">
-          Reset
+        <button
+          type="button"
+          onClick={() => beginNewAoi()}
+          aria-label="Draw a new AOI polygon"
+          title="Draw a new AOI polygon"
+        >
+          <Icon name="pencil" />
+          <span>Draw</span>
         </button>
       </aside>
 
-      {isDemo ? (
-        <p className="demo-notice" role="status">
-          Demo data: this workspace is not showing real EO processing.
-        </p>
-      ) : null}
+      <div className="notice-stack">
+        {isDemo ? (
+          <p className="demo-notice" role="status">
+            <Icon name="info" />
+            <span>Demo data: this workspace is not showing real EO processing.</span>
+          </p>
+        ) : null}
 
-      {error ? (
-        <div className="error-notice" role="alert">
-          <span>{error}</span>
-          <button
-            type="button"
-            className="icon-button"
-            onClick={() => setError(null)}
-            aria-label="Dismiss error"
-          >
-            x
-          </button>
-        </div>
-      ) : null}
+        {error ? (
+          <div className="error-notice" role="alert">
+            <Icon name="alert" />
+            <span>{error}</span>
+            <button
+              type="button"
+              className="icon-button"
+              onClick={() => setError(null)}
+              aria-label="Dismiss error"
+              title="Dismiss error"
+            >
+              <Icon name="close" />
+            </button>
+          </div>
+        ) : null}
+      </div>
 
       {panel === 'catalogue' ? (
-        <OverlayPanel title="Product catalogue" onClose={() => setPanel(null)}>
+        <OverlayPanel
+          title="Product catalogue"
+          icon={<Icon name="compass" />}
+          onClose={() => setPanel(null)}
+        >
           <p className="panel-intro">
-            Select a scientific product before configuring a separate analysis request.
+            Explore scientific products, then configure a separate analysis request.
           </p>
-          {isLoading.catalogue ? <p>Loading catalogue...</p> : null}
-          {!isLoading.catalogue && products.length === 0 ? (
-            <p>No products are available from the Gateway.</p>
+          {isLoading.catalogue ? (
+            <StateNotice icon="refresh">Loading catalogue…</StateNotice>
+          ) : null}
+          {!isLoading.catalogue && loadErrors.catalogue ? (
+            <StateNotice icon="alert" tone="error">
+              <p>The product catalogue is unavailable.</p>
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() => void loadCatalogue()}
+              >
+                Retry
+              </button>
+            </StateNotice>
+          ) : null}
+          {!isLoading.catalogue && !loadErrors.catalogue && products.length === 0 ? (
+            <StateNotice icon="image">No products are available yet.</StateNotice>
           ) : null}
           <div className="product-list" aria-label="Products">
             {products.map((product) => (
-              <button
-                type="button"
+              <ProductCard
                 key={product.id}
-                className={
-                  product.id === selectedProductId ? 'list-item list-item-selected' : 'list-item'
-                }
-                onClick={() => void selectProduct(product.id)}
-              >
-                <strong>{product.name}</strong>
-                <span>{product.level ?? 'Processing level unavailable'}</span>
-              </button>
+                product={product}
+                selected={product.id === selectedProductId}
+                onSelect={() => void selectProduct(product.id)}
+              />
             ))}
           </div>
           {selectedProduct ? (
-            <section className="detail-section" aria-label="Selected product details">
+            <section
+              className="detail-section product-detail"
+              aria-label="Selected product details"
+            >
+              <ProductPreview product={selectedProduct} />
               <h3>{selectedProduct.name}</h3>
-              <p>
-                {selectedProduct.description ??
-                  'No product description was supplied by the Gateway.'}
-              </p>
-              <dl>
+              <p>{selectedProduct.description ?? 'No product description was supplied.'}</p>
+              <dl className="metadata-grid">
                 <dt>Processing level</dt>
                 <dd>{selectedProduct.level ?? 'Unavailable'}</dd>
+                <dt>Category</dt>
+                <dd>{selectedProduct.category ?? 'Unavailable'}</dd>
+                <dt>Native resolution</dt>
+                <dd>{selectedProduct.nativeResolution ?? 'Unavailable'}</dd>
+                <dt>Temporal resolution</dt>
+                <dd>{selectedProduct.temporalResolution ?? 'Unavailable'}</dd>
+                <dt>Availability</dt>
+                <dd>{selectedProduct.availability ?? 'Unavailable'}</dd>
                 <dt>Scientific validation</dt>
                 <dd>{selectedProduct.validationStatus ?? 'Unavailable'}</dd>
+                <dt>Supported sources</dt>
+                <dd>
+                  {selectedProduct.supportedSources.length
+                    ? selectedProduct.supportedSources.join(', ')
+                    : 'Unavailable'}
+                </dd>
               </dl>
+              {selectedProduct.limitations.length ? (
+                <div className="requirements">
+                  <h4>Known limitations</h4>
+                  <ul>
+                    {selectedProduct.limitations.map((limitation) => (
+                      <li key={limitation}>{limitation}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
               {requirements ? (
-                <pre>{JSON.stringify(requirements, null, 2)}</pre>
+                <div className="requirements">
+                  <h4>Scientific input requirements</h4>
+                  {requirements.inputs.length ? (
+                    <ul>
+                      {requirements.inputs.map((input) => (
+                        <li key={input}>{input}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>No specific inputs are declared.</p>
+                  )}
+                  {requirements.limitations.length ? (
+                    <>
+                      <h4>Limitations</h4>
+                      <ul>
+                        {requirements.limitations.map((limitation) => (
+                          <li key={limitation}>{limitation}</li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : null}
+                  {requirements.note ? <p className="muted">{requirements.note}</p> : null}
+                </div>
               ) : (
-                <p>Loading input requirements...</p>
+                <StateNotice icon="refresh">Loading input requirements…</StateNotice>
               )}
               <button
                 type="button"
-                className="button button-primary"
+                className="button button-primary button-wide"
                 onClick={() => openRequest(selectedProduct.id)}
               >
+                <Icon name="plus" />
                 Configure request
               </button>
             </section>
@@ -645,13 +904,18 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
       ) : null}
 
       {panel === 'aois' ? (
-        <OverlayPanel title="AOI library" onClose={() => setPanel(null)}>
+        <OverlayPanel
+          title="AOI library"
+          icon={<Icon name="layers" />}
+          onClose={() => setPanel(null)}
+        >
           <p className="panel-intro">
             Saved areas are reusable. Editing or deleting one never changes a submitted request
             snapshot.
           </p>
           <div className="inline-actions">
             <button type="button" className="button button-primary" onClick={() => beginNewAoi()}>
+              <Icon name="plus" />
               Draw new area
             </button>
             {selectedAoi ? (
@@ -660,6 +924,7 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
                 className="button button-secondary"
                 onClick={() => beginEditAoi(selectedAoi)}
               >
+                <Icon name="pencil" />
                 Edit selected
               </button>
             ) : null}
@@ -673,9 +938,21 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
             onChange={(event) => setAoiQuery(event.target.value)}
             placeholder="Search by name"
           />
-          {isLoading.aois ? <p>Loading saved AOIs...</p> : null}
-          {!isLoading.aois && visibleAois.length === 0 ? (
-            <p>No saved AOIs match this search.</p>
+          {isLoading.aois ? <StateNotice icon="refresh">Loading saved AOIs…</StateNotice> : null}
+          {!isLoading.aois && loadErrors.aois ? (
+            <StateNotice icon="alert" tone="error">
+              <p>The AOI library is unavailable.</p>
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() => void loadAois()}
+              >
+                Retry
+              </button>
+            </StateNotice>
+          ) : null}
+          {!isLoading.aois && !loadErrors.aois && visibleAois.length === 0 ? (
+            <StateNotice icon="map-pin">No saved AOIs match this search.</StateNotice>
           ) : null}
           <div className="aoi-list">
             {visibleAois.map((aoi) => (
@@ -685,8 +962,14 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
                 className={aoi.id === selectedAoiId ? 'list-item list-item-selected' : 'list-item'}
                 onClick={() => void selectAoi(aoi.id)}
               >
-                <strong>{aoi.name}</strong>
-                <span>Revision {aoi.revision}</span>
+                <span className="list-item-icon">
+                  <Icon name="map-pin" />
+                </span>
+                <span className="list-item-body">
+                  <strong>{aoi.name}</strong>
+                  <span>Revision {aoi.revision}</span>
+                </span>
+                {aoi.id === selectedAoiId ? <Icon name="check" /> : null}
               </button>
             ))}
           </div>
@@ -697,20 +980,23 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
               {deleteCandidateId === selectedAoi.id ? (
                 <div className="confirm-delete">
                   <p>Delete this saved AOI? Existing request snapshots are unaffected.</p>
-                  <button
-                    type="button"
-                    className="button button-danger"
-                    onClick={() => void removeAoi(selectedAoi.id)}
-                  >
-                    Confirm delete
-                  </button>
-                  <button
-                    type="button"
-                    className="button button-secondary"
-                    onClick={() => setDeleteCandidateId(null)}
-                  >
-                    Keep AOI
-                  </button>
+                  <div className="inline-actions">
+                    <button
+                      type="button"
+                      className="button button-danger"
+                      onClick={() => void removeAoi(selectedAoi.id)}
+                    >
+                      <Icon name="trash" />
+                      Confirm delete
+                    </button>
+                    <button
+                      type="button"
+                      className="button button-secondary"
+                      onClick={() => setDeleteCandidateId(null)}
+                    >
+                      Keep AOI
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <button
@@ -718,6 +1004,7 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
                   className="button button-danger"
                   onClick={() => setDeleteCandidateId(selectedAoi.id)}
                 >
+                  <Icon name="trash" />
                   Delete selected
                 </button>
               )}
@@ -725,8 +1012,21 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
           ) : null}
           {drawing ? (
             <section className="detail-section drawing-form" aria-label="AOI drawing form">
-              <h3>{editingAoiId ? 'Replace area boundary' : 'Save drawn area'}</h3>
-              <p>Click the map to add points. {draftVertices.length} boundary points selected.</p>
+              <div className="drawing-heading">
+                <h3>{editingAoiId ? 'Edit saved area' : 'Draw a new area'}</h3>
+                <span className={editingAoiId ? 'drawing-badge badge-editing' : 'drawing-badge'}>
+                  {editingAoiId ? 'Editing' : 'Draft'}
+                </span>
+              </div>
+              <p>
+                Click the map to add boundary points. {draftVertices.length} boundary point
+                {draftVertices.length === 1 ? '' : 's'} selected.
+              </p>
+              {editingAoiId ? (
+                <p className="muted">
+                  Saving replaces the boundary while preserving the existing AOI identity.
+                </p>
+              ) : null}
               <label className="field-label" htmlFor="aoi-name">
                 Area name
               </label>
@@ -749,15 +1049,20 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
                   className="button button-secondary"
                   onClick={() => setDraftVertices((vertices) => vertices.slice(0, -1))}
                   disabled={draftVertices.length === 0}
+                  title="Remove the last boundary point"
                 >
-                  Undo point
+                  <Icon name="undo" />
+                  Undo last point
                 </button>
                 <button
                   type="button"
                   className="button button-secondary"
-                  onClick={() => setDraftVertices([])}
+                  onClick={resetDraftBoundary}
+                  disabled={draftVertices.length === 0}
+                  title="Clear the current draft without deleting saved AOIs"
                 >
-                  Clear boundary
+                  <Icon name="rotate" />
+                  Reset drawing
                 </button>
                 <button
                   type="button"
@@ -765,10 +1070,12 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
                   onClick={() => void saveAoi()}
                   disabled={draftVertices.length < 3}
                 >
+                  <Icon name="check" />
                   Save AOI
                 </button>
                 <button type="button" className="button button-secondary" onClick={discardDraft}>
-                  Discard
+                  <Icon name="close" />
+                  Discard drawing
                 </button>
               </div>
             </section>
@@ -777,9 +1084,15 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
       ) : null}
 
       {panel === 'request' ? (
-        <OverlayPanel title="New analysis request" onClose={() => setPanel(null)} position="right">
+        <OverlayPanel
+          title="New analysis request"
+          icon={<Icon name="plus" />}
+          onClose={() => setPanel(null)}
+          position="right"
+        >
           <p className="panel-intro">
-            The Gateway prepares a proposal after submission. Confirmation is a separate action.
+            Configure the scientific constraints, then submit. Confirmation of a proposal is a
+            separate action.
           </p>
           <label className="field-label" htmlFor="request-product">
             Product
@@ -787,7 +1100,7 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
           <select
             id="request-product"
             value={requestProductId}
-            onChange={(event) => setRequestProductId(event.target.value)}
+            onChange={(event) => changeRequestProduct(event.target.value)}
           >
             <option value="">Select a product</option>
             {products.map((product) => (
@@ -812,51 +1125,147 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
             ))}
           </select>
           <button type="button" className="text-button" onClick={() => beginNewAoi(true)}>
+            <Icon name="plus" />
             Create a saved AOI
           </button>
-          <label className="field-label" htmlFor="start-month">
-            Start month (UTC)
-          </label>
-          <input
-            id="start-month"
-            type="month"
-            value={startMonth}
-            onChange={(event) => setStartMonth(event.target.value)}
-          />
-          <label className="field-label" htmlFor="end-month">
-            End month (UTC)
-          </label>
-          <input
-            id="end-month"
-            type="month"
-            value={endMonth}
-            onChange={(event) => setEndMonth(event.target.value)}
-          />
+          <div className="form-row">
+            <div>
+              <label className="field-label" htmlFor="start-month">
+                Start month (UTC)
+              </label>
+              <input
+                id="start-month"
+                type="month"
+                value={startMonth}
+                onChange={(event) => setStartMonth(event.target.value)}
+              />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="end-month">
+                End month (UTC)
+              </label>
+              <input
+                id="end-month"
+                type="month"
+                value={endMonth}
+                onChange={(event) => setEndMonth(event.target.value)}
+              />
+            </div>
+          </div>
+
+          {requestProduct && requestProduct.supportedSources.length ? (
+            <fieldset className="choice-group">
+              <legend>Source missions</legend>
+              <p className="field-help">
+                A mission selection is a request, not a guarantee that usable acquisitions exist for
+                this AOI or period.
+              </p>
+              <div className="checkbox-grid">
+                {requestProduct.supportedSources.map((source) => (
+                  <label className="checkbox" key={source}>
+                    <input
+                      type="checkbox"
+                      checked={requestSources.includes(source)}
+                      onChange={() => toggleRequestSource(source)}
+                    />
+                    <span>{source}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          ) : null}
+
+          {requestProduct && requestProduct.supportedResolutionsM.length ? (
+            <div className="field">
+              <label className="field-label" htmlFor="request-resolution">
+                Maximum allowed pixel size (m)
+              </label>
+              <select
+                id="request-resolution"
+                value={requestResolution}
+                onChange={(event) => setRequestResolution(event.target.value)}
+              >
+                <option value="">No maximum (use native resolution)</option>
+                {requestProduct.supportedResolutionsM.map((resolution) => (
+                  <option key={resolution} value={resolution}>
+                    {resolution} m
+                  </option>
+                ))}
+              </select>
+              <p className="field-help">{nativeResolutionNote}</p>
+            </div>
+          ) : null}
+
+          {requestProduct ? (
+            <div className="request-product-summary">
+              <span className="eyebrow">Selected product</span>
+              <strong>{requestProduct.name}</strong>
+              <span>
+                {requestProduct.level ?? 'Level unavailable'} ·{' '}
+                {requestProduct.nativeResolution
+                  ? `Native ${requestProduct.nativeResolution}`
+                  : 'Native resolution unavailable'}
+              </span>
+            </div>
+          ) : null}
+
           <button
             type="button"
             className="button button-primary button-wide"
             onClick={() => void submitRequest()}
           >
+            <Icon name="check" />
             Submit request
           </button>
         </OverlayPanel>
       ) : null}
 
       {panel === 'requests' ? (
-        <OverlayPanel title="Analysis requests" onClose={() => setPanel(null)} position="right">
-          <p className="panel-intro">
-            Request state is retrieved from the Gateway. A completed request is not evidence of
-            scientific validation or complete observations.
-          </p>
-          {isLoading.requests ? <p>Loading requests...</p> : null}
-          {!isLoading.requests && requests.length === 0 ? (
-            <p>No analysis requests are available.</p>
+        <OverlayPanel
+          title="Analysis requests"
+          icon={<Icon name="clipboard" />}
+          onClose={() => setPanel(null)}
+          position="right"
+        >
+          <div className="panel-toolbar">
+            <p className="panel-intro">
+              Request state is retrieved from REST. Completed does not imply scientific validation
+              or complete observations.
+            </p>
+            <button type="button" className="button button-primary" onClick={() => openRequest()}>
+              <Icon name="plus" />
+              New request
+            </button>
+          </div>
+          {hasActiveRequests ? (
+            <p className="polling-note" role="status">
+              <Icon name="refresh" />
+              Active request states update automatically.
+            </p>
+          ) : null}
+          {isLoading.requests ? <StateNotice icon="refresh">Loading requests…</StateNotice> : null}
+          {!isLoading.requests && loadErrors.requests ? (
+            <StateNotice icon="alert" tone="error">
+              <p>Requests are unavailable.</p>
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() => void loadRequests()}
+              >
+                Retry
+              </button>
+            </StateNotice>
+          ) : null}
+          {!isLoading.requests && !loadErrors.requests && requests.length === 0 ? (
+            <StateNotice icon="clipboard">No analysis requests are available.</StateNotice>
           ) : null}
           <div className="request-list">
             {requests.map((request) => (
               <RequestCard
                 key={request.id}
                 request={request}
+                productName={displayedProductName(request.productId)}
+                aoiName={displayedAoiName(request.aoiId)}
                 onRefresh={(id) => void refreshRequest(id)}
                 onConfirm={(id) => void confirmRequest(id)}
                 onCancel={(id) => void cancelRequest(id)}
@@ -869,33 +1278,56 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
       ) : null}
 
       {panel === 'indicators' ? (
-        <OverlayPanel title="Indicators" onClose={() => setPanel(null)} position="right">
-          <p className="panel-intro">
-            Indicators are a later monitoring capability. They are not required to compute or
-            explore scientific products.
-          </p>
-          <p>No indicators are configured.</p>
+        <OverlayPanel
+          title="Indicators"
+          icon={<Icon name="activity" />}
+          onClose={() => setPanel(null)}
+          position="right"
+        >
+          <div className="empty-state">
+            <span className="empty-state-icon">
+              <Icon name="activity" size={26} />
+            </span>
+            <h3>No indicators are configured.</h3>
+            <p>
+              Indicators are a later monitoring capability. They are not required to compute or
+              explore scientific products.
+            </p>
+          </div>
         </OverlayPanel>
       ) : null}
 
       {panel === 'account' ? (
-        <OverlayPanel title="Account and credits" onClose={() => setPanel(null)} position="right">
+        <OverlayPanel
+          title="Account and credits"
+          icon={<Icon name="user" />}
+          onClose={() => setPanel(null)}
+          position="right"
+        >
           <p className="panel-intro">
-            Credit balances are supplied by the Gateway and are shown before confirming a proposal
+            Credit balances are supplied by the server and are shown before confirming a proposal
             when available.
           </p>
-          {isLoading.balance ? <p>Loading credit balance...</p> : null}
-          {!isLoading.balance && creditBalance ? (
-            <p className="credit-value">
-              {creditBalance.balance} {creditBalance.unit ?? 'credits'}
-            </p>
+          {isLoading.balance ? (
+            <StateNotice icon="refresh">Loading credit balance…</StateNotice>
           ) : null}
-          {!isLoading.balance && !creditBalance ? <p>Credit balance is unavailable.</p> : null}
+          {!isLoading.balance && creditBalance ? (
+            <div className="credit-card">
+              <span>Available balance</span>
+              <strong>
+                {creditBalance.balance} {creditBalance.unit ?? 'credits'}
+              </strong>
+            </div>
+          ) : null}
+          {!isLoading.balance && !creditBalance ? (
+            <StateNotice icon="info">Credit balance is unavailable.</StateNotice>
+          ) : null}
           <button
             type="button"
             className="button button-secondary"
             onClick={() => void refreshBalance()}
           >
+            <Icon name="refresh" />
             Refresh balance
           </button>
         </OverlayPanel>
@@ -911,24 +1343,30 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
           onClick={() => setInspectorOpen((open) => !open)}
           aria-expanded={inspectorOpen}
         >
-          {inspectorOpen ? 'Hide result inspector' : 'Show result inspector'}
+          <Icon name={inspectorOpen ? 'chevron-down' : 'chevron-up'} />
+          <span>{inspectorOpen ? 'Hide result inspector' : 'Show result inspector'}</span>
         </button>
         {inspectorOpen ? (
           <div className="inspector-content">
-            <div>
-              <strong>Result representation</strong>
+            <div className="inspector-summary">
+              <span className="eyebrow">Result representation</span>
               {displayedRequest?.resultId ? (
                 <p>
-                  Result {displayedRequest.resultId} from request {displayedRequest.id}
+                  Result <strong>{displayedRequest.resultId}</strong> from request{' '}
+                  {displayedRequest.id}
                 </p>
               ) : (
                 <p>No result representation selected.</p>
               )}
               {resultMap ? (
-                <p>Map representation loaded from the Gateway.</p>
+                <p>Map representation loaded for this result.</p>
               ) : (
                 <p>Select “Display on map” for a completed request to load a representation.</p>
               )}
+              <p className="muted">
+                Display layers are synthetic/demo representations and remain distinct from validated
+                scientific results.
+              </p>
             </div>
             {delivery ? (
               <div className="delivery-status">
@@ -938,6 +1376,7 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
                 {delivery.message ? <p>{delivery.message}</p> : null}
                 {delivery.state === 'READY' && delivery.downloadUrl ? (
                   <a className="button button-primary" href={delivery.downloadUrl}>
+                    <Icon name="download" />
                     Download delivery
                   </a>
                 ) : null}
@@ -947,6 +1386,7 @@ export default function App({ MapSurface = LeafletMapSurface }: AppProps) {
                     className="button button-secondary"
                     onClick={() => void refreshDelivery()}
                   >
+                    <Icon name="refresh" />
                     Refresh delivery
                   </button>
                 ) : null}

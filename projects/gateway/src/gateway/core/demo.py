@@ -21,6 +21,12 @@ from typing import Any
 from urllib.parse import quote
 
 from fastapi import status
+from meogap.scientific.products import (
+    ProductAvailability,
+    ProductCategory,
+    ProductValidationStatus,
+    SourceMission,
+)
 
 DEMO_OWNER_ID = 'demo-user'
 MONTH_PATTERN = re.compile(r'^\d{4}-(0[1-9]|1[0-2])$')
@@ -132,6 +138,8 @@ class RequestRecord:
     result_id: str | None = None
     message: str | None = None
     failure_stage: str | None = None
+    requested_sources: tuple[str, ...] = ()
+    requested_spatial_resolution_m: int | None = None
 
 
 @dataclass
@@ -529,6 +537,7 @@ class DemoStore:
         aoi_id: str,
         name: str | None,
         description: str | None,
+        *,
         description_provided: bool,
         geometry: Geometry | None,
     ) -> AoiRecord:
@@ -582,6 +591,9 @@ class DemoStore:
         aoi_id: str,
         start_month: str,
         end_month: str,
+        *,
+        spatial_resolution_m: int | None = None,
+        sources: list[SourceMission] | None = None,
     ) -> RequestRecord:
         """Persist a PREPARING request with an immutable AOI geometry snapshot.
 
@@ -592,14 +604,30 @@ class DemoStore:
             aoi_id(str): selected saved AOI identifier.
             start_month(str): inclusive UTC month in YYYY-MM form.
             end_month(str): inclusive UTC month in YYYY-MM form.
+            spatial_resolution_m(int | None): requested maximum pixel size in metres.
+            sources(list[SourceMission] | None): requested source missions.
 
         Returns:
         -------
             RequestRecord: newly created PREPARING request.
 
         """
-        self.get_product(product_id)
+        product = self.get_product(product_id)
         self._validate_period(start_month, end_month)
+        if spatial_resolution_m is not None and spatial_resolution_m < 1:
+            raise DemoError(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                'INVALID_RESOLUTION',
+                'Spatial resolution must be a positive number of metres.',
+            )
+        requested_sources = tuple(source.value for source in sources or ())
+        unsupported = sorted(set(requested_sources) - set(product['supported_sources']))
+        if unsupported:
+            raise DemoError(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                'UNSUPPORTED_SOURCE',
+                f'The product does not declare these source missions: {", ".join(unsupported)}.',
+            )
         with self._lock:
             aoi = self.get_aoi(owner_id, aoi_id)
             self._request_sequence += 1
@@ -618,6 +646,8 @@ class DemoStore:
                 created_at=now,
                 updated_at=now,
                 proposal_ready_at=now + timedelta(seconds=self.settings.preparation_delay_seconds),
+                requested_sources=requested_sources,
+                requested_spatial_resolution_m=spatial_resolution_m,
             )
             self._requests[record.request_id] = record
             return record
@@ -940,6 +970,8 @@ class DemoStore:
             'geometry_snapshot': _copy_geometry(record.geometry_snapshot),
             'start_month': record.start_month,
             'end_month': record.end_month,
+            'requested_sources': list(record.requested_sources),
+            'requested_spatial_resolution_m': record.requested_spatial_resolution_m,
             'proposal': proposal,
             'actual_credits': record.actual_credits,
             'result_id': record.result_id,
@@ -1099,40 +1131,54 @@ class DemoStore:
                 'NDVI',
                 'Demo Normalized Difference Vegetation Index descriptor.',
                 'L1',
-                'Vegetation',
+                ProductCategory.VEGETATION,
                 '10 m',
                 '5 days',
                 ['Red reflectance', 'Near-infrared reflectance', 'Quality mask'],
+                (SourceMission.SENTINEL, SourceMission.LANDSAT, SourceMission.MODIS, SourceMission.VIIRS),
+                [10, 20, 30],
             ),
             (
                 'ndwi',
                 'NDWI',
                 'Demo Normalized Difference Water Index descriptor.',
                 'L1',
-                'Water',
+                ProductCategory.WATER,
                 '10 m',
                 '5 days',
                 ['Green reflectance', 'Near-infrared reflectance', 'Quality mask'],
+                (SourceMission.SENTINEL, SourceMission.LANDSAT, SourceMission.MODIS),
+                [10, 20, 30],
             ),
             (
                 'lst',
                 'LST',
                 'Demo Land Surface Temperature descriptor.',
                 'L3',
-                'Land',
+                ProductCategory.LAND,
                 '30 m',
                 '5 days',
                 ['Thermal radiance', 'Emissivity estimate', 'Atmospheric inputs'],
+                (
+                    SourceMission.LANDSAT,
+                    SourceMission.MODIS,
+                    SourceMission.VIIRS,
+                    SourceMission.ECOSTRESS,
+                    SourceMission.GOES,
+                ),
+                [30, 60, 100],
             ),
             (
                 'ch4',
                 'CH4',
                 'Demo methane-emission proxy descriptor.',
                 'L3',
-                'Atmosphere',
+                ProductCategory.ATMOSPHERE,
                 '100 m',
                 '10 days',
                 ['Atmospheric spectral observations', 'Quality mask'],
+                (SourceMission.SENTINEL, SourceMission.MODIS, SourceMission.VIIRS),
+                [500, 1000, 2000],
             ),
         )
         return {
@@ -1141,19 +1187,33 @@ class DemoStore:
                 'name': name,
                 'description': description,
                 'level': level,
-                'category': category,
+                'category': category.value,
                 'native_resolution': resolution,
                 'temporal_resolution': revisit,
-                'availability': 'DEMO',
-                'validation_status': 'NOT_VALIDATED',
+                'availability': ProductAvailability.DEMO.value,
+                'validation_status': ProductValidationStatus.NOT_VALIDATED.value,
                 'inputs': inputs,
                 'parameters': [],
                 'limitations': [
                     'This is a deterministic M0 descriptor.',
                     'No EO acquisition, scientific computation, or validation is implemented.',
                 ],
+                'supported_sources': [source.value for source in supported_sources],
+                'supported_resolutions_m': supported_resolutions,
+                'preview': self._product_preview(product_id, name),
             }
-            for product_id, name, description, level, category, resolution, revisit, inputs in products
+            for (
+                product_id,
+                name,
+                description,
+                level,
+                category,
+                resolution,
+                revisit,
+                inputs,
+                supported_sources,
+                supported_resolutions,
+            ) in products
         }
 
     def _seed_aois(self) -> None:
@@ -1188,6 +1248,53 @@ class DemoStore:
                 description,
                 {'type': 'Polygon', 'coordinates': [ring]},
             )
+
+    def _product_preview(self, product_id: str, name: str) -> dict[str, Any]:
+        """Build a local illustrative preview descriptor for a demo product.
+
+        The SVG is clearly labelled as an illustration and is not a scientific
+        result. It is embedded so the prototype does not depend on remote images.
+
+        Args:
+        ----
+            product_id(str): product identifier used to select an illustration.
+            name(str): display name shown by the illustration.
+
+        Returns:
+        -------
+            dict[str, Any]: preview URL, alternative text, and attribution.
+
+        """
+        palettes = {
+            'ndvi': ('#08251d', '#1f6b45', '#79b77a', '#d8efb4'),
+            'ndwi': ('#052033', '#0b5f7a', '#26b8b0', '#9ceef0'),
+            'lst': ('#2a1014', '#7a3520', '#d8863c', '#f7dd94'),
+            'ch4': ('#1a1030', '#4b2a72', '#8c5bd1', '#dcc3fa'),
+        }
+        background, mid, accent, light = palettes.get(product_id, palettes['ndvi'])
+        svg = (
+            "<svg xmlns='http://www.w3.org/2000/svg' width='320' height='180' "
+            "viewBox='0 0 320 180'>"
+            "<defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>"
+            f"<stop offset='0' stop-color='{background}'/>"
+            f"<stop offset='1' stop-color='{mid}'/></linearGradient></defs>"
+            "<rect width='320' height='180' fill='url(#g)'/>"
+            "<path d='M0 130 C60 96 108 142 162 112 S258 78 320 104 V180 H0 Z' "
+            f"fill='{accent}' fill-opacity='.55'/>"
+            f"<circle cx='246' cy='48' r='30' fill='{light}' fill-opacity='.35'/>"
+            "<path d='M24 150 C74 122 122 158 178 130 S268 112 306 136' "
+            f"fill='none' stroke='{light}' stroke-opacity='.8' stroke-width='2'/>"
+            "<text x='16' y='28' fill='#f4fffc' font-family='sans-serif' "
+            f"font-size='17' font-weight='700'>{name}</text>"
+            "<text x='16' y='47' fill='#e7f2ef' fill-opacity='.8' "
+            "font-family='sans-serif' font-size='10'>ILLUSTRATIVE PREVIEW</text>"
+            '</svg>'
+        )
+        return {
+            'url': f'data:image/svg+xml,{quote(svg)}',
+            'alt': f'Illustrative preview for the {name} demo product',
+            'attribution': 'MEOGAP synthetic illustration, not a scientific result',
+        }
 
     def _map_data_url(self, product_id: str) -> str:
         """Build a synthetic SVG data URL for an explicit demo overlay.

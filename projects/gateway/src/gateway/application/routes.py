@@ -8,6 +8,12 @@ from fastapi import APIRouter, Depends, Response, Security, status
 from fastapi.security import HTTPBearer
 from meogap.rest.contracts import ErrorResponse
 from meogap.rest.middleware import Identity, get_identity
+from meogap.scientific.products import (
+    ProductAvailability,
+    ProductCategory,
+    ProductValidationStatus,
+    SourceMission,
+)
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from gateway.core.demo import DEMO_OWNER_ID, DemoStore
@@ -85,6 +91,16 @@ class AoiUpdateRequest(BaseModel):
         return self
 
 
+class ProductPreview(BaseModel):
+    """Local illustrative preview metadata owned by the product descriptor."""
+
+    model_config = ConfigDict(extra='forbid')
+
+    url: str
+    alt: str
+    attribution: str | None
+
+
 class ProductResponse(BaseModel):
     """Public deterministic product descriptor."""
 
@@ -94,14 +110,17 @@ class ProductResponse(BaseModel):
     name: str
     description: str
     level: str
-    category: str
+    category: ProductCategory
     native_resolution: str
     temporal_resolution: str
-    availability: str
-    validation_status: str
+    availability: ProductAvailability
+    validation_status: ProductValidationStatus
     inputs: list[str]
     parameters: list[str]
     limitations: list[str]
+    supported_sources: list[SourceMission]
+    supported_resolutions_m: list[int]
+    preview: ProductPreview | None
 
 
 class ProductListResponse(BaseModel):
@@ -140,6 +159,8 @@ class AnalysisRequestCreateRequest(BaseModel):
     product_id: str
     aoi_id: str
     period: AnalysisPeriodRequest
+    spatial_resolution_m: int | None = Field(default=None, ge=1)
+    sources: list[SourceMission] | None = None
 
 
 class ProposalResponse(BaseModel):
@@ -177,6 +198,8 @@ class AnalysisRequestResponse(BaseModel):
     geometry_snapshot: AoiGeometry
     start_month: str
     end_month: str
+    requested_sources: list[str]
+    requested_spatial_resolution_m: int | None
     proposal: ProposalResponse | None
     actual_credits: int | None
     result_id: str | None
@@ -472,8 +495,8 @@ def build_demo_router(store: DemoStore) -> APIRouter:  # noqa: C901
             aoi_id,
             payload.name,
             payload.description,
-            'description' in payload.model_fields_set,
-            payload.geometry.model_dump() if payload.geometry else None,
+            description_provided='description' in payload.model_fields_set,
+            geometry=payload.geometry.model_dump() if payload.geometry else None,
         )
         return store.serialize_aoi(record)
 
@@ -530,6 +553,8 @@ def build_demo_router(store: DemoStore) -> APIRouter:  # noqa: C901
             payload.aoi_id,
             payload.period.start_month,
             payload.period.end_month,
+            spatial_resolution_m=payload.spatial_resolution_m,
+            sources=payload.sources,
         )
         return store.serialize_request(record)
 

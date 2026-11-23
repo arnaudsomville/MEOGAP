@@ -1,6 +1,23 @@
 import type { AoiGeometry, Position } from '../api/client'
 
-export type MapFocus = Position & { zoom?: number }
+export type MapBounds = {
+  south: number
+  west: number
+  north: number
+  east: number
+}
+
+export type PointFocus = Position & { type: 'point'; zoom?: number }
+
+export type BoundsFocus = {
+  type: 'bounds'
+  bounds: MapBounds
+  maxZoom?: number
+  paddingTopLeft?: [number, number]
+  paddingBottomRight?: [number, number]
+}
+
+export type MapFocus = PointFocus | BoundsFocus
 export type MapPosition = [number, number]
 export type MapPolygon = MapPosition[][] | MapPosition[][][]
 
@@ -11,7 +28,7 @@ export function parseCoordinates(value: string): MapFocus | null {
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
     return null
   }
-  return { lat, lng, zoom: 12 }
+  return { type: 'point', lat, lng, zoom: 12 }
 }
 
 export function positionToCoordinates(position: Position): number[] {
@@ -41,4 +58,45 @@ export function geometryToVertices(geometry: AoiGeometry): Position[] {
     if (first.lat === last.lat && first.lng === last.lng) positions.pop()
   }
   return positions
+}
+
+function forEachPosition(
+  geometry: AoiGeometry,
+  visit: (latitude: number, longitude: number) => void,
+): void {
+  const visitRing = (ring: number[][]) => {
+    for (const position of ring) {
+      if (!Array.isArray(position) || position.length < 2) continue
+      const [longitude, latitude] = position
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) continue
+      if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) continue
+      visit(latitude, longitude)
+    }
+  }
+  if (geometry.type === 'Polygon') {
+    for (const ring of geometry.coordinates) visitRing(ring)
+    return
+  }
+  for (const polygon of geometry.coordinates) {
+    for (const ring of polygon) visitRing(ring)
+  }
+}
+
+export function geometryBounds(geometry: AoiGeometry): MapBounds | null {
+  let south = Number.POSITIVE_INFINITY
+  let west = Number.POSITIVE_INFINITY
+  let north = Number.NEGATIVE_INFINITY
+  let east = Number.NEGATIVE_INFINITY
+  let count = 0
+
+  forEachPosition(geometry, (latitude, longitude) => {
+    count += 1
+    south = Math.min(south, latitude)
+    west = Math.min(west, longitude)
+    north = Math.max(north, latitude)
+    east = Math.max(east, longitude)
+  })
+
+  if (count === 0) return null
+  return { south, west, north, east }
 }

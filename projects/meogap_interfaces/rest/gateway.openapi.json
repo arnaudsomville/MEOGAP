@@ -1225,6 +1225,32 @@
           },
           "period": {
             "$ref": "#/components/schemas/AnalysisPeriodRequest"
+          },
+          "spatial_resolution_m": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spatial Resolution M"
+          },
+          "sources": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SourceMission"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sources"
           }
         },
         "additionalProperties": false,
@@ -1291,6 +1317,24 @@
           "end_month": {
             "type": "string",
             "title": "End Month"
+          },
+          "requested_sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Requested Sources"
+          },
+          "requested_spatial_resolution_m": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested Spatial Resolution M"
           },
           "proposal": {
             "anyOf": [
@@ -1366,6 +1410,8 @@
           "geometry_snapshot",
           "start_month",
           "end_month",
+          "requested_sources",
+          "requested_spatial_resolution_m",
           "proposal",
           "actual_credits",
           "result_id",
@@ -1795,8 +1841,7 @@
             "title": "Level"
           },
           "category": {
-            "type": "string",
-            "title": "Category"
+            "$ref": "#/components/schemas/ProductCategory"
           },
           "native_resolution": {
             "type": "string",
@@ -1807,12 +1852,10 @@
             "title": "Temporal Resolution"
           },
           "availability": {
-            "type": "string",
-            "title": "Availability"
+            "$ref": "#/components/schemas/ProductAvailability"
           },
           "validation_status": {
-            "type": "string",
-            "title": "Validation Status"
+            "$ref": "#/components/schemas/ProductValidationStatus"
           },
           "inputs": {
             "items": {
@@ -1834,6 +1877,30 @@
             },
             "type": "array",
             "title": "Limitations"
+          },
+          "supported_sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceMission"
+            },
+            "type": "array",
+            "title": "Supported Sources"
+          },
+          "supported_resolutions_m": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Supported Resolutions M"
+          },
+          "preview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProductPreview"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -1850,7 +1917,10 @@
           "validation_status",
           "inputs",
           "parameters",
-          "limitations"
+          "limitations",
+          "supported_sources",
+          "supported_resolutions_m",
+          "preview"
         ],
         "title": "ProductResponse",
         "description": "Public deterministic product descriptor."
@@ -2001,6 +2071,81 @@
         ],
         "title": "ResultSeriesResponse",
         "description": "Series response that avoids fabricating scientific observations."
+      },
+      "ProductPreview": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "alt": {
+            "type": "string",
+            "title": "Alt"
+          },
+          "attribution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attribution"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "url",
+          "alt",
+          "attribution"
+        ],
+        "title": "ProductPreview",
+        "description": "Local illustrative preview metadata owned by the product descriptor."
+      },
+      "SourceMission": {
+        "type": "string",
+        "enum": [
+          "GOES",
+          "Sentinel",
+          "Landsat",
+          "ECOSTRESS",
+          "MODIS",
+          "VIIRS"
+        ],
+        "title": "SourceMission",
+        "description": "Source mission labels a product may declare as a requestable input."
+      },
+      "ProductCategory": {
+        "type": "string",
+        "enum": [
+          "Vegetation",
+          "Water",
+          "Land",
+          "Atmosphere"
+        ],
+        "title": "ProductCategory",
+        "description": "Broad scientific domain used to group products."
+      },
+      "ProductAvailability": {
+        "type": "string",
+        "enum": [
+          "DEMO",
+          "AVAILABLE",
+          "UNAVAILABLE"
+        ],
+        "title": "ProductAvailability",
+        "description": "Lifecycle availability of a product definition."
+      },
+      "ProductValidationStatus": {
+        "type": "string",
+        "enum": [
+          "NOT_VALIDATED",
+          "VALIDATED"
+        ],
+        "title": "ProductValidationStatus",
+        "description": "Scientific validation state explicitly declared by the product owner."
       }
     },
     "securitySchemes": {

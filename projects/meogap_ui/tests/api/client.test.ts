@@ -95,7 +95,12 @@ describe('Gateway client', () => {
         response(undefined, { status: 204 }),
         response({ items: [PRODUCT] }),
         response(PRODUCT),
-        response({ inputs: ['Sentinel-2'] }),
+        response({
+          product_id: 'ndvi',
+          inputs: ['Sentinel-2'],
+          limitations: ['Demo only'],
+          note: 'Deterministic M0 descriptor.',
+        }),
         response({ items: [REQUEST] }),
         response(REQUEST),
         response(REQUEST),

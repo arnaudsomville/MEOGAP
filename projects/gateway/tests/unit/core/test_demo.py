@@ -3,6 +3,7 @@
 from datetime import UTC, datetime
 
 import pytest
+from meogap.scientific.products import SourceMission
 
 from gateway.core.demo import (
     DELIVERY_FAILED,
@@ -26,6 +27,7 @@ NOW = datetime(2026, 1, 1, tzinfo=UTC)
 PRODUCT_ID = 'ndvi'
 START_MONTH = '2026-01'
 END_MONTH = '2026-02'
+REQUESTED_RESOLUTION_M = 20
 NEW_GEOMETRY = {
     'type': 'Polygon',
     'coordinates': [[[1.4, 43.6], [1.41, 43.6], [1.41, 43.61], [1.4, 43.6]]],
@@ -92,7 +94,14 @@ def test_request_keeps_immutable_aoi_snapshot_through_completion_and_deletion() 
     # Act
     request = store.confirm_request(DEMO_OWNER_ID, request_id)
     completed = store.get_request(DEMO_OWNER_ID, request.request_id)
-    store.update_aoi(DEMO_OWNER_ID, 'aoi-1', 'Updated Toulouse', None, True, NEW_GEOMETRY)
+    store.update_aoi(
+        DEMO_OWNER_ID,
+        'aoi-1',
+        'Updated Toulouse',
+        None,
+        description_provided=True,
+        geometry=NEW_GEOMETRY,
+    )
     store.delete_aoi(DEMO_OWNER_ID, 'aoi-1')
     # Assert
     assert completed.state == REQUEST_COMPLETED
@@ -216,3 +225,42 @@ def test_completed_request_cannot_be_cancelled_and_invalid_geometry_is_rejected(
     cancelled = store.create_request(DEMO_OWNER_ID, PRODUCT_ID, 'aoi-1', START_MONTH, END_MONTH)
     assert completed.state == REQUEST_COMPLETED
     assert store.cancel_request(DEMO_OWNER_ID, cancelled.request_id).state == REQUEST_CANCELLED
+
+
+def test_request_retains_requested_constraints_and_rejects_unsupported_sources() -> None:
+    """Validate requested source missions and resolution are retained without pretending availability.
+
+    Args:
+    ----
+        None
+
+    Returns:
+    -------
+        None
+
+    """
+    # Arrange
+    store = build_store()
+    # Act
+    request = store.create_request(
+        DEMO_OWNER_ID,
+        PRODUCT_ID,
+        'aoi-1',
+        START_MONTH,
+        END_MONTH,
+        spatial_resolution_m=REQUESTED_RESOLUTION_M,
+        sources=[SourceMission.SENTINEL],
+    )
+    # Assert
+    assert request.requested_sources == ('Sentinel',)
+    assert request.requested_spatial_resolution_m == REQUESTED_RESOLUTION_M
+    assert store.serialize_request(request)['requested_sources'] == ['Sentinel']
+    with pytest.raises(DemoError, match='does not declare'):
+        store.create_request(
+            DEMO_OWNER_ID,
+            PRODUCT_ID,
+            'aoi-1',
+            START_MONTH,
+            END_MONTH,
+            sources=[SourceMission.GOES],
+        )

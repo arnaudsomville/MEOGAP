@@ -49,15 +49,36 @@ export type AoiInput = {
   geometry: AoiGeometry
 }
 
+export type ProductPreview = {
+  url: string
+  alt: string
+  attribution: string | null
+}
+
 export type Product = {
   id: string
   name: string
   description: string | null
   level: string | null
+  category: string | null
+  nativeResolution: string | null
+  temporalResolution: string | null
+  availability: string | null
   validationStatus: string | null
+  inputs: string[]
+  parameters: string[]
+  limitations: string[]
+  supportedSources: string[]
+  supportedResolutionsM: number[]
+  preview: ProductPreview | null
 }
 
-export type ProductRequirements = Record<string, unknown>
+export type ProductRequirements = {
+  productId: string
+  inputs: string[]
+  limitations: string[]
+  note: string
+}
 
 export const ANALYSIS_STATES = [
   'PREPARING',
@@ -77,6 +98,8 @@ export type AnalysisRequest = {
   aoiId: string | null
   startMonth: string | null
   endMonth: string | null
+  requestedSources: string[]
+  requestedSpatialResolutionM: number | null
   estimatedCredits: number | null
   actualCredits: number | null
   resultId: string | null
@@ -88,6 +111,8 @@ export type AnalysisRequestInput = {
   aoiId: string
   startMonth: string
   endMonth: string
+  spatialResolutionM?: number | null
+  sources?: string[]
 }
 
 export type ResultMap = {
@@ -166,6 +191,43 @@ function optionalNumberFrom(
     throw new Error(`Invalid payload: ${key} must be a finite number or null`)
   }
   return null
+}
+
+function optionalStringListFrom(value: Record<string, unknown>, keys: readonly string[]): string[] {
+  for (const key of keys) {
+    const field = value[key]
+    if (field === null || field === undefined) continue
+    if (!Array.isArray(field) || field.some((item) => typeof item !== 'string')) {
+      throw new Error(`Invalid payload: ${key} must be an array of strings`)
+    }
+    return field as string[]
+  }
+  return []
+}
+
+function optionalIntegerListFrom(
+  value: Record<string, unknown>,
+  keys: readonly string[],
+): number[] {
+  for (const key of keys) {
+    const field = value[key]
+    if (field === null || field === undefined) continue
+    if (!Array.isArray(field) || field.some((item) => !Number.isInteger(item))) {
+      throw new Error(`Invalid payload: ${key} must be an array of integers`)
+    }
+    return field as number[]
+  }
+  return []
+}
+
+function parseProductPreview(value: unknown): ProductPreview | null {
+  if (value === null || value === undefined) return null
+  const preview = requireRecord(value, 'preview must be an object or null')
+  return {
+    url: requireString(preview, 'url'),
+    alt: requireString(preview, 'alt'),
+    attribution: optionalStringFrom(preview, ['attribution']),
+  }
 }
 
 function requirePositiveInteger(value: Record<string, unknown>, key: string): number {
@@ -331,10 +393,20 @@ export function parseProduct(payload: unknown): Product {
     name: requireStringFrom(product, ['name', 'title']),
     description: optionalStringFrom(product, ['description', 'summary']),
     level: optionalStringFrom(product, ['level', 'processing_level']),
+    category: optionalStringFrom(product, ['category']),
+    nativeResolution: optionalStringFrom(product, ['native_resolution']),
+    temporalResolution: optionalStringFrom(product, ['temporal_resolution']),
+    availability: optionalStringFrom(product, ['availability']),
     validationStatus: optionalStringFrom(product, [
       'validation_status',
       'scientific_validation_status',
     ]),
+    inputs: optionalStringListFrom(product, ['inputs']),
+    parameters: optionalStringListFrom(product, ['parameters']),
+    limitations: optionalStringListFrom(product, ['limitations']),
+    supportedSources: optionalStringListFrom(product, ['supported_sources']),
+    supportedResolutionsM: optionalIntegerListFrom(product, ['supported_resolutions_m']),
+    preview: parseProductPreview(product.preview),
   }
 }
 
@@ -343,7 +415,13 @@ export function parseProductList(payload: unknown): Product[] {
 }
 
 export function parseProductRequirements(payload: unknown): ProductRequirements {
-  return requireRecord(payload, 'input requirements must be an object')
+  const requirements = requireRecord(payload, 'input requirements must be an object')
+  return {
+    productId: requireStringFrom(requirements, ['product_id', 'id']),
+    inputs: optionalStringListFrom(requirements, ['inputs']),
+    limitations: optionalStringListFrom(requirements, ['limitations']),
+    note: optionalStringFrom(requirements, ['note']) ?? '',
+  }
 }
 
 export function parseAnalysisRequest(payload: unknown): AnalysisRequest {
@@ -360,6 +438,11 @@ export function parseAnalysisRequest(payload: unknown): AnalysisRequest {
     aoiId: optionalStringFrom(request, ['aoi_id', 'aoiId']),
     startMonth: optionalStringFrom(request, ['start_month', 'period_start']),
     endMonth: optionalStringFrom(request, ['end_month', 'period_end']),
+    requestedSources: optionalStringListFrom(request, ['requested_sources', 'sources']),
+    requestedSpatialResolutionM: optionalNumberFrom(request, [
+      'requested_spatial_resolution_m',
+      'spatial_resolution_m',
+    ]),
     estimatedCredits: optionalNumberFrom(proposal, ['estimated_credits', 'estimated_cost']),
     actualCredits: optionalNumberFrom(request, ['actual_credits', 'actual_cost']),
     resultId: optionalStringFrom(request, ['result_id']),
@@ -494,6 +577,10 @@ export function createAnalysisRequest(
       product_id: input.productId,
       aoi_id: input.aoiId,
       period: { start_month: input.startMonth, end_month: input.endMonth },
+      ...(input.spatialResolutionM != null
+        ? { spatial_resolution_m: input.spatialResolutionM }
+        : {}),
+      ...(input.sources && input.sources.length > 0 ? { sources: input.sources } : {}),
     }),
   )
 }
