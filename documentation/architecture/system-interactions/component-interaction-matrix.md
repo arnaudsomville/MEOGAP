@@ -289,3 +289,25 @@ REST remains the source of truth for request state. Notifications are optional U
 - Authentication/trust mechanism, credential format, identity claims and integrity-protected internal context format/propagation. ENG-15 defines the required behavior; concrete contract/security choices are deferred to M0-E02-T03 and any necessary ADR.
 
 This matrix is the validated logical interaction inventory for the current component architecture design. Logical Sync/Async modes are explicitly classified in §1.2. Proposal preparation, final-product delivery, dependency-archive delivery and the identified CON↔SCI/CON↔CAT operations are asynchronous regardless of estimated duration. ENG-03's five-second threshold remains a general minimum rule for other user-facing operations. Physical transport, messaging durability, acknowledgement, correlation, idempotency and recovery remain for interface and contract design; REST remains the source of truth for request and delivery state.
+
+## 10. Approved AOI-library interaction refinement (23 November 2026)
+
+The following interactions extend the validated matrix. They are the only approved direct GAT ↔ CAT exception; existing routes through CON remain authoritative for all request, result-access, lineage and delivery operations.
+
+| ID | Producer → consumer | Interaction | Description / ownership |
+|---|---|---|---|
+| UI-25 | UI → GAT | List current user's AOIs | Return the authenticated user's saved AOIs; caller cannot choose another owner. |
+| UI-26 | UI → GAT | Create AOI | Persist a named polygonal AOI in the authenticated user's library. |
+| UI-27 | UI → GAT | Retrieve AOI | Retrieve one AOI only if it belongs to the authenticated user. |
+| UI-28 | UI → GAT | Update AOI | Update name/description/geometry of an owned AOI. Existing requests retain their geometry snapshots. |
+| UI-29 | UI → GAT | Delete AOI | Delete an owned library AOI; this does not delete or alter requests already submitted from it. |
+| GC-15 | GAT → CAT | List caller AOIs | CAT filters by trusted caller context; no client-supplied owner ID. |
+| GC-16 | GAT → CAT | Create caller AOI | CAT creates an AOI owned by the trusted caller. |
+| GC-17 | GAT → CAT | Retrieve caller AOI | CAT returns the AOI only within the trusted caller's ownership scope. |
+| GC-18 | GAT → CAT | Update caller AOI | CAT updates an owned AOI and advances its revision/version. |
+| GC-19 | GAT → CAT | Delete caller AOI | CAT deletes an owned AOI; references in existing requests remain valid through immutable snapshots. |
+
+The logical AOI is polygonal (GeoJSON Polygon or MultiPolygon) in RFC 7946 WGS 84 longitude/latitude coordinates. Geometry validation, including non-empty valid polygon topology, is performed at the API boundary and by CAT before persistence. A request retains both the selected aoi_id/revision for provenance and an immutable geometry snapshot for reproducibility.
+
+This addition supersedes the earlier “no direct GAT ↔ CAT interface” statement for GC-15…GC-19 only. GAT must continue routing request lifecycle, result authorization, result representation, lineage and delivery operations through CON.
+
