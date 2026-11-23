@@ -6,7 +6,8 @@ import logging
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import APIRouter, FastAPI, HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -24,6 +25,7 @@ ERROR_CODE_UNPROCESSABLE_ENTITY = 'UNPROCESSABLE_ENTITY'
 ERROR_CODE_INTERNAL_ERROR = 'INTERNAL_ERROR'
 ERROR_CODE_HTTP_ERROR = 'HTTP_ERROR'
 INTERNAL_ERROR_MESSAGE = 'An unexpected internal error occurred.'
+VALIDATION_ERROR_MESSAGE = 'The request payload is invalid.'
 
 STATUS_CODE_TO_ERROR_CODE: dict[int, str] = {
     status.HTTP_400_BAD_REQUEST: ERROR_CODE_BAD_REQUEST,
@@ -128,6 +130,28 @@ def install_exception_handlers(app: FastAPI, *, service: str) -> None:
         """
         return _error_response(request, service, exc.status_code, str(exc.detail), headers=exc.headers)
 
+    @app.exception_handler(RequestValidationError)
+    async def handle_request_validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
+        """Map request validation failures to the shared error envelope.
+
+        Args:
+        ----
+            request(Request): request with an invalid path, query or body value.
+            exc(RequestValidationError): FastAPI validation failure.
+
+        Returns:
+        -------
+            JSONResponse: caller-safe HTTP 422 error response.
+
+        """
+        del exc
+        return _error_response(
+            request,
+            service,
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            VALIDATION_ERROR_MESSAGE,
+        )
+
     @app.exception_handler(ValueError)
     async def handle_value_error(request: Request, exc: ValueError) -> JSONResponse:
         """Map invalid values to HTTP 400.
@@ -179,13 +203,18 @@ def install_exception_handlers(app: FastAPI, *, service: str) -> None:
         return _error_response(request, service, status.HTTP_500_INTERNAL_SERVER_ERROR, INTERNAL_ERROR_MESSAGE)
 
 
-def create_rest_app(config: RestAppConfig, operations: Sequence[Operation] = ()) -> FastAPI:
+def create_rest_app(
+    config: RestAppConfig,
+    operations: Sequence[Operation] = (),
+    routers: Sequence[APIRouter] = (),
+) -> FastAPI:
     """Create a reusable MEOGAP REST application.
 
     Args:
     ----
         config(RestAppConfig): application configuration.
-        operations(Sequence[Operation]): business operations owned by the service.
+        operations(Sequence[Operation]): stubbed business operations owned by the service.
+        routers(Sequence[APIRouter]): implemented business routers owned by the service.
 
     Returns:
     -------
@@ -222,4 +251,6 @@ def create_rest_app(config: RestAppConfig, operations: Sequence[Operation] = ())
     )
     if operations:
         app.include_router(build_not_implemented_router(service=config.service, operations=operations))
+    for router in routers:
+        app.include_router(router)
     return app

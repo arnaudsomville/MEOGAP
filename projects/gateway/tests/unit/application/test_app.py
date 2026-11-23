@@ -18,6 +18,7 @@ from gateway.application.app import (
 pytestmark = pytest.mark.unit
 
 client = TestClient(app)
+DEMO_HEADERS = {'Authorization': 'Bearer demo-ui-token'}
 
 
 def test_root_returns_placeholder_message() -> None:
@@ -109,3 +110,26 @@ def test_application_lifecycle_hooks_are_noop() -> None:
     # Act / Assert
     assert APPLICATION.startup() is None
     assert APPLICATION.shutdown() is None
+
+
+def test_gateway_labels_success_and_domain_errors_as_demo_responses() -> None:
+    """Validate deterministic Gateway responses disclose their demo provenance.
+
+    Args:
+    ----
+        None
+
+    Returns:
+    -------
+        None
+
+    """
+    # Act
+    success = client.get('/api/v1/aois', headers=DEMO_HEADERS)
+    missing = client.get('/api/v1/aois/unknown-aoi', headers=DEMO_HEADERS)
+    # Assert
+    assert success.status_code == status.HTTP_200_OK
+    assert success.headers['X-MEOGAP-Demo'] == 'true'
+    assert missing.status_code == status.HTTP_404_NOT_FOUND
+    assert missing.headers['X-MEOGAP-Demo'] == 'true'
+    assert missing.json()['code'] == 'AOI_NOT_FOUND'

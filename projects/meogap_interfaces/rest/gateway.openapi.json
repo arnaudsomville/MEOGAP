@@ -2,8 +2,2013 @@
   "openapi": "3.1.0",
   "info": {
     "title": "MEOGAP Gateway",
-    "version": "0.2.0",
-    "description": "Public REST gateway for the MEOGAP platform."
+    "description": "Public REST gateway for the MEOGAP platform.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Report service liveness.",
+        "description": "Return the service liveness payload.\n\nArgs:\n----\n    None\n\nReturns:\n-------\n    HealthResponse: status, service name and version.",
+        "operationId": "gateway_health",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/catalogue/products": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Browse the scientific product catalogue.",
+        "description": "Return deterministic public product descriptors.\n\nReturns:\n-------\n    dict[str, list[dict[str, Any]]]: public product collection.",
+        "operationId": "gateway_list_products",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/catalogue/products/{product_id}": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Retrieve a product definition.",
+        "description": "Return one deterministic public product descriptor.\n\nArgs:\n----\n    product_id(str): requested product identifier.\n\nReturns:\n-------\n    dict[str, Any]: product descriptor.",
+        "operationId": "gateway_get_product",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Product Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/catalogue/products/{product_id}/input-requirements": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Inspect abstract scientific input requirements.",
+        "description": "Return one deterministic product requirement descriptor.\n\nArgs:\n----\n    product_id(str): requested product identifier.\n\nReturns:\n-------\n    dict[str, Any]: product requirements.",
+        "operationId": "gateway_get_product_input_requirements",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Product Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductRequirementsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/aois": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "List AOIs owned by the authenticated user.",
+        "description": "Return all caller-owned saved AOIs.\n\nArgs:\n----\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, list[dict[str, Any]]]: saved AOIs.",
+        "operationId": "gateway_list_user_aois",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AoiListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Create an AOI owned by the authenticated user.",
+        "description": "Create one caller-owned AOI.\n\nArgs:\n----\n    payload(AoiCreateRequest): AOI content and geometry.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: created AOI.",
+        "operationId": "gateway_create_user_aoi",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AoiCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AoiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/aois/{aoi_id}": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Retrieve an AOI owned by the authenticated user.",
+        "description": "Return one caller-owned AOI.\n\nArgs:\n----\n    aoi_id(str): saved AOI identifier.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: saved AOI.",
+        "operationId": "gateway_get_user_aoi",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "aoi_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Aoi Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AoiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Update an owned AOI and increment its revision.",
+        "description": "Update one caller-owned AOI.\n\nArgs:\n----\n    aoi_id(str): saved AOI identifier.\n    payload(AoiUpdateRequest): requested AOI changes.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: updated AOI.",
+        "operationId": "gateway_update_user_aoi",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "aoi_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Aoi Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AoiUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AoiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Delete an owned AOI. Existing request snapshots are unaffected.",
+        "description": "Delete one caller-owned AOI.\n\nArgs:\n----\n    aoi_id(str): saved AOI identifier.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    Response: empty successful deletion response.",
+        "operationId": "gateway_delete_user_aoi",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "aoi_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Aoi Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis-requests": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "List analysis requests.",
+        "description": "Return all caller-owned analysis requests.\n\nArgs:\n----\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, list[dict[str, Any]]]: current request collection.",
+        "operationId": "gateway_list_analysis_requests",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisRequestListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Submit an analysis request.",
+        "description": "Begin deterministic proposal preparation for an analysis request.\n\nArgs:\n----\n    payload(AnalysisRequestCreateRequest): product, AOI and month range.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: newly created PREPARING request.",
+        "operationId": "gateway_create_analysis_request",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalysisRequestCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisRequestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/analysis-requests/{request_id}": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Retrieve the authoritative request state.",
+        "description": "Return the authoritative lifecycle state for one request.\n\nArgs:\n----\n    request_id(str): request identifier.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: current request state.",
+        "operationId": "gateway_get_analysis_request",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Request Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisRequestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis-requests/{request_id}/confirm": {
+      "post": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Confirm a proposed analysis request.",
+        "description": "Atomically debit demo credits and begin deterministic execution.\n\nArgs:\n----\n    request_id(str): request identifier.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: request now in execution.",
+        "operationId": "gateway_confirm_analysis_request",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Request Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisRequestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Request state prevents this operation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis-requests/{request_id}/cancel": {
+      "post": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Request analysis cancellation.",
+        "description": "Cancel a request unless it already completed.\n\nArgs:\n----\n    request_id(str): request identifier.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: cancelled request state.",
+        "operationId": "gateway_cancel_analysis_request",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Request Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisRequestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Request state prevents this operation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/results/{result_id}/map": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Request a map representation.",
+        "description": "Return an explicit synthetic map representation.\n\nArgs:\n----\n    result_id(str): result identifier.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: synthetic map overlay descriptor.",
+        "operationId": "gateway_get_result_map",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "result_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Result Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultMapResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/results/{result_id}/series": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Request an analytical series.",
+        "description": "Return the non-fabricated M0 series placeholder.\n\nArgs:\n----\n    result_id(str): result identifier.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: empty analytical series representation.",
+        "operationId": "gateway_get_result_series",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "result_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Result Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultSeriesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/results/{result_id}/lineage": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Inspect result lineage.",
+        "description": "Return retained demo request provenance.\n\nArgs:\n----\n    result_id(str): result identifier.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: minimal retained lineage.",
+        "operationId": "gateway_get_result_lineage",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "result_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Result Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultLineageResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/results/{result_id}/deliveries": {
+      "post": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Request final-product or dependency-archive delivery.",
+        "description": "Start deterministic delivery preparation.\n\nArgs:\n----\n    result_id(str): completed result identifier.\n    _(DeliveryCreateRequest): requested delivery kind.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: newly preparing delivery.",
+        "operationId": "gateway_create_delivery",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "result_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Result Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliveryCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliveryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/deliveries/{delivery_id}": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Retrieve delivery state and access.",
+        "description": "Return the current delivery state and access URL when ready.\n\nArgs:\n----\n    delivery_id(str): delivery identifier.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: current delivery state.",
+        "operationId": "gateway_get_delivery",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "delivery_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Delivery Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliveryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/credits/balance": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Retrieve the caller credit balance.",
+        "description": "Return available deterministic demo credits.\n\nArgs:\n----\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: balance and demo disclosure.",
+        "operationId": "gateway_get_credit_balance",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditBalanceResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Credit balance is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AnalysisPeriodRequest": {
+        "properties": {
+          "start_month": {
+            "type": "string",
+            "title": "Start Month"
+          },
+          "end_month": {
+            "type": "string",
+            "title": "End Month"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "start_month",
+          "end_month"
+        ],
+        "title": "AnalysisPeriodRequest",
+        "description": "Inclusive analysis period expressed in UTC calendar months."
+      },
+      "AnalysisRequestCreateRequest": {
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "title": "Product Id"
+          },
+          "aoi_id": {
+            "type": "string",
+            "title": "Aoi Id"
+          },
+          "period": {
+            "$ref": "#/components/schemas/AnalysisPeriodRequest"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "product_id",
+          "aoi_id",
+          "period"
+        ],
+        "title": "AnalysisRequestCreateRequest",
+        "description": "Payload used to begin deterministic proposal preparation."
+      },
+      "AnalysisRequestListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AnalysisRequestResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "AnalysisRequestListResponse",
+        "description": "Public collection of caller-owned analysis requests."
+      },
+      "AnalysisRequestResponse": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "product_id": {
+            "type": "string",
+            "title": "Product Id"
+          },
+          "aoi_id": {
+            "type": "string",
+            "title": "Aoi Id"
+          },
+          "source_aoi_revision": {
+            "type": "integer",
+            "title": "Source Aoi Revision"
+          },
+          "aoi_name": {
+            "type": "string",
+            "title": "Aoi Name"
+          },
+          "geometry_snapshot": {
+            "$ref": "#/components/schemas/AoiGeometry"
+          },
+          "start_month": {
+            "type": "string",
+            "title": "Start Month"
+          },
+          "end_month": {
+            "type": "string",
+            "title": "End Month"
+          },
+          "proposal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProposalResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "actual_credits": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Credits"
+          },
+          "result_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result Id"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FailureResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "request_id",
+          "state",
+          "product_id",
+          "aoi_id",
+          "source_aoi_revision",
+          "aoi_name",
+          "geometry_snapshot",
+          "start_month",
+          "end_month",
+          "proposal",
+          "actual_credits",
+          "result_id",
+          "message",
+          "failure",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "AnalysisRequestResponse",
+        "description": "Public analysis request lifecycle state and retained spatial snapshot."
+      },
+      "AoiCreateRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "geometry": {
+            "$ref": "#/components/schemas/AoiGeometry"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "geometry"
+        ],
+        "title": "AoiCreateRequest",
+        "description": "Payload for one new saved AOI."
+      },
+      "AoiGeometry": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "Polygon",
+              "MultiPolygon"
+            ],
+            "title": "Type"
+          },
+          "coordinates": {
+            "items": {},
+            "type": "array",
+            "title": "Coordinates"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "coordinates"
+        ],
+        "title": "AoiGeometry",
+        "description": "Supported polygonal GeoJSON geometry supplied by the public client."
+      },
+      "AoiListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AoiResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "AoiListResponse",
+        "description": "Public AOI collection representation."
+      },
+      "AoiResponse": {
+        "properties": {
+          "aoi_id": {
+            "type": "string",
+            "title": "Aoi Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "geometry": {
+            "$ref": "#/components/schemas/AoiGeometry"
+          },
+          "revision": {
+            "type": "integer",
+            "title": "Revision"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "aoi_id",
+          "name",
+          "description",
+          "geometry",
+          "revision",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "AoiResponse",
+        "description": "Public owner-scoped AOI representation."
+      },
+      "AoiUpdateRequest": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "geometry": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AoiGeometry"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AoiUpdateRequest",
+        "description": "Partial payload for an existing saved AOI."
+      },
+      "CreditBalanceResponse": {
+        "properties": {
+          "balance": {
+            "type": "integer",
+            "title": "Balance"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "balance",
+          "unit",
+          "note"
+        ],
+        "title": "CreditBalanceResponse",
+        "description": "Available deterministic demo credits."
+      },
+      "DeliveryCreateRequest": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Kind"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "DeliveryCreateRequest",
+        "description": "Delivery representation requested for a completed result."
+      },
+      "DeliveryResponse": {
+        "properties": {
+          "delivery_id": {
+            "type": "string",
+            "title": "Delivery Id"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "download_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Download Url"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "delivery_id",
+          "state",
+          "download_url",
+          "message",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "DeliveryResponse",
+        "description": "Asynchronous deterministic demo delivery state."
+      },
+      "ErrorResponse": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Machine-readable error code."
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message."
+          },
+          "service": {
+            "type": "string",
+            "description": "Logical service that produced the error."
+          },
+          "operation": {
+            "type": "string",
+            "description": "Operation identifier or request path that failed."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "service",
+          "operation"
+        ],
+        "description": "Stable error envelope returned by every failed MEOGAP REST operation."
+      },
+      "FailureResponse": {
+        "properties": {
+          "stage": {
+            "type": "string",
+            "title": "Stage"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "stage",
+          "message"
+        ],
+        "title": "FailureResponse",
+        "description": "Caller-safe request failure details."
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Service status; ok when the process answers."
+          },
+          "service": {
+            "type": "string",
+            "description": "Logical service name."
+          },
+          "version": {
+            "type": "string",
+            "description": "Service version."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "service",
+          "version"
+        ],
+        "description": "Liveness payload exposed by every MEOGAP service."
+      },
+      "ProductListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProductResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "ProductListResponse",
+        "description": "Public product catalogue collection."
+      },
+      "ProductRequirementsResponse": {
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "title": "Product Id"
+          },
+          "inputs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Inputs"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Limitations"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "product_id",
+          "inputs",
+          "limitations",
+          "note"
+        ],
+        "title": "ProductRequirementsResponse",
+        "description": "Public deterministic product input requirements."
+      },
+      "ProductResponse": {
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "title": "Product Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "level": {
+            "type": "string",
+            "title": "Level"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "native_resolution": {
+            "type": "string",
+            "title": "Native Resolution"
+          },
+          "temporal_resolution": {
+            "type": "string",
+            "title": "Temporal Resolution"
+          },
+          "availability": {
+            "type": "string",
+            "title": "Availability"
+          },
+          "validation_status": {
+            "type": "string",
+            "title": "Validation Status"
+          },
+          "inputs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Inputs"
+          },
+          "parameters": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Parameters"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Limitations"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "product_id",
+          "name",
+          "description",
+          "level",
+          "category",
+          "native_resolution",
+          "temporal_resolution",
+          "availability",
+          "validation_status",
+          "inputs",
+          "parameters",
+          "limitations"
+        ],
+        "title": "ProductResponse",
+        "description": "Public deterministic product descriptor."
+      },
+      "ProposalResponse": {
+        "properties": {
+          "feasible": {
+            "type": "boolean",
+            "title": "Feasible"
+          },
+          "estimated_credits": {
+            "type": "integer",
+            "title": "Estimated Credits"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "conditions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Conditions"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Limitations"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "feasible",
+          "estimated_credits",
+          "currency",
+          "conditions",
+          "limitations"
+        ],
+        "title": "ProposalResponse",
+        "description": "Explicit estimate and limitations available for a proposed request."
+      },
+      "ResultLineageResponse": {
+        "properties": {
+          "result_id": {
+            "type": "string",
+            "title": "Result Id"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "product_id": {
+            "type": "string",
+            "title": "Product Id"
+          },
+          "aoi_name": {
+            "type": "string",
+            "title": "Aoi Name"
+          },
+          "geometry_snapshot": {
+            "$ref": "#/components/schemas/AoiGeometry"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "result_id",
+          "request_id",
+          "product_id",
+          "aoi_name",
+          "geometry_snapshot",
+          "note"
+        ],
+        "title": "ResultLineageResponse",
+        "description": "Minimal reliable M0 provenance for one result."
+      },
+      "ResultMapResponse": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "bounds": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Bounds"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          },
+          "result_id": {
+            "type": "string",
+            "title": "Result Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "url",
+          "bounds",
+          "kind",
+          "note",
+          "result_id"
+        ],
+        "title": "ResultMapResponse",
+        "description": "Map overlay descriptor for a synthetic completed result."
+      },
+      "ResultSeriesResponse": {
+        "properties": {
+          "result_id": {
+            "type": "string",
+            "title": "Result Id"
+          },
+          "points": {
+            "items": {},
+            "type": "array",
+            "title": "Points"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "result_id",
+          "points",
+          "note"
+        ],
+        "title": "ResultSeriesResponse",
+        "description": "Series response that avoids fabricating scientific observations."
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
   },
   "servers": [
     {
@@ -22,1286 +2027,12 @@
       "bearerAuth": []
     }
   ],
-  "paths": {
-    "/api/v1/catalogue/products": {
-      "get": {
-        "tags": [
-          "gateway"
-        ],
-        "summary": "Browse the scientific product catalogue.",
-        "operationId": "gateway_list_products",
-        "parameters": [],
-        "responses": {
-          "401": {
-            "description": "A bearer token is required.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "UNAUTHORIZED",
-                  "message": "A bearer token is required.",
-                  "service": "gateway",
-                  "operation": "/api/v1/catalogue/products"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Operation is part of the M0 contract but is not implemented yet.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "NOT_IMPLEMENTED",
-                  "message": "Operation is part of the M0 contract but is not implemented yet.",
-                  "service": "gateway",
-                  "operation": "gateway_list_products"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/catalogue/products/{product_id}": {
-      "get": {
-        "tags": [
-          "gateway"
-        ],
-        "summary": "Retrieve a product definition.",
-        "operationId": "gateway_get_product",
-        "parameters": [
-          {
-            "name": "product_id",
-            "in": "path",
-            "required": true,
-            "description": "Scientific product identifier.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "A bearer token is required.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "UNAUTHORIZED",
-                  "message": "A bearer token is required.",
-                  "service": "gateway",
-                  "operation": "/api/v1/catalogue/products/{product_id}"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Operation is part of the M0 contract but is not implemented yet.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "NOT_IMPLEMENTED",
-                  "message": "Operation is part of the M0 contract but is not implemented yet.",
-                  "service": "gateway",
-                  "operation": "gateway_get_product"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/catalogue/products/{product_id}/input-requirements": {
-      "get": {
-        "tags": [
-          "gateway"
-        ],
-        "summary": "Inspect abstract scientific input requirements.",
-        "operationId": "gateway_get_product_input_requirements",
-        "parameters": [
-          {
-            "name": "product_id",
-            "in": "path",
-            "required": true,
-            "description": "Scientific product identifier.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "A bearer token is required.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "UNAUTHORIZED",
-                  "message": "A bearer token is required.",
-                  "service": "gateway",
-                  "operation": "/api/v1/catalogue/products/{product_id}/input-requirements"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Operation is part of the M0 contract but is not implemented yet.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "NOT_IMPLEMENTED",
-                  "message": "Operation is part of the M0 contract but is not implemented yet.",
-                  "service": "gateway",
-                  "operation": "gateway_get_product_input_requirements"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/analysis-requests": {
-      "post": {
-        "tags": [
-          "gateway"
-        ],
-        "summary": "Submit an analysis request.",
-        "operationId": "gateway_create_analysis_request",
-        "parameters": [],
-        "responses": {
-          "401": {
-            "description": "A bearer token is required.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "UNAUTHORIZED",
-                  "message": "A bearer token is required.",
-                  "service": "gateway",
-                  "operation": "/api/v1/analysis-requests"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Operation is part of the M0 contract but is not implemented yet.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "NOT_IMPLEMENTED",
-                  "message": "Operation is part of the M0 contract but is not implemented yet.",
-                  "service": "gateway",
-                  "operation": "gateway_create_analysis_request"
-                }
-              }
-            }
-          }
-        }
-      },
-      "get": {
-        "tags": [
-          "gateway"
-        ],
-        "summary": "List analysis requests.",
-        "operationId": "gateway_list_analysis_requests",
-        "parameters": [],
-        "responses": {
-          "401": {
-            "description": "A bearer token is required.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "UNAUTHORIZED",
-                  "message": "A bearer token is required.",
-                  "service": "gateway",
-                  "operation": "/api/v1/analysis-requests"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Operation is part of the M0 contract but is not implemented yet.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "NOT_IMPLEMENTED",
-                  "message": "Operation is part of the M0 contract but is not implemented yet.",
-                  "service": "gateway",
-                  "operation": "gateway_list_analysis_requests"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/analysis-requests/{request_id}/confirm": {
-      "post": {
-        "tags": [
-          "gateway"
-        ],
-        "summary": "Confirm a proposed analysis request.",
-        "operationId": "gateway_confirm_analysis_request",
-        "parameters": [
-          {
-            "name": "request_id",
-            "in": "path",
-            "required": true,
-            "description": "Analysis request identifier.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "A bearer token is required.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "UNAUTHORIZED",
-                  "message": "A bearer token is required.",
-                  "service": "gateway",
-                  "operation": "/api/v1/analysis-requests/{request_id}/confirm"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Operation is part of the M0 contract but is not implemented yet.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "NOT_IMPLEMENTED",
-                  "message": "Operation is part of the M0 contract but is not implemented yet.",
-                  "service": "gateway",
-                  "operation": "gateway_confirm_analysis_request"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/analysis-requests/{request_id}": {
-      "get": {
-        "tags": [
-          "gateway"
-        ],
-        "summary": "Retrieve the authoritative request state.",
-        "operationId": "gateway_get_analysis_request",
-        "parameters": [
-          {
-            "name": "request_id",
-            "in": "path",
-            "required": true,
-            "description": "Analysis request identifier.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "A bearer token is required.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "UNAUTHORIZED",
-                  "message": "A bearer token is required.",
-                  "service": "gateway",
-                  "operation": "/api/v1/analysis-requests/{request_id}"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Operation is part of the M0 contract but is not implemented yet.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "NOT_IMPLEMENTED",
-                  "message": "Operation is part of the M0 contract but is not implemented yet.",
-                  "service": "gateway",
-                  "operation": "gateway_get_analysis_request"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/analysis-requests/{request_id}/cancel": {
-      "post": {
-        "tags": [
-          "gateway"
-        ],
-        "summary": "Request analysis cancellation.",
-        "operationId": "gateway_cancel_analysis_request",
-        "parameters": [
-          {
-            "name": "request_id",
-            "in": "path",
-            "required": true,
-            "description": "Analysis request identifier.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "A bearer token is required.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "UNAUTHORIZED",
-                  "message": "A bearer token is required.",
-                  "service": "gateway",
-                  "operation": "/api/v1/analysis-requests/{request_id}/cancel"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Operation is part of the M0 contract but is not implemented yet.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "NOT_IMPLEMENTED",
-                  "message": "Operation is part of the M0 contract but is not implemented yet.",
-                  "service": "gateway",
-                  "operation": "gateway_cancel_analysis_request"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/results/{result_id}/map": {
-      "get": {
-        "tags": [
-          "gateway"
-        ],
-        "summary": "Request a map representation.",
-        "operationId": "gateway_get_result_map",
-        "parameters": [
-          {
-            "name": "result_id",
-            "in": "path",
-            "required": true,
-            "description": "Result identifier.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "A bearer token is required.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "UNAUTHORIZED",
-                  "message": "A bearer token is required.",
-                  "service": "gateway",
-                  "operation": "/api/v1/results/{result_id}/map"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Operation is part of the M0 contract but is not implemented yet.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "NOT_IMPLEMENTED",
-                  "message": "Operation is part of the M0 contract but is not implemented yet.",
-                  "service": "gateway",
-                  "operation": "gateway_get_result_map"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/results/{result_id}/series": {
-      "get": {
-        "tags": [
-          "gateway"
-        ],
-        "summary": "Request an analytical series.",
-        "operationId": "gateway_get_result_series",
-        "parameters": [
-          {
-            "name": "result_id",
-            "in": "path",
-            "required": true,
-            "description": "Result identifier.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "A bearer token is required.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "UNAUTHORIZED",
-                  "message": "A bearer token is required.",
-                  "service": "gateway",
-                  "operation": "/api/v1/results/{result_id}/series"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Operation is part of the M0 contract but is not implemented yet.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "NOT_IMPLEMENTED",
-                  "message": "Operation is part of the M0 contract but is not implemented yet.",
-                  "service": "gateway",
-                  "operation": "gateway_get_result_series"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/results/{result_id}/lineage": {
-      "get": {
-        "tags": [
-          "gateway"
-        ],
-        "summary": "Inspect result lineage.",
-        "operationId": "gateway_get_result_lineage",
-        "parameters": [
-          {
-            "name": "result_id",
-            "in": "path",
-            "required": true,
-            "description": "Result identifier.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "A bearer token is required.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "UNAUTHORIZED",
-                  "message": "A bearer token is required.",
-                  "service": "gateway",
-                  "operation": "/api/v1/results/{result_id}/lineage"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Operation is part of the M0 contract but is not implemented yet.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "NOT_IMPLEMENTED",
-                  "message": "Operation is part of the M0 contract but is not implemented yet.",
-                  "service": "gateway",
-                  "operation": "gateway_get_result_lineage"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/results/{result_id}/deliveries": {
-      "post": {
-        "tags": [
-          "gateway"
-        ],
-        "summary": "Request final-product or dependency-archive delivery.",
-        "operationId": "gateway_create_delivery",
-        "parameters": [
-          {
-            "name": "result_id",
-            "in": "path",
-            "required": true,
-            "description": "Result identifier.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "A bearer token is required.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "UNAUTHORIZED",
-                  "message": "A bearer token is required.",
-                  "service": "gateway",
-                  "operation": "/api/v1/results/{result_id}/deliveries"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Operation is part of the M0 contract but is not implemented yet.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "NOT_IMPLEMENTED",
-                  "message": "Operation is part of the M0 contract but is not implemented yet.",
-                  "service": "gateway",
-                  "operation": "gateway_create_delivery"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/deliveries/{delivery_id}": {
-      "get": {
-        "tags": [
-          "gateway"
-        ],
-        "summary": "Retrieve delivery state and access.",
-        "operationId": "gateway_get_delivery",
-        "parameters": [
-          {
-            "name": "delivery_id",
-            "in": "path",
-            "required": true,
-            "description": "Delivery identifier.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "A bearer token is required.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "UNAUTHORIZED",
-                  "message": "A bearer token is required.",
-                  "service": "gateway",
-                  "operation": "/api/v1/deliveries/{delivery_id}"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Operation is part of the M0 contract but is not implemented yet.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "NOT_IMPLEMENTED",
-                  "message": "Operation is part of the M0 contract but is not implemented yet.",
-                  "service": "gateway",
-                  "operation": "gateway_get_delivery"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/credits/balance": {
-      "get": {
-        "tags": [
-          "gateway"
-        ],
-        "summary": "Retrieve the caller credit balance.",
-        "operationId": "gateway_get_credit_balance",
-        "parameters": [],
-        "responses": {
-          "401": {
-            "description": "A bearer token is required.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "UNAUTHORIZED",
-                  "message": "A bearer token is required.",
-                  "service": "gateway",
-                  "operation": "/api/v1/credits/balance"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Operation is part of the M0 contract but is not implemented yet.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "code": "NOT_IMPLEMENTED",
-                  "message": "Operation is part of the M0 contract but is not implemented yet.",
-                  "service": "gateway",
-                  "operation": "gateway_get_credit_balance"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/health": {
-      "get": {
-        "tags": [
-          "gateway"
-        ],
-        "summary": "Report service liveness.",
-        "operationId": "gateway_health",
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "Service is alive.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HealthResponse"
-                },
-                "example": {
-                  "status": "ok",
-                  "service": "gateway",
-                  "version": "0.1.0"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/aois": {
-      "get": {
-        "tags": [
-          "gateway"
-        ],
-        "operationId": "gateway_list_user_aois",
-        "summary": "List AOIs belonging to the authenticated user.",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 50
-            }
-          },
-          {
-            "name": "cursor",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "User-owned AOIs.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AoiListResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or invalid authentication.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "AOI not found or not owned by the authenticated user.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Invalid AOI input or geometry.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "gateway"
-        ],
-        "operationId": "gateway_create_user_aoi",
-        "summary": "Create an AOI for the authenticated user.",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AoiCreateRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Created AOI.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Aoi"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or invalid authentication.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "AOI not found or not owned by the authenticated user.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Invalid AOI input or geometry.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/aois/{aoi_id}": {
-      "get": {
-        "tags": [
-          "gateway"
-        ],
-        "operationId": "gateway_get_user_aoi",
-        "summary": "Retrieve an AOI owned by the authenticated user.",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "aoi_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "AOI details.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Aoi"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or invalid authentication.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "AOI not found or not owned by the authenticated user.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Invalid AOI input or geometry.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "patch": {
-        "tags": [
-          "gateway"
-        ],
-        "operationId": "gateway_update_user_aoi",
-        "summary": "Update an owned AOI and increment its revision.",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "aoi_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AoiUpdateRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Updated AOI.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Aoi"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or invalid authentication.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "AOI not found or not owned by the authenticated user.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "AOI revision conflict.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Invalid AOI input or geometry.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "gateway"
-        ],
-        "operationId": "gateway_delete_user_aoi",
-        "summary": "Delete an owned AOI. Existing request snapshots are unaffected.",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "aoi_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "AOI deleted."
-          },
-          "401": {
-            "description": "Missing or invalid authentication.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "AOI not found or not owned by the authenticated user.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  },
-  "components": {
-    "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "description": "Bearer token required by every business operation."
-      }
-    },
-    "schemas": {
-      "ErrorResponse": {
-        "type": "object",
-        "additionalProperties": false,
-        "description": "Stable error envelope returned by every failed MEOGAP REST operation.",
-        "required": [
-          "code",
-          "message",
-          "service",
-          "operation"
-        ],
-        "properties": {
-          "code": {
-            "type": "string",
-            "description": "Machine-readable error code."
-          },
-          "message": {
-            "type": "string",
-            "description": "Human-readable error message."
-          },
-          "service": {
-            "type": "string",
-            "description": "Logical service that produced the error."
-          },
-          "operation": {
-            "type": "string",
-            "description": "Operation identifier or request path that failed."
-          }
-        }
-      },
-      "HealthResponse": {
-        "type": "object",
-        "additionalProperties": false,
-        "description": "Liveness payload exposed by every MEOGAP service.",
-        "required": [
-          "status",
-          "service",
-          "version"
-        ],
-        "properties": {
-          "status": {
-            "type": "string",
-            "description": "Service status; ok when the process answers."
-          },
-          "service": {
-            "type": "string",
-            "description": "Logical service name."
-          },
-          "version": {
-            "type": "string",
-            "description": "Service version."
-          }
-        }
-      },
-      "AoiGeometry": {
-        "type": "object",
-        "description": "RFC 7946 GeoJSON Polygon or MultiPolygon in WGS 84 longitude/latitude coordinates.",
-        "required": [
-          "type",
-          "coordinates"
-        ],
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "Polygon",
-              "MultiPolygon"
-            ]
-          },
-          "coordinates": {
-            "type": "array"
-          }
-        }
-      },
-      "Aoi": {
-        "type": "object",
-        "required": [
-          "aoi_id",
-          "name",
-          "geometry",
-          "revision",
-          "created_at",
-          "updated_at"
-        ],
-        "properties": {
-          "aoi_id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 120
-          },
-          "description": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "maxLength": 1000
-          },
-          "geometry": {
-            "$ref": "#/components/schemas/AoiGeometry"
-          },
-          "revision": {
-            "type": "integer",
-            "minimum": 1
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "AoiListResponse": {
-        "type": "object",
-        "required": [
-          "items"
-        ],
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Aoi"
-            }
-          },
-          "next_cursor": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        }
-      },
-      "AoiCreateRequest": {
-        "type": "object",
-        "required": [
-          "name",
-          "geometry"
-        ],
-        "properties": {
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 120
-          },
-          "description": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "maxLength": 1000
-          },
-          "geometry": {
-            "$ref": "#/components/schemas/AoiGeometry"
-          }
-        }
-      },
-      "AoiUpdateRequest": {
-        "type": "object",
-        "minProperties": 1,
-        "properties": {
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 120
-          },
-          "description": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "maxLength": 1000
-          },
-          "geometry": {
-            "$ref": "#/components/schemas/AoiGeometry"
-          }
-        }
-      }
-    }
-  },
   "x-meogap-status": {
-    "level": "m0-structural",
-    "requestAndSuccessSchemas": "open",
-    "openDecisionRefs": [
-      "M1-E07-T01",
-      "M1-E07-T02"
+    "level": "m0-demo",
+    "requestAndSuccessSchemas": "defined",
+    "limitations": [
+      "Deterministic in-memory demo responses only.",
+      "No EO acquisition, scientific processing, or financial credit ledger is implemented."
     ]
   },
   "x-meogap-transport": "public-rest"

@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from threading import Event, Lock
 
 import uvicorn
+from fastapi import APIRouter
 
 from meogap.app.base import BaseInterface
 from meogap.rest.contracts import Operation
@@ -23,6 +24,7 @@ class RestInterface(BaseInterface):
         self,
         config: RestAppConfig,
         operations: Sequence[Operation] = (),
+        routers: Sequence[APIRouter] = (),
         *,
         host: str = DEFAULT_REST_HOST,
         port: int = DEFAULT_REST_PORT,
@@ -33,7 +35,8 @@ class RestInterface(BaseInterface):
         Args:
         ----
             config(RestAppConfig): REST application configuration.
-            operations(Sequence[Operation]): business operations owned by the service.
+            operations(Sequence[Operation]): stubbed business operations owned by the service.
+            routers(Sequence[APIRouter]): implemented business routers owned by the service.
             host(str): bind address.
             port(int): bind port.
             log_level(str): uvicorn log level.
@@ -45,10 +48,11 @@ class RestInterface(BaseInterface):
         """
         self.config = config
         self.operations = tuple(operations)
+        self.routers = tuple(routers)
         self.host = host
         self.port = port
         self.log_level = log_level
-        self.app = create_rest_app(config, self.operations)
+        self.app = create_rest_app(config, self.operations, self.routers)
         self._server: uvicorn.Server | None = None
         self._server_lock = Lock()
         self._stop_requested = Event()

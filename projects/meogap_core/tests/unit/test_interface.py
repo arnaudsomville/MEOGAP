@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import ClassVar
 
 import pytest
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
+from fastapi.testclient import TestClient
 from pytest import MonkeyPatch
 
 from meogap.rest.contracts import INTERNAL_HEALTH_PATH, Operation
@@ -82,6 +83,40 @@ def test_rest_interface_exposes_the_application_and_name() -> None:
     assert isinstance(interface.app, FastAPI)
     assert interface.name == f'{SERVICE}-rest'
     assert interface.operations == (OPERATION,)
+
+
+def test_rest_interface_includes_implemented_routers() -> None:
+    """Validate a service can supply implemented routes without using stub operations.
+
+    Args:
+    ----
+        None
+
+    Returns:
+    -------
+        None
+
+    """
+    # Arrange
+    router = APIRouter()
+
+    @router.get('/internal/v1/implemented')
+    def implemented() -> dict[str, str]:
+        """Return an implemented route payload.
+
+        Returns
+        -------
+            dict[str, str]: stable test payload.
+
+        """
+        return {'status': 'implemented'}
+
+    interface = RestInterface(build_config(), routers=(router,))
+    # Act
+    response = TestClient(interface.app).get('/internal/v1/implemented', headers={'Authorization': 'Bearer test'})
+    # Assert
+    assert interface.routers == (router,)
+    assert response.json() == {'status': 'implemented'}
 
 
 def test_rest_interface_runs_uvicorn_with_the_configured_address(monkeypatch: MonkeyPatch) -> None:

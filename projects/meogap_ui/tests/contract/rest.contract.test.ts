@@ -127,6 +127,8 @@ describe('REST reference contract', () => {
         'fetch',
         vi.fn(async () => ({
           ok: true,
+          status: 200,
+          headers: { get: () => null },
           json: async () => ({ status: 'ok', service: 'gateway', version: 1 }),
         })),
       )

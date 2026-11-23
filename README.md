@@ -78,14 +78,15 @@ Service projects (`gateway`, `contract`, `scientific_processing`, `catalog`, `me
 
 ### Current M0 boundaries
 
-- Business REST operations are contract-compliant `501 Not Implemented` stubs; only health is implemented.
+- The public Gateway provides a deterministic in-memory M0 demo for catalogue, AOI, request, result and delivery journeys. Every response carries `X-MEOGAP-Demo: true`; no EO acquisition, scientific processing, persistent storage, or financial credit ledger is implemented.
+- Business REST operations in the internal services remain contract-compliant `501 Not Implemented` stubs; only their health routes are implemented.
 - Internal REST contracts are provisional M0 scaffolding. The architecture leaves internal physical transports open; no NATS contracts are selected.
 
 The transport decision is recorded as proposed, not approved, in `documentation/architecture/adr/ADR-0001-internal-transports.md`.
 - Bearer authentication is an M0 presence/syntax check, not production authentication. It does not establish a verified business identity.
 - The raw Bearer credential is a mock artefact only; it is not an owner identifier or an authorization decision.
 - Shared REST/application infrastructure currently lives in `meogap_core` as a pragmatic M0 foundation. This is accepted for now; extracting it would require a concrete architectural benefit and a separate decision.
-- A minimal Gateway catalogue response and the corresponding UI catalogue/map slice are deferred until the Product, Request and Result schemas are approved (M1-E07 contract tickets).
+- The Gateway and UI M0 demo use documented product, request, result and delivery schemas. Their deterministic content is explicitly labelled as demo data and is not a scientific product claim.
 
 ---
 

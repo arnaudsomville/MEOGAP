@@ -76,9 +76,11 @@ def validate_operation(path: Path, path_name: str, method: str, operation: dict[
         if operation.get('security') != []:
             raise ContractError(f'{path}: health route must be public')
         return
-    for status in ('401', '501'):
-        if status not in responses:
-            raise ContractError(f'{path}: {method.upper()} {path_name} missing {status}')
+    if '401' not in responses:
+        raise ContractError(f'{path}: {method.upper()} {path_name} missing 401')
+    has_success = any(str(status).startswith('2') for status in responses)
+    if not has_success and '501' not in responses:
+        raise ContractError(f'{path}: {method.upper()} {path_name} needs a success response or 501 stub response')
 
 
 def validate_contract(path: Path) -> dict[str, Any]:

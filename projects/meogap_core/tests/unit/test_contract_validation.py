@@ -4,9 +4,9 @@ import copy
 
 import jsonschema
 import pytest
+from fastapi import FastAPI
 
 from meogap.rest.contracts import PUBLIC_API_PREFIX, PUBLIC_HEALTH_PATH, Operation
-from meogap.rest.factory import RestAppConfig, create_rest_app
 from meogap.test_utilities.contracts import (
     ContractCase,
     assert_contract_compliance,
@@ -141,7 +141,7 @@ def test_incompatible_response_status_is_rejected() -> None:
     """
     # Arrange
     document = copy.deepcopy(CONTRACT)
-    document['paths']['/api/v1/catalogue/products']['get']['responses'].pop('501')
+    document['paths']['/api/v1/catalogue/products']['get']['responses'].pop('200')
     # Act / Assert
     with pytest.raises(AssertionError, match='responses differ'):
         assert_provider_document_matches(CONTRACT, document, 'gateway')
@@ -161,7 +161,7 @@ def test_incompatible_error_response_is_rejected() -> None:
     """
     # Arrange
     document = copy.deepcopy(CONTRACT)
-    document['paths']['/api/v1/catalogue/products']['get']['responses']['501']['content']['application/json'][
+    document['paths']['/api/v1/catalogue/products']['get']['responses']['401']['content']['application/json'][
         'schema'
     ] = {'$ref': '#/components/schemas/HealthResponse'}
     # Act / Assert
@@ -204,6 +204,12 @@ class FakeClient:
 
     status_code = 200
     payload: object = {'status': 'ok', 'service': 'gateway', 'version': '0.1.0'}
+    unauthorized_payload: object = {
+        'code': 'UNAUTHORIZED',
+        'message': 'missing',
+        'service': 'gateway',
+        'operation': 'op',
+    }
 
     def __init__(self, app: object) -> None:
         """Initialize the fake client.
@@ -250,9 +256,7 @@ class FakeClient:
         """
         _ = method, path
         if not headers:
-            return FakeResponse(
-                401, {'code': 'UNAUTHORIZED', 'message': 'missing', 'service': 'gateway', 'operation': 'op'}
-            )
+            return FakeResponse(401, self.unauthorized_payload)
         return FakeResponse(self.status_code, self.payload)
 
 
@@ -271,15 +275,8 @@ def build_case() -> ContractCase:
         for method, operation in item.items()
         if method in {'get', 'post', 'put', 'patch', 'delete'}
     )
-    app = create_rest_app(
-        RestAppConfig(
-            service='gateway',
-            title=CONTRACT['info']['title'],
-            version='0.1.0',
-            health_path=PUBLIC_HEALTH_PATH,
-        ),
-        operations,
-    )
+    app = FastAPI(title=CONTRACT['info']['title'], version='0.1.0')
+    app.openapi = lambda: copy.deepcopy(CONTRACT)  # type: ignore[method-assign]
     return ContractCase(
         service='gateway',
         contract_path=contract_path('gateway'),
@@ -290,8 +287,8 @@ def build_case() -> ContractCase:
     )
 
 
-def test_incompatible_behavior_status_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Validate a provider returning the wrong business status fails.
+def test_implemented_operations_do_not_require_stub_behavior(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Validate implemented operations are not forced through a 501 stub assertion.
 
     Args:
     ----
@@ -307,8 +304,7 @@ def test_incompatible_behavior_status_is_rejected(monkeypatch: pytest.MonkeyPatc
     FakeClient.payload = {'status': 'ok', 'service': 'gateway', 'version': '0.1.0'}
     monkeypatch.setattr('meogap.test_utilities.contracts.TestClient', FakeClient)
     # Act / Assert
-    with pytest.raises(AssertionError):
-        assert_contract_compliance(build_case())
+    assert_contract_compliance(build_case()) is None
 
 
 def test_incompatible_error_body_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -324,8 +320,7 @@ def test_incompatible_error_body_is_rejected(monkeypatch: pytest.MonkeyPatch) ->
 
     """
     # Arrange
-    FakeClient.status_code = 501
-    FakeClient.payload = {'code': 'NOT_IMPLEMENTED'}
+    monkeypatch.setattr(FakeClient, 'unauthorized_payload', {'code': 'UNAUTHORIZED'})
     monkeypatch.setattr('meogap.test_utilities.contracts.TestClient', FakeClient)
     # Act / Assert
     with pytest.raises(jsonschema.ValidationError):

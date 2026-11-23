@@ -22,6 +22,36 @@ OPERATIONS: tuple[Operation, ...] = (
         'Inspect abstract scientific input requirements.',
     ),
     Operation(
+        'GET',
+        f'{PUBLIC_API_PREFIX}/aois',
+        'gateway_list_user_aois',
+        'List AOIs owned by the authenticated user.',
+    ),
+    Operation(
+        'POST',
+        f'{PUBLIC_API_PREFIX}/aois',
+        'gateway_create_user_aoi',
+        'Create an AOI owned by the authenticated user.',
+    ),
+    Operation(
+        'GET',
+        f'{PUBLIC_API_PREFIX}/aois/{{aoi_id}}',
+        'gateway_get_user_aoi',
+        'Retrieve an AOI owned by the authenticated user.',
+    ),
+    Operation(
+        'PATCH',
+        f'{PUBLIC_API_PREFIX}/aois/{{aoi_id}}',
+        'gateway_update_user_aoi',
+        'Update an owned AOI and increment its revision.',
+    ),
+    Operation(
+        'DELETE',
+        f'{PUBLIC_API_PREFIX}/aois/{{aoi_id}}',
+        'gateway_delete_user_aoi',
+        'Delete an owned AOI. Existing request snapshots are unaffected.',
+    ),
+    Operation(
         'POST',
         f'{PUBLIC_API_PREFIX}/analysis-requests',
         'gateway_create_analysis_request',

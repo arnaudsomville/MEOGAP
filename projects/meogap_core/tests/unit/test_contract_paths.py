@@ -44,10 +44,10 @@ def test_load_contract_for_marks_the_expected_service() -> None:
     contract = load_contract_for('gateway')
     # Assert
     assert contract['info']['title'] == 'MEOGAP Gateway'
-    example = contract['paths']['/api/v1/catalogue/products']['get']['responses']['401']['content']['application/json'][
-        'example'
+    schema = contract['paths']['/api/v1/catalogue/products']['get']['responses']['401']['content']['application/json'][
+        'schema'
     ]
-    assert example['service'] == 'gateway'
+    assert schema['$ref'] == '#/components/schemas/ErrorResponse'
 
 
 def test_unknown_provider_is_rejected() -> None:

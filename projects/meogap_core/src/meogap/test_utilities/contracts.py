@@ -575,6 +575,9 @@ def assert_contract_compliance(case: ContractCase) -> None:
         assert payload['code'] == UNAUTHORIZED_CODE
 
     for method, path in sorted(expected):
+        operation = contract['paths'][path][method.lower()]
+        if '501' not in operation['responses']:
+            continue
         result = client.request(method, concrete_path(path), headers=BEARER_HEADERS)
         assert result.status_code == status.HTTP_501_NOT_IMPLEMENTED, (method, path)
         payload = result.json()
