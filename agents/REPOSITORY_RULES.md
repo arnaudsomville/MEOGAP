@@ -98,6 +98,10 @@ The interface contracts are language-neutral reference documents, not executable
   and proves they match the reference in contract tests.
 - Shared Python REST, authentication and process-lifecycle behaviour belongs in `projects/meogap_core`, not in
   the contracts project. Services use `BaseApplication` and `RestInterface` for app management.
+- Providers and consumers resolve contracts through `projects/meogap_interfaces/contracts.json`; do not hard-code
+  relative contract paths. Each component declares its provider in its own tooling configuration.
+- A request or success schema that has not been approved MUST be marked open in the contract. Do not invent
+  Product, Request, Result, Asset or Delivery schemas to remove an open marker.
 - Every service project MUST organize its package into `core/`, `infrastructure/` and `application/`, with a thin
   package-root `main.py` entrypoint.
 - A contract change MUST update the reference document, the implementing component and its contract tests in the

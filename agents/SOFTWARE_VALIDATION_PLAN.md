@@ -52,8 +52,9 @@ and `regression`. See `UNIT_TEST_GUIDE.md` §19.
   `make test-contract-modified-projects`. CI runs the modified-project variant on branches and the full variant on
   the default branch and tags.
 - **Rules:** contract tests MUST NOT be replaced by comparing two copies of the same generated schema. They MUST
-  exercise the running component. A contract change without a corresponding implementation and test change MUST
-  fail.
+  exercise the running component. Provider checks MUST compare generated OpenAPI models and route behavior; consumer
+  checks MUST exercise runtime parsing. Negative tests MUST mutate provider/consumer outputs or routes to prove
+  divergence is detected. A contract change without a corresponding implementation and test change MUST fail.
 
 ### 3) Non-regression tests
 - **Purpose:** act as a behavioral freeze ("code freeze") ensuring identical behavior across refactors when

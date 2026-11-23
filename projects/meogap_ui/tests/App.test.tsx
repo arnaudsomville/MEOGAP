@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from '../src/App'
 import type { Health } from '../src/api/client'
 
-function mockHealth(health: Health = { status: 'ok', service: 'gat', version: '0.1.0' }) {
+function mockHealth(health: Health = { status: 'ok', service: 'gateway', version: '0.1.0' }) {
   const fetchMock = vi.fn(async () => ({
     ok: true,
     json: async () => health,
@@ -24,7 +24,7 @@ describe('App', () => {
     render(<App />)
 
     expect(await screen.findByText(/API: ok/)).toBeInTheDocument()
-    expect(screen.getByText(/gat 0.1.0/)).toBeInTheDocument()
+    expect(screen.getByText(/gateway 0.1.0/)).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/health')
   })
 
@@ -78,7 +78,7 @@ describe('App', () => {
     unmount()
     resolveFetch({
       ok: true,
-      json: async () => ({ status: 'ok', service: 'gat', version: '0.1.0' }),
+      json: async () => ({ status: 'ok', service: 'gateway', version: '0.1.0' }),
     })
     await pending
     await Promise.resolve()

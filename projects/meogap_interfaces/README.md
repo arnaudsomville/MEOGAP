@@ -8,12 +8,22 @@ This project contains data only. It deliberately has no Python package, no JavaS
 
 ```text
 projects/meogap_interfaces/
+├── contracts.json  # provider -> contract manifest
 └── rest/
-    ├── gat.openapi.json  # public gateway
-    ├── con.openapi.json  # control and orchestration
-    ├── sci.openapi.json  # scientific processing
-    └── cat.openapi.json  # data and asset catalogue
+    ├── gateway.openapi.json  # public gateway (GAT)
+    ├── contract.openapi.json  # contract and orchestration (CON)
+    ├── scientific_processing.openapi.json  # scientific processing (SCI)
+    └── catalog.openapi.json  # data and asset catalogue (CAT)
 ```
+
+## Naming map
+
+| Logical component | Provider / project | Contract |
+| --- | --- | --- |
+| GAT | `gateway` | `rest/gateway.openapi.json` |
+| CON | `contract` | `rest/contract.openapi.json` |
+| SCI | `scientific_processing` | `rest/scientific_processing.openapi.json` |
+| CAT | `catalog` | `rest/catalog.openapi.json` |
 
 ## Rules
 
@@ -24,6 +34,8 @@ projects/meogap_interfaces/
 - Health is public and returns `200`. Every other business operation returns `501` until it is implemented.
 - A contract change requires updating the JSON, the implementing component, and the component's contract tests in the same change.
 - Keep the shared `ErrorResponse` and `HealthResponse` schemas identical across the four documents.
+- Resolve contracts through `contracts.json`; do not hard-code relative paths in tests.
+- Request and success response schemas that are not yet approved are explicitly marked open and MUST NOT be invented.
 
 ## Validation
 
@@ -34,9 +46,9 @@ make test-contract-all
 make test-parity-contracts
 ```
 
-`make test-contract-all` validates the OpenAPI documents and runs each component's contract tests. `make test-parity-contracts` checks that the shared schemas stay aligned across services.
+`make test-contract-all` validates the OpenAPI documents and runs each component's contract tests. `make test-parity-contracts` checks that the shared schemas stay aligned across services. The manifest `contracts.json` is the single provider-to-contract map; tests resolve it without assuming a working directory.
 
-The UI validates its local payload types against `gat.openapi.json` with:
+The UI validates its local payload types against `gateway.openapi.json` with:
 
 ```bash
 cd projects/meogap_ui

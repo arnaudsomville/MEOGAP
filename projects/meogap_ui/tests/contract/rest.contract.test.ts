@@ -1,13 +1,15 @@
 import Ajv2020 from 'ajv/dist/2020.js'
-import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vitest'
-import type { ApiError, Health } from '../../src/api/client'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import {
+  getHealth,
+  parseApiError,
+  parseHealth,
+  type ApiError,
+  type Health,
+} from '../../src/api/client'
+import { loadContract } from './contracts'
 
-const here = dirname(fileURLToPath(import.meta.url))
-const contractPath = resolve(here, '../../../meogap_interfaces/rest/gat.openapi.json')
-const contract = JSON.parse(readFileSync(contractPath, 'utf8')) as {
+const contract = loadContract() as {
   openapi: string
   info: { title: string }
   paths: Record<string, Record<string, unknown>>
@@ -15,11 +17,15 @@ const contract = JSON.parse(readFileSync(contractPath, 'utf8')) as {
   security: unknown[]
 }
 
-const ajv = new Ajv2020({ allErrors: true, strict: false })
-ajv.addSchema(contract, 'gat')
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
-const validateHealth = ajv.getSchema('gat#/components/schemas/HealthResponse')
-const validateError = ajv.getSchema('gat#/components/schemas/ErrorResponse')
+const ajv = new Ajv2020({ allErrors: true, strict: false })
+ajv.addSchema(contract, 'gateway')
+
+const validateHealth = ajv.getSchema('gateway#/components/schemas/HealthResponse')
+const validateError = ajv.getSchema('gateway#/components/schemas/ErrorResponse')
 
 if (!validateHealth || !validateError) {
   throw new Error('The reference contract is missing a shared schema.')
@@ -28,7 +34,7 @@ if (!validateHealth || !validateError) {
 describe('REST reference contract', () => {
   it('is a committed OpenAPI 3.1 document', { tags: ['contract'] }, () => {
     expect(contract.openapi).toBe('3.1.0')
-    expect(contract.info.title).toBe('MEOGAP Gateway (GAT)')
+    expect(contract.info.title).toBe('MEOGAP Gateway')
   })
 
   it('declares bearer security and a public health route', { tags: ['contract'] }, () => {
@@ -41,7 +47,7 @@ describe('REST reference contract', () => {
   })
 
   it('accepts the UI health payload', { tags: ['contract'] }, () => {
-    const payload: Health = { status: 'ok', service: 'gat', version: '0.1.0' }
+    const payload: Health = { status: 'ok', service: 'gateway', version: '0.1.0' }
     expect(validateHealth(payload)).toBe(true)
   })
 
@@ -49,19 +55,82 @@ describe('REST reference contract', () => {
     const payload: ApiError = {
       code: 'NOT_IMPLEMENTED',
       message: 'Not implemented.',
-      service: 'gat',
-      operation: 'gat_list_products',
+      service: 'gateway',
+      operation: 'gateway_list_products',
     }
     expect(validateError(payload)).toBe(true)
   })
 
   it('rejects an error payload missing a required field', { tags: ['contract'] }, () => {
-    const payload = { message: 'Not implemented.', service: 'gat', operation: 'gat_list_products' }
+    const payload = {
+      message: 'Not implemented.',
+      service: 'gateway',
+      operation: 'gateway_list_products',
+    }
     expect(validateError(payload)).toBe(false)
   })
 
   it('rejects a health payload with an unexpected field', { tags: ['contract'] }, () => {
-    const payload = { status: 'ok', service: 'gat', version: '0.1.0', core_version: '0.1.0' }
+    const payload = { status: 'ok', service: 'gateway', version: '0.1.0', core_version: '0.1.0' }
     expect(validateHealth(payload)).toBe(false)
   })
+
+  it('parses a valid health payload at runtime', { tags: ['contract'] }, () => {
+    expect(parseHealth({ status: 'ok', service: 'gateway', version: '0.1.0' })).toEqual({
+      status: 'ok',
+      service: 'gateway',
+      version: '0.1.0',
+    })
+  })
+
+  it('rejects a health payload with an incompatible type', { tags: ['contract'] }, () => {
+    expect(() => parseHealth({ status: 200, service: 'gateway', version: '0.1.0' })).toThrow(
+      'Invalid payload: status must be a string',
+    )
+  })
+
+  it('rejects a health payload with a missing field', { tags: ['contract'] }, () => {
+    expect(() => parseHealth({ status: 'ok', version: '0.1.0' })).toThrow('Invalid payload')
+  })
+
+  it('parses a valid API error payload at runtime', { tags: ['contract'] }, () => {
+    expect(
+      parseApiError({
+        code: 'NOT_IMPLEMENTED',
+        message: 'Not implemented.',
+        service: 'gateway',
+        operation: 'gateway_list_products',
+      }),
+    ).toEqual({
+      code: 'NOT_IMPLEMENTED',
+      message: 'Not implemented.',
+      service: 'gateway',
+      operation: 'gateway_list_products',
+    })
+  })
+
+  it('rejects an API error payload with a missing field', { tags: ['contract'] }, () => {
+    expect(() =>
+      parseApiError({
+        message: 'Not implemented.',
+        service: 'gateway',
+        operation: 'gateway_list_products',
+      }),
+    ).toThrow('Invalid payload')
+  })
+
+  it(
+    'fails the real consumer when the health response drifts',
+    { tags: ['contract'] },
+    async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => ({
+          ok: true,
+          json: async () => ({ status: 'ok', service: 'gateway', version: 1 }),
+        })),
+      )
+      await expect(getHealth()).rejects.toThrow('Invalid payload: version must be a string')
+    },
+  )
 })

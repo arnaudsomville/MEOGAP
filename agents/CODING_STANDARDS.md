@@ -126,6 +126,10 @@ are exempt. See `agents/UNIT_TEST_GUIDE.md` §18.
   documents, not importable packages.
 - Do not generate Python or TypeScript models from the contracts. Define the objects locally in the component and
   compare them with the reference in `tests/contract/`.
+- Resolve contracts through `projects/meogap_interfaces/contracts.json`; do not hard-code relative paths.
+- Provider tests MUST compare the generated provider OpenAPI document against the reference, including operation IDs,
+  parameters, request bodies, response statuses and response/error schemas. Consumer tests MUST exercise the real
+  runtime parser, not only a manually declared TypeScript type.
 - Shared REST models, routers and bearer authentication belong in `projects/meogap_core` and are imported by
   services. Do not duplicate them per service.
 - Contract tests MUST cover the operation set, the `401` unauthenticated response, the `501` authenticated
@@ -134,8 +138,7 @@ are exempt. See `agents/UNIT_TEST_GUIDE.md` §18.
   See `agents/REPOSITORY_RULES.md` § **“Interface contracts and generated code”**.
 
 ### Service project structure
-- Every project that exposes a service process (`meogap_gat`, `meogap_con`, `meogap_sci`, `meogap_cat`,
-  `meogap_worker`) MUST organize its package into three main modules:
+- Every project that exposes a service process (`gateway`, `contract`, `scientific_processing`, `catalog`, `meogap_worker`) MUST organize its package into three main modules:
   - `core/`: business logic and domain models;
   - `infrastructure/`: concrete outbound interfaces and adapters;
   - `application/`: application layer, lifecycle subclass and inbound interfaces.

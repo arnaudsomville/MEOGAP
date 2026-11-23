@@ -9,6 +9,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACTS = ROOT / 'projects' / 'meogap_interfaces' / 'rest'
+MANIFEST = CONTRACTS.parent / 'contracts.json'
 REQUIRED_SCHEMAS = ('ErrorResponse', 'HealthResponse')
 HTTP_METHODS = {'get', 'post', 'put', 'patch', 'delete'}
 
@@ -145,6 +146,11 @@ def main() -> int:
         print(f'ERROR: no contracts found in {CONTRACTS}', file=sys.stderr)
         return 1
     try:
+        manifest: dict[str, Any] = json.loads(MANIFEST.read_text(encoding='utf-8'))
+        declared = set(manifest.get('contracts', {}).values())
+        actual = {path.relative_to(CONTRACTS.parent).as_posix() for path in files}
+        if declared != actual:
+            raise ContractError(f'contracts.json does not match rest/: {sorted(declared ^ actual)}')
         documents = {path.name: validate_contract(path) for path in files}
         validate_shared_schemas(documents)
     except ContractError as exc:

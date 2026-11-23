@@ -53,7 +53,7 @@ NON_CODE_PATTERN ?= ^agents/|^documentation/|^project_templates/|^\.sops\.yaml$$
 # introducing a new language, then implement tests-<lang> and test-parity-<lang>.
 lang = $(if $(wildcard projects/$(1)/pyproject.toml),python,$(if $(wildcard projects/$(1)/package.json),node,$(if $(wildcard projects/$(1)/Cargo.toml),rust,$(if $(wildcard projects/$(1)/rest),contracts,unknown))))
 
-.PHONY: help install install-python install-python-project install-js install-js-project install-contracts install-modified-projects install-tooling install-dev-tooling ensure-node sync tests tests-python tests-node tests-rust tests-unknown tests-contracts tests-all test-contract test-contract-all test-contract-modified-projects test-modified-projects ci-modified-projects ci-all code-quality code-quality-format code-quality-lint code-quality-type code-quality-dockerfile code-quality-test-files test-parity-python test-parity-node test-parity-rust test-parity-contracts test-parity-unknown code-quality-modified-projects code-quality-all build build_and_analyse_cve build-all-images build-all build-and-push build-and-push-all docker-builder-create docker-builder-rm docker-clean docker-clean-ci clean clean-all clean-python-artifacts clean-node-artifacts shell docker-push sops-encrypt-all sops-decrypt-all run-meogap stop-meogap free-ports kill-meogap list-projects list-modified-projects list-affected-projects ensure-target-base-branch ssh-command ensure-git-ssh install-project ensure-project run-post-install
+.PHONY: help install install-python install-python-project install-js install-js-project install-contracts install-modified-projects install-tooling install-dev-tooling ensure-node sync tests tests-python tests-node tests-rust tests-unknown tests-contracts tests-all test-contract test-contract-all test-contract-modified-projects test-modified-projects ci-modified-projects ci-all code-quality code-quality-format code-quality-lint code-quality-type code-quality-dockerfile code-quality-test-files test-parity-python test-parity-node test-parity-rust test-parity-contracts test-parity-unknown code-quality-modified-projects code-quality-all build build_and_analyse_cve build-all-images build-all build-and-push docker-smoke build-and-push-all docker-builder-create docker-builder-rm docker-clean docker-clean-ci clean clean-all clean-python-artifacts clean-node-artifacts shell docker-push sops-encrypt-all sops-decrypt-all run-meogap stop-meogap free-ports kill-meogap list-projects list-modified-projects list-affected-projects ensure-target-base-branch ssh-command ensure-git-ssh install-project ensure-project run-post-install
 
 help:
 	@echo "Usage:"
@@ -90,6 +90,7 @@ help:
 	@echo "       Uses build_secrets_decrypted/env_variables for Harbor auth"
 	@echo "  make build-all-images              Build Docker images for all projects"
 	@echo "  make build-all                     Build Docker images for all projects"
+	@echo "  make docker-smoke                  Build, start and smoke-test the Compose stack"
 	@echo "  make run-meogap                    Build all images and start the MEOGAP stack"
 	@echo "  make stop-meogap                   Stop and remove the MEOGAP stack"
 	@echo "  make free-ports                    Free MEOGAP ports (8000, 8080, 5173)"
@@ -561,6 +562,14 @@ build-all-images:
 build-all:
 	@$(MAKE) build-all-images
 
+# Build, start and smoke-test the Compose stack, including every declared route.
+docker-smoke:
+	@$(MAKE) build-all-images
+	@set -e; \
+		TAG_VERSION="$(TAG_VERSION)" docker compose up -d --remove-orphans; \
+		trap 'TAG_VERSION="$(TAG_VERSION)" docker compose down -v --remove-orphans' EXIT; \
+		python3 "$(REPO_ROOT)/tools/smoke_services.py"
+
 # ---------------------------- Full stack ----------------------------
 
 run-meogap: sops-decrypt-all
@@ -570,10 +579,10 @@ run-meogap: sops-decrypt-all
 	@TAG_VERSION="$(TAG_VERSION)" docker compose up -d --remove-orphans
 	@echo ""
 	@echo "MEOGAP stack is up. Services:"
-	@echo "  GAT:               http://localhost:8000"
-	@echo "  GAT documentation: http://localhost:8000/docs"
-	@echo "  GAT health:        http://localhost:8000/api/v1/health"
-	@echo "  Internal services: con, sci, cat (no host ports)"
+	@echo "  Gateway:           http://localhost:8000"
+	@echo "  Gateway docs:      http://localhost:8000/docs"
+	@echo "  Gateway health:    http://localhost:8000/api/v1/health"
+	@echo "  Internal services: contract, scientific_processing, catalog (no host ports)"
 	@echo "  UI:                http://localhost:8080"
 	@echo "  UI health:         http://localhost:8080/healthz"
 	@echo "  Worker logs:       docker compose logs -f worker"
@@ -743,7 +752,7 @@ list-modified-projects:
 
 # List projects affected by the current changes:
 # - changed projects;
-# - their dependents (for example meogap_core -> meogap_api, meogap_worker);
+# - their dependents (for example meogap_core -> service projects and meogap_worker);
 # - all projects when a root code/tooling file changes.
 list-affected-projects:
 	@$(MAKE) -s ensure-target-base-branch TARGET_BASE_BRANCH=$(TARGET_BASE_BRANCH)
@@ -764,8 +773,8 @@ list-affected-projects:
 		for project in $$(echo "$$changed" | grep '^projects/' | cut -d/ -f2 | sort -u); do \
 			[ -d "projects/$$project" ] && echo "$$project"; \
 			case "$$project" in \
-				meogap_core) printf '%s\n' meogap_gat meogap_con meogap_sci meogap_cat meogap_worker ;; \
-				meogap_interfaces) printf '%s\n' meogap_gat meogap_con meogap_sci meogap_cat meogap_ui ;; \
+				meogap_core) printf '%s\n' gateway contract scientific_processing catalog meogap_worker ;; \
+				meogap_interfaces) printf '%s\n' gateway contract scientific_processing catalog meogap_ui ;; \
 			esac; \
 		done; \
 	} | while IFS= read -r project; do \

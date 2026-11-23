@@ -1,8 +1,11 @@
-"""Bearer identity extraction and enforcement for MEOGAP REST services.
+"""M0 mock bearer credential extraction for MEOGAP REST services.
 
-The middleware validates that a bearer token is present and exposes the parsed
-identity on ``request.state.identity``. Endpoints retrieve it through the
-``get_identity`` dependency instead of parsing headers themselves.
+This is not production authentication. The middleware checks only that a
+single syntactically valid Bearer credential is present and exposes a mock
+credential object on ``request.state.identity``. The raw credential is not a
+verified business identity, owner identifier, or authorization decision.
+The authentication provider, credential format, claims and production trust
+model remain open per ENG-15.
 """
 
 from __future__ import annotations
@@ -38,7 +41,7 @@ DEFAULT_EXEMPT_PATHS = (
 
 @dataclass(frozen=True)
 class Identity:
-    """Caller identity derived from the validated bearer token."""
+    """M0 mock credential holder; not a verified business identity."""
 
     token: str = field(repr=False)
 
@@ -52,7 +55,7 @@ def get_identity(request: Request) -> Identity:
 
     Returns:
     -------
-        Identity: bearer identity populated by the middleware.
+        Identity: M0 mock credential populated by the middleware.
 
     Raises:
     ------
@@ -97,7 +100,7 @@ class BearerIdentityMiddleware(BaseHTTPMiddleware):
         self.exempt_paths = frozenset(DEFAULT_EXEMPT_PATHS) | frozenset(exempt_paths)
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        """Validate the bearer token before forwarding the request.
+        """Validate the bearer credential shape before forwarding the request.
 
         Args:
         ----

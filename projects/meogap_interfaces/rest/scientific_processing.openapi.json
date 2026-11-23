@@ -1,0 +1,401 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MEOGAP Scientific Processing",
+    "version": "0.1.0",
+    "description": "Internal scientific processing service."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8002",
+      "description": "Local SCI service."
+    }
+  ],
+  "tags": [
+    {
+      "name": "scientific_processing",
+      "description": "Internal scientific processing service."
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/internal/v1/catalogue/products": {
+      "get": {
+        "tags": [
+          "scientific_processing"
+        ],
+        "summary": "Expose the scientific catalogue.",
+        "operationId": "scientific_processing_list_products",
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "scientific_processing",
+                  "operation": "/internal/v1/catalogue/products"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "scientific_processing",
+                  "operation": "scientific_processing_list_products"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/catalogue/products/{product_id}": {
+      "get": {
+        "tags": [
+          "scientific_processing"
+        ],
+        "summary": "Expose a scientific product definition.",
+        "operationId": "scientific_processing_get_product",
+        "parameters": [
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "description": "Scientific product identifier.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "scientific_processing",
+                  "operation": "/internal/v1/catalogue/products/{product_id}"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "scientific_processing",
+                  "operation": "scientific_processing_get_product"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/evaluations": {
+      "post": {
+        "tags": [
+          "scientific_processing"
+        ],
+        "summary": "Evaluate scientific feasibility and input requirements.",
+        "operationId": "scientific_processing_evaluate_feasibility",
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "scientific_processing",
+                  "operation": "/internal/v1/evaluations"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "scientific_processing",
+                  "operation": "scientific_processing_evaluate_feasibility"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/complexity-estimates": {
+      "post": {
+        "tags": [
+          "scientific_processing"
+        ],
+        "summary": "Estimate technical computation complexity.",
+        "operationId": "scientific_processing_estimate_complexity",
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "scientific_processing",
+                  "operation": "/internal/v1/complexity-estimates"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "scientific_processing",
+                  "operation": "scientific_processing_estimate_complexity"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/computations": {
+      "post": {
+        "tags": [
+          "scientific_processing"
+        ],
+        "summary": "Execute a scientific product computation.",
+        "operationId": "scientific_processing_compute_product",
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "scientific_processing",
+                  "operation": "/internal/v1/computations"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "scientific_processing",
+                  "operation": "scientific_processing_compute_product"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/harmonizations": {
+      "post": {
+        "tags": [
+          "scientific_processing"
+        ],
+        "summary": "Harmonize an original L0 source representation.",
+        "operationId": "scientific_processing_harmonize_source",
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "scientific_processing",
+                  "operation": "/internal/v1/harmonizations"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "scientific_processing",
+                  "operation": "scientific_processing_harmonize_source"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/health": {
+      "get": {
+        "tags": [
+          "scientific_processing"
+        ],
+        "summary": "Report service liveness.",
+        "operationId": "scientific_processing_health",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Service is alive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                },
+                "example": {
+                  "status": "ok",
+                  "service": "scientific_processing",
+                  "version": "0.1.0"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Bearer token required by every business operation."
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Stable error envelope returned by every failed MEOGAP REST operation.",
+        "required": [
+          "code",
+          "message",
+          "service",
+          "operation"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Machine-readable error code."
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message."
+          },
+          "service": {
+            "type": "string",
+            "description": "Logical service that produced the error."
+          },
+          "operation": {
+            "type": "string",
+            "description": "Operation identifier or request path that failed."
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Liveness payload exposed by every MEOGAP service.",
+        "required": [
+          "status",
+          "service",
+          "version"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Service status; ok when the process answers."
+          },
+          "service": {
+            "type": "string",
+            "description": "Logical service name."
+          },
+          "version": {
+            "type": "string",
+            "description": "Service version."
+          }
+        }
+      }
+    }
+  },
+  "x-meogap-status": {
+    "level": "m0-structural",
+    "requestAndSuccessSchemas": "open",
+    "openDecisionRefs": [
+      "M1-E07-T01",
+      "M1-E07-T02"
+    ]
+  },
+  "x-meogap-transport": "provisional-rest-scaffolding"
+}

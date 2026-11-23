@@ -7,6 +7,7 @@ that every service reuses without generating code from those documents.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -14,7 +15,7 @@ from typing import Any
 from fastapi import APIRouter, Security, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 PUBLIC_API_PREFIX = '/api/v1'
 INTERNAL_API_PREFIX = '/internal/v1'
@@ -26,10 +27,13 @@ ERROR_CODE_NOT_IMPLEMENTED = 'NOT_IMPLEMENTED'
 NOT_IMPLEMENTED_MESSAGE = 'Operation is part of the M0 contract but is not implemented yet.'
 NOT_IMPLEMENTED_DESCRIPTION = 'Operation intentionally not implemented in M0.'
 HEALTH_SUMMARY = 'Report service liveness.'
+PATH_PARAMETER_PATTERN = re.compile(r'\{([^}]+)\}')
 
 
 class ErrorResponse(BaseModel):
     """Stable error envelope returned by every failed MEOGAP REST operation."""
+
+    model_config = ConfigDict(extra='forbid')
 
     code: str = Field(description='Machine-readable error code.')
     message: str = Field(description='Human-readable error message.')
@@ -39,6 +43,8 @@ class ErrorResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     """Liveness payload exposed by every MEOGAP service."""
+
+    model_config = ConfigDict(extra='forbid')
 
     status: str = Field(description='Service status; ok when the process answers.')
     service: str = Field(description='Logical service name.')
@@ -93,6 +99,7 @@ def build_base_router(*, service: str, version: str, health_path: str) -> APIRou
         operation_id=f'{service}_health',
         summary=HEALTH_SUMMARY,
         response_model=HealthResponse,
+        status_code=status.HTTP_200_OK,
     )
     return router
 
@@ -159,6 +166,21 @@ def build_not_implemented_router(*, service: str, operations: Sequence[Operation
             name=operation.operation_id,
             operation_id=operation.operation_id,
             summary=operation.summary,
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            response_model=ErrorResponse,
+            openapi_extra={
+                'parameters': [
+                    {
+                        'name': name,
+                        'in': 'path',
+                        'required': True,
+                        'schema': {'type': 'string'},
+                    }
+                    for name in PATH_PARAMETER_PATTERN.findall(operation.path)
+                ]
+            }
+            if PATH_PARAMETER_PATTERN.search(operation.path)
+            else None,
             responses={
                 status.HTTP_401_UNAUTHORIZED: {
                     'model': ErrorResponse,

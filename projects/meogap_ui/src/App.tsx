@@ -56,8 +56,8 @@ export default function App() {
         <section className="panel">
           <h2>Explore</h2>
           <p>
-            The map and product selection will be added here. The backend and worker are already
-            wired to the scientific core.
+            The application shell is ready. Catalogue display and map context are awaiting the
+            Product, Request and Result contract decisions.
           </p>
         </section>
       ) : (

@@ -65,16 +65,27 @@ For more detailed context, see `documentation/project_definition.md`. Agent-spec
 | --- | --- | --- |
 | `meogap_core` | Scientific core library (products, dependencies, quality, spatial/temporal analysis). No Docker image. | Python 3.11 |
 | `meogap_interfaces` | Language-neutral OpenAPI reference contracts. No executable code. | JSON |
-| `meogap_gat` | Public REST gateway, request lifecycle and result access. | Python 3.11 / FastAPI |
-| `meogap_con` | Internal control and orchestration service. | Python 3.11 / FastAPI |
-| `meogap_sci` | Internal scientific processing service. | Python 3.11 / FastAPI |
-| `meogap_cat` | Internal data and asset catalogue service. | Python 3.11 / FastAPI |
+| `gateway` | Public REST gateway (logical GAT), request lifecycle and result access. | Python 3.11 / FastAPI |
+| `contract` | Internal contract, control and orchestration service (logical CON). | Python 3.11 / FastAPI |
+| `scientific_processing` | Internal scientific processing service (logical SCI). | Python 3.11 / FastAPI |
+| `catalog` | Internal data and asset catalogue service (logical CAT). | Python 3.11 / FastAPI |
 | `meogap_worker` | Background execution worker depending on the core. | Python 3.11 |
 | `meogap_ui` | React frontend (map, AOI selection, Requests view). | Node.js / React / Vite |
 
-`meogap_gat`, `meogap_con`, `meogap_sci`, `meogap_cat` and `meogap_worker` depend on `meogap_core` through a local `uv` path source. `meogap_interfaces` is data-only and is not installed. Python projects keep their unit tests under `tests/unit/` and contract tests under `tests/contract/`; the UI keeps unit tests under `tests/` and contract tests under `tests/contract/`.
+`gateway`, `contract`, `scientific_processing`, `catalog` and `meogap_worker` depend on `meogap_core` through a local `uv` path source. `meogap_interfaces` is data-only and is not installed. Python projects keep their unit tests under `tests/unit/` and contract tests under `tests/contract/`; the UI keeps unit tests under `tests/` and contract tests under `tests/contract/`.
 
-Service projects (`meogap_gat`, `meogap_con`, `meogap_sci`, `meogap_cat`, `meogap_worker`) follow the `core` / `infrastructure` / `application` layout, with a thin package-root `main.py` entrypoint. Shared application lifecycle and REST building blocks live in `meogap_core` (`meogap.app` and `meogap.rest`).
+Service projects (`gateway`, `contract`, `scientific_processing`, `catalog`, `meogap_worker`) follow the `core` / `infrastructure` / `application` layout, with a thin package-root `main.py` entrypoint. Shared application lifecycle and REST building blocks live in `meogap_core` (`meogap.app` and `meogap.rest`).
+
+### Current M0 boundaries
+
+- Business REST operations are contract-compliant `501 Not Implemented` stubs; only health is implemented.
+- Internal REST contracts are provisional M0 scaffolding. The architecture leaves internal physical transports open; no NATS contracts are selected.
+
+The transport decision is recorded as proposed, not approved, in `documentation/architecture/adr/ADR-0001-internal-transports.md`.
+- Bearer authentication is an M0 presence/syntax check, not production authentication. It does not establish a verified business identity.
+- The raw Bearer credential is a mock artefact only; it is not an owner identifier or an authorization decision.
+- Shared REST/application infrastructure currently lives in `meogap_core` as a pragmatic M0 foundation. This is accepted for now; extracting it would require a concrete architectural benefit and a separate decision.
+- A minimal Gateway catalogue response and the corresponding UI catalogue/map slice are deferred until the Product, Request and Result schemas are approved (M1-E07 contract tickets).
 
 ---
 
@@ -188,6 +199,10 @@ make test-contract-modified-projects
 
 Contract projects (`projects/meogap_interfaces`) are validated as OpenAPI documents. Service and UI contract tests compare their live surface with the committed reference. See `projects/meogap_interfaces/README.md`.
 
+Contracts are resolved through `projects/meogap_interfaces/contracts.json`. Each service declares its provider in `[tool.meogap.contracts]`; the UI declares `meogapContracts.provider` in `package.json`. Tests resolve the same manifest without relying on the current working directory.
+
+For the UI, `npm test` runs unit and contract tests, `npm run test:unit` runs only unit tests, and `npm run test:contract` runs only the contract-conformance suite.
+
 ### Code quality
 
 Run all code quality hooks for one project:
@@ -287,8 +302,8 @@ make ci-modified-projects
 Project selection is based on the changed files:
 
 - a project change selects that project;
-- a `meogap_core` change also selects `meogap_gat`, `meogap_con`, `meogap_sci`, `meogap_cat` and `meogap_worker`;
-- a `meogap_interfaces` change also selects `meogap_gat`, `meogap_con`, `meogap_sci`, `meogap_cat` and `meogap_ui`;
+- a `meogap_core` change also selects `gateway`, `contract`, `scientific_processing`, `catalog` and `meogap_worker`;
+- a `meogap_interfaces` change also selects `gateway`, `contract`, `scientific_processing`, `catalog` and `meogap_ui`;
 - a root code or tooling change (`Makefile`, `docker-bake.hcl`, root `Dockerfile`, `compose.yaml`, workflows,
   pre-commit configuration, …) selects every project;
 - documentation, `agents/`, `project_templates/`, `.sops.yaml`, `.trivyignore` and Markdown changes do not trigger
@@ -296,8 +311,15 @@ Project selection is based on the changed files:
 
 CI also runs `make test-contract-modified-projects` on development branches and `make test-contract-all` on the
 default branch and tags before the main CI step. The default branch (for example `main`) and tags run
-`make ci-all`, so every project is validated. CI does not build Docker images: image builds are reserved for the
-end-to-end tests introduced by the M0 functional epic.
+`make ci-all`, so every project is validated. Docker image builds and `make docker-smoke` run on the default branch
+and tags; development branches do not build images.
+
+## Open decisions
+
+- Product catalogue, analysis request, result and delivery schemas are not yet approved. They remain explicit open decisions in the M0 contracts and are tracked by the M1-E07 contract tickets (#118, #119, #124–#126).
+- Internal component transports remain unresolved. The current internal REST surfaces are provisional M0 scaffolding; see `documentation/architecture/adr/ADR-0001-internal-transports.md`.
+- The authentication provider, credential format, identity claims and trusted-context representation remain open. Bearer validation is an M0 mock only.
+- A minimal Gateway catalogue response and the corresponding UI catalogue/map slice are deferred until the Product, Request and Result contracts are approved.
 
 ## Notebooks
 
@@ -337,7 +359,13 @@ Build all project images:
 make build-all-images
 ```
 
-Build all images and run the full stack (GAT, CON, SCI, CAT, worker and UI):
+Build, start and smoke-test the Compose stack, including every declared REST route:
+
+```bash
+make docker-smoke
+```
+
+Build all images and run the full stack (`gateway`, `contract`, `scientific_processing`, `catalog`, worker and UI):
 
 ```bash
 make run-meogap
@@ -345,11 +373,11 @@ make run-meogap
 
 This decrypts the build secrets, builds all images, starts the stack and prints the service URLs:
 
-- UI: `http://localhost:8080` (proxies `/api` to the GAT container)
-- GAT: `http://localhost:8000`
-- GAT documentation: `http://localhost:8000/docs`
-- GAT health: `http://localhost:8000/api/v1/health`
-- Internal services: CON, SCI and CAT are reachable only inside the Compose network.
+- UI: `http://localhost:8080` (proxies `/api` to the `gateway` container)
+- Gateway: `http://localhost:8000`
+- Gateway documentation: `http://localhost:8000/docs`
+- Gateway health: `http://localhost:8000/api/v1/health`
+- Internal services: `contract`, `scientific_processing` and `catalog` are reachable only inside the Compose network.
 
 Stop the stack with:
 

@@ -1,0 +1,841 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MEOGAP Gateway",
+    "version": "0.1.0",
+    "description": "Public REST gateway for the MEOGAP platform."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000",
+      "description": "Local GAT service."
+    }
+  ],
+  "tags": [
+    {
+      "name": "gateway",
+      "description": "Public REST gateway for the MEOGAP platform."
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/catalogue/products": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Browse the scientific product catalogue.",
+        "operationId": "gateway_list_products",
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "gateway",
+                  "operation": "/api/v1/catalogue/products"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "gateway",
+                  "operation": "gateway_list_products"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/catalogue/products/{product_id}": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Retrieve a product definition.",
+        "operationId": "gateway_get_product",
+        "parameters": [
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "description": "Scientific product identifier.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "gateway",
+                  "operation": "/api/v1/catalogue/products/{product_id}"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "gateway",
+                  "operation": "gateway_get_product"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/catalogue/products/{product_id}/input-requirements": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Inspect abstract scientific input requirements.",
+        "operationId": "gateway_get_product_input_requirements",
+        "parameters": [
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "description": "Scientific product identifier.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "gateway",
+                  "operation": "/api/v1/catalogue/products/{product_id}/input-requirements"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "gateway",
+                  "operation": "gateway_get_product_input_requirements"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis-requests": {
+      "post": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Submit an analysis request.",
+        "operationId": "gateway_create_analysis_request",
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "gateway",
+                  "operation": "/api/v1/analysis-requests"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "gateway",
+                  "operation": "gateway_create_analysis_request"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "List analysis requests.",
+        "operationId": "gateway_list_analysis_requests",
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "gateway",
+                  "operation": "/api/v1/analysis-requests"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "gateway",
+                  "operation": "gateway_list_analysis_requests"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis-requests/{request_id}/confirm": {
+      "post": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Confirm a proposed analysis request.",
+        "operationId": "gateway_confirm_analysis_request",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "description": "Analysis request identifier.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "gateway",
+                  "operation": "/api/v1/analysis-requests/{request_id}/confirm"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "gateway",
+                  "operation": "gateway_confirm_analysis_request"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis-requests/{request_id}": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Retrieve the authoritative request state.",
+        "operationId": "gateway_get_analysis_request",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "description": "Analysis request identifier.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "gateway",
+                  "operation": "/api/v1/analysis-requests/{request_id}"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "gateway",
+                  "operation": "gateway_get_analysis_request"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis-requests/{request_id}/cancel": {
+      "post": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Request analysis cancellation.",
+        "operationId": "gateway_cancel_analysis_request",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "description": "Analysis request identifier.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "gateway",
+                  "operation": "/api/v1/analysis-requests/{request_id}/cancel"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "gateway",
+                  "operation": "gateway_cancel_analysis_request"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/results/{result_id}/map": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Request a map representation.",
+        "operationId": "gateway_get_result_map",
+        "parameters": [
+          {
+            "name": "result_id",
+            "in": "path",
+            "required": true,
+            "description": "Result identifier.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "gateway",
+                  "operation": "/api/v1/results/{result_id}/map"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "gateway",
+                  "operation": "gateway_get_result_map"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/results/{result_id}/series": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Request an analytical series.",
+        "operationId": "gateway_get_result_series",
+        "parameters": [
+          {
+            "name": "result_id",
+            "in": "path",
+            "required": true,
+            "description": "Result identifier.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "gateway",
+                  "operation": "/api/v1/results/{result_id}/series"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "gateway",
+                  "operation": "gateway_get_result_series"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/results/{result_id}/lineage": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Inspect result lineage.",
+        "operationId": "gateway_get_result_lineage",
+        "parameters": [
+          {
+            "name": "result_id",
+            "in": "path",
+            "required": true,
+            "description": "Result identifier.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "gateway",
+                  "operation": "/api/v1/results/{result_id}/lineage"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "gateway",
+                  "operation": "gateway_get_result_lineage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/results/{result_id}/deliveries": {
+      "post": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Request final-product or dependency-archive delivery.",
+        "operationId": "gateway_create_delivery",
+        "parameters": [
+          {
+            "name": "result_id",
+            "in": "path",
+            "required": true,
+            "description": "Result identifier.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "gateway",
+                  "operation": "/api/v1/results/{result_id}/deliveries"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "gateway",
+                  "operation": "gateway_create_delivery"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/deliveries/{delivery_id}": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Retrieve delivery state and access.",
+        "operationId": "gateway_get_delivery",
+        "parameters": [
+          {
+            "name": "delivery_id",
+            "in": "path",
+            "required": true,
+            "description": "Delivery identifier.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "gateway",
+                  "operation": "/api/v1/deliveries/{delivery_id}"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "gateway",
+                  "operation": "gateway_get_delivery"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/credits/balance": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Retrieve the caller credit balance.",
+        "operationId": "gateway_get_credit_balance",
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "gateway",
+                  "operation": "/api/v1/credits/balance"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "gateway",
+                  "operation": "gateway_get_credit_balance"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Report service liveness.",
+        "operationId": "gateway_health",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Service is alive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                },
+                "example": {
+                  "status": "ok",
+                  "service": "gateway",
+                  "version": "0.1.0"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Bearer token required by every business operation."
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Stable error envelope returned by every failed MEOGAP REST operation.",
+        "required": [
+          "code",
+          "message",
+          "service",
+          "operation"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Machine-readable error code."
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message."
+          },
+          "service": {
+            "type": "string",
+            "description": "Logical service that produced the error."
+          },
+          "operation": {
+            "type": "string",
+            "description": "Operation identifier or request path that failed."
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Liveness payload exposed by every MEOGAP service.",
+        "required": [
+          "status",
+          "service",
+          "version"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Service status; ok when the process answers."
+          },
+          "service": {
+            "type": "string",
+            "description": "Logical service name."
+          },
+          "version": {
+            "type": "string",
+            "description": "Service version."
+          }
+        }
+      }
+    }
+  },
+  "x-meogap-status": {
+    "level": "m0-structural",
+    "requestAndSuccessSchemas": "open",
+    "openDecisionRefs": [
+      "M1-E07-T01",
+      "M1-E07-T02"
+    ]
+  },
+  "x-meogap-transport": "public-rest"
+}
