@@ -610,3 +610,33 @@ The following branch documents were used as the authority and supporting context
 The target branch sources were reopened for this revision. The Component Interaction Matrix is authoritative for interaction IDs, producers/consumers and logical routes. The Component Interaction Design note is authoritative for the refined responsibility model, request lifecycle, execution orchestration and delivery route. catalogue-responsibilities.md is authoritative for the Product Catalogue versus Data/Asset Catalogue distinction, scientific metadata storage, asset registration and actual lineage. Older component specifications are early drafts and may conflict with this refined architecture; those conflicts are not silently treated as validated decisions. This document does not prescribe routes, schemas, protocols or deployment topology.
 
 The Component Interaction Matrix remains the authority for the set of validated logical interactions. This document defines conceptual contracts and must not silently override that matrix.
+
+## 10. Approved AOI library interfaces (23 November 2026)
+
+This section adds the user-owned AOI library as the sole direct GAT ↔ CAT exception to the previously validated routing model.
+
+### 10.1 UI-owned public operations (GAT provider)
+
+| ID | Operation | Public operation | Input | Output / behavior | Internal route |
+|---|---|---|---|---|---|
+| UI-25 | List current user's AOIs | GET /api/v1/aois | Pagination/filter parameters, if supplied | AOI summaries and geometry metadata for the authenticated caller | GAT → CAT (GET /internal/v1/aois) |
+| UI-26 | Create AOI | POST /api/v1/aois | Name, optional description, GeoJSON Polygon/MultiPolygon geometry | Created AOI with stable ID and revision | GAT → CAT (POST /internal/v1/aois) |
+| UI-27 | Retrieve AOI | GET /api/v1/aois/{aoi_id} | AOI ID | Full AOI if owned by caller | GAT → CAT (GET /internal/v1/aois/{aoi_id}) |
+| UI-28 | Update AOI | PATCH /api/v1/aois/{aoi_id} | Changed name, description and/or geometry | Updated AOI with incremented revision | GAT → CAT (PATCH /internal/v1/aois/{aoi_id}) |
+| UI-29 | Delete AOI | DELETE /api/v1/aois/{aoi_id} | AOI ID | No content on success; existing request snapshots remain intact | GAT → CAT (DELETE /internal/v1/aois/{aoi_id}) |
+
+### 10.2 CAT-owned internal operations
+
+CAT owns persistence, revisioning and tenant scoping for the AOI library. Internal operations mirror the public CRUD capability under /internal/v1/aois. CAT derives the owner from trusted caller context supplied by GAT; user_id/owner identifiers are not accepted from the UI as authorization inputs. Cross-user access must not disclose whether an AOI exists (use the agreed not-found behavior).
+
+### 10.3 Geometry and request snapshot rules
+
+- AOIs are polygonal GeoJSON geometries (Polygon or MultiPolygon) using RFC 7946 WGS 84 longitude/latitude coordinates.
+- The AOI resource has a stable aoi_id and a monotonically increasing revision. The public contract exposes the revision, not CAT storage details.
+- Request submission copies the selected AOI geometry into the request spatial-input snapshot and records the source aoi_id and revision. Updating or deleting the library record never changes an existing request or result.
+- AOI drawing/saving and request submission are separate user actions. The request wizard may invoke AOI creation and resume with the newly created AOI selected.
+
+### 10.4 Routing exception boundary
+
+The direct GAT ↔ CAT route applies only to user-owned AOI library CRUD. Request creation/status/cancellation, credits, result access authorization, map/series representations, lineage and downloads continue through CON. This exception supersedes the earlier blanket prohibition on GAT ↔ CAT interaction only for UI-25…UI-29 / GC-15…GC-19.
+
