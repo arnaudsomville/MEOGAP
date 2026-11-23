@@ -3,7 +3,7 @@ import { getHealth, type Health } from './api/client'
 
 type View = 'explore' | 'requests'
 
-const UNKNOWN_HEALTH: Health = { status: 'unknown', core_version: 'unknown' }
+const UNKNOWN_HEALTH: Health = { status: 'unknown', service: 'unknown', version: 'unknown' }
 
 export default function App() {
   const [view, setView] = useState<View>('explore')
@@ -16,7 +16,7 @@ export default function App() {
         if (active) setHealth(value)
       })
       .catch(() => {
-        if (active) setHealth({ status: 'unreachable', core_version: 'unknown' })
+        if (active) setHealth({ status: 'unreachable', service: 'unknown', version: 'unknown' })
       })
     return () => {
       active = false
@@ -31,7 +31,7 @@ export default function App() {
           <h1>MEOGAP</h1>
         </div>
         <p className={`status status-${health.status}`}>
-          API: {health.status} · core {health.core_version}
+          API: {health.status} · {health.service} {health.version}
         </p>
       </header>
 

@@ -12,7 +12,10 @@ variable "SOPS_KEY" {
 
 group "default" {
   targets = [
-    "meogap_api",
+    "meogap_gat",
+    "meogap_con",
+    "meogap_sci",
+    "meogap_cat",
     "meogap_worker",
     "meogap_ui",
   ]
@@ -43,9 +46,24 @@ target "_python_builder" {
   ]
 }
 
-target "python_builder_meogap_api" {
+target "python_builder_meogap_gat" {
   inherits = ["_python_builder"]
-  args = { PROJECT_NAME = "meogap_api" }
+  args = { PROJECT_NAME = "meogap_gat" }
+}
+
+target "python_builder_meogap_con" {
+  inherits = ["_python_builder"]
+  args = { PROJECT_NAME = "meogap_con" }
+}
+
+target "python_builder_meogap_sci" {
+  inherits = ["_python_builder"]
+  args = { PROJECT_NAME = "meogap_sci" }
+}
+
+target "python_builder_meogap_cat" {
+  inherits = ["_python_builder"]
+  args = { PROJECT_NAME = "meogap_cat" }
 }
 
 target "python_builder_meogap_worker" {
@@ -67,13 +85,40 @@ target "_image" {
   output = ["type=docker"]
 }
 
-target "meogap_api" {
+target "meogap_gat" {
   inherits = ["_image"]
-  dockerfile = "projects/meogap_api/Dockerfile"
+  dockerfile = "projects/meogap_gat/Dockerfile"
   contexts = {
-    python_builder = "target:python_builder_meogap_api"
+    python_builder = "target:python_builder_meogap_gat"
   }
-  tags = ["meogap_api_local:${TAG_VERSION}"]
+  tags = ["meogap_gat_local:${TAG_VERSION}"]
+}
+
+target "meogap_con" {
+  inherits = ["_image"]
+  dockerfile = "projects/meogap_con/Dockerfile"
+  contexts = {
+    python_builder = "target:python_builder_meogap_con"
+  }
+  tags = ["meogap_con_local:${TAG_VERSION}"]
+}
+
+target "meogap_sci" {
+  inherits = ["_image"]
+  dockerfile = "projects/meogap_sci/Dockerfile"
+  contexts = {
+    python_builder = "target:python_builder_meogap_sci"
+  }
+  tags = ["meogap_sci_local:${TAG_VERSION}"]
+}
+
+target "meogap_cat" {
+  inherits = ["_image"]
+  dockerfile = "projects/meogap_cat/Dockerfile"
+  contexts = {
+    python_builder = "target:python_builder_meogap_cat"
+  }
+  tags = ["meogap_cat_local:${TAG_VERSION}"]
 }
 
 target "meogap_worker" {

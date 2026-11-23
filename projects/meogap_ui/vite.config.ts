@@ -18,6 +18,13 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./tests/setup.ts'],
+    tags: [
+      { name: 'unit', description: 'Validates isolated logic and component behavior.' },
+      { name: 'contract', description: 'Validates local payloads against the reference contract.' },
+      { name: 'functional', description: 'Validates a complete user-visible behavior.' },
+      { name: 'integration', description: 'Validates interactions with real services.' },
+    ],
+    strictTags: true,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov', 'cobertura'],

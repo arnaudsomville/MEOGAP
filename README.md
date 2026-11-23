@@ -64,11 +64,17 @@ For more detailed context, see `documentation/project_definition.md`. Agent-spec
 | Project | Role | Runtime |
 | --- | --- | --- |
 | `meogap_core` | Scientific core library (products, dependencies, quality, spatial/temporal analysis). No Docker image. | Python 3.11 |
-| `meogap_api` | REST backend, request lifecycle and result access. | Python 3.11 / FastAPI |
+| `meogap_interfaces` | Language-neutral OpenAPI reference contracts. No executable code. | JSON |
+| `meogap_gat` | Public REST gateway, request lifecycle and result access. | Python 3.11 / FastAPI |
+| `meogap_con` | Internal control and orchestration service. | Python 3.11 / FastAPI |
+| `meogap_sci` | Internal scientific processing service. | Python 3.11 / FastAPI |
+| `meogap_cat` | Internal data and asset catalogue service. | Python 3.11 / FastAPI |
 | `meogap_worker` | Background execution worker depending on the core. | Python 3.11 |
 | `meogap_ui` | React frontend (map, AOI selection, Requests view). | Node.js / React / Vite |
 
-`meogap_api` and `meogap_worker` depend on `meogap_core` through a local `uv` path source. Python projects keep their unit tests under `tests/unit/`; the UI keeps its tests under `tests/`.
+`meogap_gat`, `meogap_con`, `meogap_sci`, `meogap_cat` and `meogap_worker` depend on `meogap_core` through a local `uv` path source. `meogap_interfaces` is data-only and is not installed. Python projects keep their unit tests under `tests/unit/` and contract tests under `tests/contract/`; the UI keeps unit tests under `tests/` and contract tests under `tests/contract/`.
+
+Service projects (`meogap_gat`, `meogap_con`, `meogap_sci`, `meogap_cat`, `meogap_worker`) follow the `core` / `infrastructure` / `application` layout, with a thin package-root `main.py` entrypoint. Shared application lifecycle and REST building blocks live in `meogap_core` (`meogap.app` and `meogap.rest`).
 
 ---
 
@@ -120,6 +126,8 @@ Install dependencies for all projects:
 make install
 ```
 
+Contract projects are data-only; `make install meogap_interfaces` reports that there is nothing to install.
+
 ## Project commands
 
 The following commands operate on a specific project unless otherwise noted.
@@ -153,6 +161,7 @@ The language is detected from the project manifest:
 | --- | --- | --- | --- |
 | `pyproject.toml` | Python | `pytest --cov=src --cov-fail-under` | `coverage.xml` |
 | `package.json` | Node / React | `npm run test:coverage` | `coverage/cobertura-coverage.xml` |
+| `rest/` directory | Contracts | `openapi-spec-validator` | none |
 
 Node projects must expose a `test:coverage` script. The frontend stack is Vitest + React Testing Library + jsdom,
 with V8 coverage; see `agents/UNIT_TEST_GUIDE.md` §18.
@@ -168,6 +177,16 @@ Run tests only for modified projects:
 ```bash
 make test-modified-projects
 ```
+
+Run contract tests for one project, every component, or the affected projects:
+
+```bash
+make test-contract <project>
+make test-contract-all
+make test-contract-modified-projects
+```
+
+Contract projects (`projects/meogap_interfaces`) are validated as OpenAPI documents. Service and UI contract tests compare their live surface with the committed reference. See `projects/meogap_interfaces/README.md`.
 
 ### Code quality
 
@@ -248,11 +267,13 @@ Reference projects live in `project_templates/`:
 | `dummy_ui_project` | React / TypeScript / Vite | Vitest + React Testing Library |
 
 To create a project, copy the relevant template into `projects/<name>`, update the manifest name, regenerate the
-lock with `make sync <name>`, then install it with `make install <name>`.
+lock with `make sync <name>`, then install it with `make install <name>`. Service projects must then be organized
+into the `core`, `infrastructure` and `application` modules described in `agents/CODING_STANDARDS.md`.
 
-The Makefile detects the language from the manifest and dispatches `make tests` to `tests-<lang>`. Adding another
-language means adding a detection branch and the matching `tests-<lang>` / `test-parity-<lang>` targets, each
-applying `MIN_TEST_COVERAGE` with its own toolchain.
+The Makefile detects the language from the manifest or from a `rest/` directory and dispatches `make tests` to
+`tests-<lang>`. A project with `rest/` is treated as `contracts`; it has no install step and is validated with
+`openapi-spec-validator`. Adding another language means adding a detection branch and the matching `tests-<lang>` /
+`test-parity-<lang>` targets, each applying `MIN_TEST_COVERAGE` with its own toolchain.
 
 ## Continuous integration
 
@@ -266,14 +287,17 @@ make ci-modified-projects
 Project selection is based on the changed files:
 
 - a project change selects that project;
-- a `meogap_core` change also selects `meogap_api` and `meogap_worker`;
+- a `meogap_core` change also selects `meogap_gat`, `meogap_con`, `meogap_sci`, `meogap_cat` and `meogap_worker`;
+- a `meogap_interfaces` change also selects `meogap_gat`, `meogap_con`, `meogap_sci`, `meogap_cat` and `meogap_ui`;
 - a root code or tooling change (`Makefile`, `docker-bake.hcl`, root `Dockerfile`, `compose.yaml`, workflows,
   pre-commit configuration, …) selects every project;
 - documentation, `agents/`, `project_templates/`, `.sops.yaml`, `.trivyignore` and Markdown changes do not trigger
   CI.
 
-The default branch (for example `main`) and tags run `make ci-all`, so every project is validated. CI does not
-build Docker images: image builds are reserved for the end-to-end tests introduced by the M0 functional epic.
+CI also runs `make test-contract-modified-projects` on development branches and `make test-contract-all` on the
+default branch and tags before the main CI step. The default branch (for example `main`) and tags run
+`make ci-all`, so every project is validated. CI does not build Docker images: image builds are reserved for the
+end-to-end tests introduced by the M0 functional epic.
 
 ## Notebooks
 
@@ -313,7 +337,7 @@ Build all project images:
 make build-all-images
 ```
 
-Build all images and run the full stack (API, worker and UI):
+Build all images and run the full stack (GAT, CON, SCI, CAT, worker and UI):
 
 ```bash
 make run-meogap
@@ -321,10 +345,11 @@ make run-meogap
 
 This decrypts the build secrets, builds all images, starts the stack and prints the service URLs:
 
-- UI: `http://localhost:8080` (proxies `/api` to the API container)
-- API: `http://localhost:8000`
-- API documentation: `http://localhost:8000/docs`
-- API health: `http://localhost:8000/api/v1/health`
+- UI: `http://localhost:8080` (proxies `/api` to the GAT container)
+- GAT: `http://localhost:8000`
+- GAT documentation: `http://localhost:8000/docs`
+- GAT health: `http://localhost:8000/api/v1/health`
+- Internal services: CON, SCI and CAT are reachable only inside the Compose network.
 
 Stop the stack with:
 

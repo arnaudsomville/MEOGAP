@@ -1,6 +1,14 @@
 export type Health = {
   status: string
-  core_version: string
+  service: string
+  version: string
+}
+
+export type ApiError = {
+  code: string
+  message: string
+  service: string
+  operation: string
 }
 
 export async function getHealth(): Promise<Health> {

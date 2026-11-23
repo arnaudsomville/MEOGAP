@@ -86,6 +86,30 @@ The roadmap provides direction; research determines the approach; implementation
   request and linking issues does not authorize closing them or changing their planning state.
 - Record assumptions, provenance, quality and limitations explicitly.
 
+## Interface contracts and generated code
+
+The interface contracts are language-neutral reference documents, not executable code.
+
+- `projects/meogap_interfaces` contains only OpenAPI JSON (and future XML) documents under `rest/`. It MUST NOT
+  contain Python packages, JavaScript packages, generated clients, or executable code.
+- The committed OpenAPI documents are authoritative for paths, methods, operation identifiers, response codes and
+  shared schemas.
+- Do not generate Python or TypeScript models from these documents. Each component defines its own objects locally
+  and proves they match the reference in contract tests.
+- Shared Python REST, authentication and process-lifecycle behaviour belongs in `projects/meogap_core`, not in
+  the contracts project. Services use `BaseApplication` and `RestInterface` for app management.
+- Every service project MUST organize its package into `core/`, `infrastructure/` and `application/`, with a thin
+  package-root `main.py` entrypoint.
+- A contract change MUST update the reference document, the implementing component and its contract tests in the
+  same change. Divergence between the implementation and the reference MUST fail CI.
+- Keep the shared `ErrorResponse` and `HealthResponse` schemas identical across the service contracts.
+- Business operations require a bearer token and return `501` until implemented. Health is public and returns
+  `200`.
+- The `Makefile` treats a project with a `rest/` directory as a `contracts` project and exposes
+  `make test-contract <project>`, `make test-contract-all` and `make test-contract-modified-projects`.
+
+See `../projects/meogap_interfaces/README.md` for the layout and validation commands.
+
 ## Applicability and migration
 
 This format applies to all new milestones, epics and tickets, and to tickets when they are refined. The existing M0–M4 ticket bodies are preserved; migrate them opportunistically when a ticket is refined, unless the maintainer explicitly requests a bulk migration. Existing identifiers and native relationships are never changed by a format migration.
@@ -114,3 +138,4 @@ Documentation must link to the reference entry or DOI, never to a local PDF.
 - `CODING_STANDARDS.md` — coding conventions.
 - `UNIT_TEST_GUIDE.md` — unit-test rules.
 - `SOFTWARE_VALIDATION_PLAN.md` — scientific and software validation.
+- `../projects/meogap_interfaces/README.md` — reference contract layout and validation.

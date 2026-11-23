@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from '../src/App'
 import type { Health } from '../src/api/client'
 
-function mockHealth(health: Health = { status: 'ok', core_version: '0.1.0' }) {
+function mockHealth(health: Health = { status: 'ok', service: 'gat', version: '0.1.0' }) {
   const fetchMock = vi.fn(async () => ({
     ok: true,
     json: async () => health,
@@ -18,17 +18,17 @@ afterEach(() => {
 })
 
 describe('App', () => {
-  it('renders the API health and core version', async () => {
+  it('renders the API health, service, and version', { tags: ['unit'] }, async () => {
     const fetchMock = mockHealth()
 
     render(<App />)
 
     expect(await screen.findByText(/API: ok/)).toBeInTheDocument()
-    expect(screen.getByText(/core 0.1.0/)).toBeInTheDocument()
+    expect(screen.getByText(/gat 0.1.0/)).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/health')
   })
 
-  it('renders the explore view by default', async () => {
+  it('renders the explore view by default', { tags: ['unit'] }, async () => {
     mockHealth()
 
     render(<App />)
@@ -37,7 +37,7 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'Explore' })).toBeInTheDocument()
   })
 
-  it('switches between requests and explore views', async () => {
+  it('switches between requests and explore views', { tags: ['unit'] }, async () => {
     mockHealth()
     const user = userEvent.setup()
 
@@ -50,7 +50,7 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'Explore' })).toBeInTheDocument()
   })
 
-  it('reports an unreachable API when the health request fails', async () => {
+  it('reports an unreachable API when the health request fails', { tags: ['unit'] }, async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => {
@@ -63,7 +63,7 @@ describe('App', () => {
     expect(await screen.findByText(/API: unreachable/)).toBeInTheDocument()
   })
 
-  it('ignores health updates after unmount', async () => {
+  it('ignores health updates after unmount', { tags: ['unit'] }, async () => {
     type FetchResult = { ok: boolean; json: () => Promise<Health> }
     let resolveFetch!: (value: FetchResult) => void
     const pending = new Promise<FetchResult>((resolve) => {
@@ -76,12 +76,15 @@ describe('App', () => {
 
     const { unmount } = render(<App />)
     unmount()
-    resolveFetch({ ok: true, json: async () => ({ status: 'ok', core_version: '0.1.0' }) })
+    resolveFetch({
+      ok: true,
+      json: async () => ({ status: 'ok', service: 'gat', version: '0.1.0' }),
+    })
     await pending
     await Promise.resolve()
   })
 
-  it('ignores health errors after unmount', async () => {
+  it('ignores health errors after unmount', { tags: ['unit'] }, async () => {
     type FetchResult = { ok: boolean; json: () => Promise<Health> }
     let rejectFetch!: (reason: Error) => void
     const pending = new Promise<FetchResult>((_, reject) => {

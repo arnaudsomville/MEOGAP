@@ -6,8 +6,13 @@ MUST/MUST NOT language for compliance.
 
 ## Test categories and rules
 
+Every test MUST declare at least one tag. Python tests use pytest markers; Vitest tests use
+`{ tags: [...] }`. The allowed tags are `unit`, `contract`, `functional`, `integration`, `validation`, `benchmark`
+and `regression`. See `UNIT_TEST_GUIDE.md` §19.
+
 ### 1) Unit tests
 - **Purpose:** validate logic correctness, exceptions, numerical edge cases, and corner cases.
+- **Tag:** `unit`.
 - **Constraints:** MUST be lightweight and fast.
 - **Performance rule:** a single unit test case MUST NOT exceed 250 ms. If it does, it MUST be redesigned.
 - **Coverage:** unit tests are the main driver of coverage. Target very high coverage (ideally 100% when feasible),
@@ -17,6 +22,8 @@ MUST/MUST NOT language for compliance.
   preserved and MUST NOT be degraded without explicit approval.
 - **Coverage threshold:** `make tests <project>` applies `MIN_TEST_COVERAGE` (default `85`) with the toolchain of
   the project language. This single threshold is shared across languages.
+- **Service layout:** Python service tests SHOULD mirror `core/`, `infrastructure/` and `application/` under
+  `tests/unit/`; HTTP contract tests stay under `tests/contract/`.
 
 #### Frontend unit and component tests
 - **Tooling:** Vitest with jsdom, React Testing Library, `@testing-library/user-event` and `jest-dom`. V8 coverage.
@@ -32,7 +39,23 @@ MUST/MUST NOT language for compliance.
   `test-parity-<lang>` targets. A new language MUST provide both targets and apply `MIN_TEST_COVERAGE` with its own
   toolchain.
 
-### 2) Non-regression tests
+### 2) Contract tests
+- **Purpose:** verify that each component's HTTP surface matches the committed reference contract. Contract tests
+  validate boundaries and integration shape; they are not scientific validation.
+- **Tag:** `contract`.
+- **Reference:** `projects/meogap_interfaces/rest/<service>.openapi.json`. The committed document is authoritative.
+- **Location:** Python services keep them under `tests/contract/`; the UI keeps them under `tests/contract/`.
+- **Required checks:** declared operation set, live route set, `401` without a bearer token, `501` with a bearer
+  token, shared-schema validation with `jsonschema` or Ajv, local model field parity, and a negative case proving
+  that a missing required field is rejected.
+- **Execution:** `make test-contract <project>`, `make test-contract-all` and
+  `make test-contract-modified-projects`. CI runs the modified-project variant on branches and the full variant on
+  the default branch and tags.
+- **Rules:** contract tests MUST NOT be replaced by comparing two copies of the same generated schema. They MUST
+  exercise the running component. A contract change without a corresponding implementation and test change MUST
+  fail.
+
+### 3) Non-regression tests
 - **Purpose:** act as a behavioral freeze ("code freeze") ensuring identical behavior across refactors when
   regressions are not expected.
 - **Mechanism:** run a computation and compare the result against a stored reference file located in a test data
@@ -41,7 +64,7 @@ MUST/MUST NOT language for compliance.
   - If work explicitly expects **no regression**, reference files MUST NEVER be updated.
   - If regressions are explicitly expected, reference files MAY be intentionally updated.
 
-### 3) Validation tests (external validation)
+### 4) Validation tests (external validation)
 - **Definition:** run a computation and assert the result matches external reference data stored in files.
 - **External data rule:** external reference files are absolute truth validated elsewhere; they MUST NEVER be
   modified or questioned.
@@ -54,19 +77,19 @@ MUST/MUST NOT language for compliance.
 - **Execution:** NOT part of the daily workflow; skipped by default. Can be enabled explicitly via an environment
   variable (default false): `ENABLE_VALIDATION_TESTS`.
 
-### 4) Benchmark / performance tests
+### 5) Benchmark / performance tests
 - **Definition:** run heavy computations to measure speed; verify runtime is within a threshold.
 - **Runtime check only:** no reference comparisons.
 - **Execution:** skipped by default; intended primarily for CI. Can be enabled locally via an environment variable
   (default false): `ENABLE_BENCHMARK_TESTS`.
 
 ## Execution defaults
-- **Daily workflow:** unit + non-regression tests.
+- **Daily workflow:** unit + contract + non-regression tests.
 - **Skipped by default:** validation + benchmark tests (enabled only when requested via env vars).
 
 ## Reference files and taxonomy
 - **Reference location:** store reference files in a test data folder (for example, `tests/data/`).
-- **Markers/categories:** use clear, generic markers such as `unit`, `regression`, `validation`, `benchmark`.
+- **Markers/categories:** use clear, generic markers such as `unit`, `contract`, `regression`, `validation`, `benchmark`.
 - **Interpreting expectations:**
   - **No regression expected:** references MUST NOT change.
   - **Regressions expected:** references MAY be updated intentionally.
