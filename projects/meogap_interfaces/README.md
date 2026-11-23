@@ -31,6 +31,7 @@ projects/meogap_interfaces/
 - Do not generate Python or TypeScript models from these documents. Components define their own objects and compare them with the reference in contract tests.
 - Do not move shared Python behaviour into this project. Reusable REST and authentication helpers live in `projects/meogap_core`.
 - Every business operation requires a bearer token. Missing or malformed credentials produce `401` with the shared `ErrorResponse` schema.
+- The public Gateway contract includes user-owned AOI library operations (`/api/v1/aois`). The internal Catalog contract provides the corresponding `/internal/v1/aois` operations. Ownership is derived from trusted caller context; clients must not submit an owner/user ID.
 - Health is public and returns `200`. Every other business operation returns `501` until it is implemented.
 - A contract change requires updating the JSON, the implementing component, and the component's contract tests in the same change.
 - Keep the shared `ErrorResponse` and `HealthResponse` schemas identical across the four documents.
