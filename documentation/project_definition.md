@@ -417,3 +417,14 @@ An agent reading the proposal should distinguish **required capabilities**, **la
 ---
 
 **End of proposal — v0.20.**
+
+
+## 11. User-owned AOI library and map-first workspace — approved refinement (23 November 2026)
+
+The map-first UI uses a full-viewport map with navigation and contextual panels overlaid above it. Opening or closing panels must not resize the map container. Requests and Indicators are exposed from the top toolbar; Indicators is an empty, non-functional view in M0. Spatial tools and the AOI library are available from a vertical toolbar. A collapsible lower inspector may show result details when such results are available.
+
+A persistent AOI library is owned by CAT and scoped to the authenticated user. GAT exposes its public REST operations and uses a narrowly scoped direct GAT → CAT interface for AOI library CRUD only. This is an explicit exception to the earlier blanket prohibition on direct GAT ↔ CAT interaction. CON remains responsible for request lifecycle, cost/proposal coordination, access authorization for private results, and orchestration; result representations, lineage and delivery continue through CON.
+
+AOI drawing/saving and analysis-request submission are separate actions. A request may select an existing saved AOI or invoke AOI creation and resume the request flow. At submission, the request records the source AOI identifier/revision and an immutable geometry snapshot. Later AOI edits or deletion do not alter previously submitted requests.
+
+Detailed logical interactions and REST schemas are maintained in the component interaction matrix, interface contract inventory and the shared OpenAPI documents. This refinement does not claim these operations are already implemented.
