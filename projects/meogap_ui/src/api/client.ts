@@ -163,6 +163,30 @@ export type CostEstimate = {
   limitations: string[]
 }
 
+export type LegendStop = {
+  value: number
+  color: string
+}
+
+export type ResultLegend = {
+  title: string
+  units: string
+  min: number
+  max: number
+  stops: LegendStop[]
+}
+
+export type ResultMapFrame = {
+  id: string
+  url: string
+  periodStart: string
+  periodEnd: string
+  label: string
+  visualPeriodStart: string
+  visualPeriodEnd: string
+  isReusedVisual: boolean
+}
+
 export type ResultMap = {
   url: string
   bounds: [Position, Position] | null
@@ -173,6 +197,9 @@ export type ResultMap = {
   validationStatus: string | null
   qualityStatus: string | null
   qualityNote: string | null
+  legend: ResultLegend | null
+  geotiffUrl: string | null
+  frames: ResultMapFrame[]
   isDemo: boolean
 }
 
@@ -651,6 +678,53 @@ function parseBounds(value: unknown): [Position, Position] | null {
   return positions[0] && positions[1] ? [positions[0], positions[1]] : null
 }
 
+function parseLegend(value: unknown): ResultLegend | null {
+  if (value === null || value === undefined) return null
+  const legend = requireRecord(value, 'legend must be an object or null')
+  const minimum = optionalNumberFrom(legend, ['min'])
+  const maximum = optionalNumberFrom(legend, ['max'])
+  if (minimum === null || maximum === null) {
+    throw new Error('Invalid payload: legend min and max must be finite numbers')
+  }
+  if (!Array.isArray(legend.stops) || legend.stops.length === 0) {
+    throw new Error('Invalid payload: legend stops must be a non-empty array')
+  }
+  return {
+    title: requireString(legend, 'title'),
+    units: requireString(legend, 'units'),
+    min: minimum,
+    max: maximum,
+    stops: legend.stops.map((item) => {
+      const stop = requireRecord(item, 'legend stop must be an object')
+      const stopValue = optionalNumberFrom(stop, ['value'])
+      if (stopValue === null) {
+        throw new Error('Invalid payload: legend stop value must be a finite number')
+      }
+      return { value: stopValue, color: requireString(stop, 'color') }
+    }),
+  }
+}
+
+function parseResultFrames(value: unknown): ResultMapFrame[] {
+  if (value === null || value === undefined) return []
+  if (!Array.isArray(value)) {
+    throw new Error('Invalid payload: result map frames must be an array')
+  }
+  return value.map((item) => {
+    const frame = requireRecord(item, 'result map frame must be an object')
+    return {
+      id: requireStringFrom(frame, ['frame_id', 'id']),
+      url: requireString(frame, 'url'),
+      periodStart: requireString(frame, 'period_start'),
+      periodEnd: requireString(frame, 'period_end'),
+      label: requireString(frame, 'label'),
+      visualPeriodStart: requireString(frame, 'visual_period_start'),
+      visualPeriodEnd: requireString(frame, 'visual_period_end'),
+      isReusedVisual: frame.is_reused_visual === true,
+    }
+  })
+}
+
 export function parseResultMap(payload: unknown): ResultMap {
   const resultMap = requireRecord(payload, 'result map must be an object')
   return {
@@ -663,6 +737,9 @@ export function parseResultMap(payload: unknown): ResultMap {
     validationStatus: optionalStringFrom(resultMap, ['validation_status']),
     qualityStatus: optionalStringFrom(resultMap, ['quality_status']),
     qualityNote: optionalStringFrom(resultMap, ['quality_note']),
+    legend: parseLegend(resultMap.legend),
+    geotiffUrl: optionalStringFrom(resultMap, ['geotiff_url']),
+    frames: parseResultFrames(resultMap.frames),
     isDemo: resultMap.is_demo === true,
   }
 }
@@ -926,8 +1003,9 @@ export function getCreditBalance(): Promise<ApiResponse<CreditBalance>> {
   return requestJson(`${API_PREFIX}/credits/balance`, parseCreditBalance)
 }
 
-export function getResultMap(id: string): Promise<ApiResponse<ResultMap>> {
-  return requestJson(`${API_PREFIX}/results/${idPathSegment(id)}/map`, parseResultMap)
+export function getResultMap(id: string, frames?: number): Promise<ApiResponse<ResultMap>> {
+  const query = frames == null ? '' : `?frames=${encodeURIComponent(frames)}`
+  return requestJson(`${API_PREFIX}/results/${idPathSegment(id)}/map${query}`, parseResultMap)
 }
 
 export function getResult(id: string): Promise<ApiResponse<ResultDetail>> {

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal, Self, TypeAlias
 
-from fastapi import APIRouter, Depends, Response, Security, status
+from fastapi import APIRouter, Depends, Query, Response, Security, status
 from fastapi.security import HTTPBearer
 from meogap.rest.contracts import ErrorResponse
 from meogap.rest.middleware import Identity, get_identity
@@ -278,8 +278,44 @@ class CreditBalanceResponse(BaseModel):
     note: str
 
 
+class LegendStop(BaseModel):
+    """One value/color break in a display colour map."""
+
+    model_config = ConfigDict(extra='forbid')
+
+    value: float
+    color: str
+
+
+class ResultLegend(BaseModel):
+    """Colour-map metadata required to interpret a display representation."""
+
+    model_config = ConfigDict(extra='forbid')
+
+    title: str
+    units: str
+    min: float
+    max: float
+    stops: list[LegendStop]
+
+
+class ResultMapFrame(BaseModel):
+    """One mock display frame with its request-period date and reused visual period."""
+
+    model_config = ConfigDict(extra='forbid')
+
+    frame_id: str
+    url: str
+    period_start: str
+    period_end: str
+    label: str
+    visual_period_start: str
+    visual_period_end: str
+    is_reused_visual: bool
+
+
 class ResultMapResponse(BaseModel):
-    """Map overlay descriptor for a synthetic completed result."""
+    """Map overlay descriptor for a synthetic or bundled completed result."""
 
     model_config = ConfigDict(extra='forbid')
 
@@ -295,6 +331,9 @@ class ResultMapResponse(BaseModel):
     validation_status: ProductValidationStatus
     quality_status: str
     quality_note: str
+    legend: ResultLegend | None
+    geotiff_url: str | None
+    frames: list[ResultMapFrame]
     is_demo: bool
 
 
@@ -847,20 +886,25 @@ def build_demo_router(store: DemoStore) -> APIRouter:  # noqa: C901
         response_model=ResultMapResponse,
         responses=NOT_FOUND_ERRORS,
     )
-    def get_result_map(result_id: str, owner_id: str = Depends(_demo_owner)) -> dict[str, Any]:
-        """Return an explicit synthetic map representation.
+    def get_result_map(
+        result_id: str,
+        frames: int | None = Query(default=None, ge=1, le=120, description='Optional mock frame count.'),
+        owner_id: str = Depends(_demo_owner),
+    ) -> dict[str, Any]:
+        """Return an explicit map representation with mock display frames.
 
         Args:
         ----
             result_id(str): result identifier.
+            frames(int | None): optional number of mock display frames.
             owner_id(str): deterministic authenticated owner.
 
         Returns:
         -------
-            dict[str, Any]: synthetic map overlay descriptor.
+            dict[str, Any]: map overlay descriptor.
 
         """
-        return store.get_result_map(owner_id, result_id)
+        return store.get_result_map(owner_id, result_id, frames)
 
     @router.get(
         '/api/v1/results/{result_id}',

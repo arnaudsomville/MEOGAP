@@ -3,8 +3,8 @@
 import logging
 import os
 
-from fastapi import Request
-from fastapi.responses import JSONResponse, Response
+from fastapi import HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse, Response
 from meogap import VERSION as SERVICE_VERSION
 from meogap.app.base import BaseApplication
 from meogap.rest.contracts import PUBLIC_HEALTH_PATH, ErrorResponse
@@ -13,6 +13,7 @@ from meogap.rest.interface import RestInterface
 from starlette.middleware.base import RequestResponseEndpoint
 
 from gateway.application.routes import build_demo_router
+from gateway.core.assets import geotiff_path, png_path
 from gateway.core.demo import DemoError, DemoSettings, DemoStore
 
 SERVICE_NAME = 'gateway'
@@ -36,6 +37,7 @@ CONFIG = RestAppConfig(
     description=APP_DESCRIPTION,
     cors_origins=CORS_ORIGINS,
     extra_exempt_paths=('/',),
+    extra_exempt_prefixes=('/demo-assets/',),
 )
 DEMO_STORE = DemoStore(
     DemoSettings(failure_mode=os.getenv('GATEWAY_DEMO_FAILURE_MODE') or None),
@@ -109,6 +111,61 @@ async def disclose_demo_response(request: Request, call_next: RequestResponseEnd
     response.headers[DEMO_HEADER] = DEMO_HEADER_VALUE
     LOGGER.info('Deterministic M0 demo response: %s %s -> %s', request.method, request.url.path, response.status_code)
     return response
+
+
+@app.get('/demo-assets/ndvi/geotiff/{asset_name}', include_in_schema=False)
+def demo_ndvi_geotiff(asset_name: str) -> FileResponse:
+    """Serve one whitelisted georeferenced NDVI GeoTIFF.
+
+    Args:
+    ----
+        asset_name(str): bundled GeoTIFF filename.
+
+    Returns:
+    -------
+        FileResponse: GeoTIFF download.
+
+    Raises:
+    ------
+        HTTPException: when the asset is not a known demonstration product.
+
+    """
+    path = geotiff_path(asset_name)
+    if path is None:
+        raise HTTPException(status_code=404, detail='NDVI GeoTIFF asset not found.')
+    return FileResponse(
+        path,
+        media_type='image/tiff',
+        filename=asset_name,
+        headers={'Cache-Control': 'public, max-age=86400'},
+    )
+
+
+@app.get('/demo-assets/ndvi/{asset_name}', include_in_schema=False)
+def demo_ndvi_png(asset_name: str) -> FileResponse:
+    """Serve one whitelisted NDVI display PNG.
+
+    Args:
+    ----
+        asset_name(str): bundled PNG filename.
+
+    Returns:
+    -------
+        FileResponse: PNG display representation.
+
+    Raises:
+    ------
+        HTTPException: when the asset is not a known demonstration product.
+
+    """
+    path = png_path(asset_name)
+    if path is None:
+        raise HTTPException(status_code=404, detail='NDVI display asset not found.')
+    return FileResponse(
+        path,
+        media_type='image/png',
+        headers={'Cache-Control': 'public, max-age=86400'},
+    )
 
 
 @app.get('/')

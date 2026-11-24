@@ -108,7 +108,7 @@ def test_all_public_demo_routes_complete_the_documented_happy_path() -> None:
         headers=AUTH_HEADERS,
         json={
             'product_id': 'ndvi',
-            'aoi_id': aoi_id,
+            'aoi_id': 'aoi-1',
             'period': {'start_month': '2026-01', 'end_month': '2026-02'},
             'temporal_frequency': 'monthly',
         },
@@ -118,7 +118,7 @@ def test_all_public_demo_routes_complete_the_documented_happy_path() -> None:
         headers=AUTH_HEADERS,
         json={
             'product_id': 'ndvi',
-            'aoi_id': aoi_id,
+            'aoi_id': 'aoi-1',
             'period': {'start_month': '2026-01', 'end_month': '2026-02'},
             'temporal_frequency': 'monthly',
         },
@@ -129,7 +129,7 @@ def test_all_public_demo_routes_complete_the_documented_happy_path() -> None:
     executing = client.post(f'/api/v1/analysis-requests/{request_id}/confirm', headers=AUTH_HEADERS)
     completed = client.get(f'/api/v1/analysis-requests/{request_id}', headers=AUTH_HEADERS)
     result_id = completed.json()['result_id']
-    result_map = client.get(f'/api/v1/results/{result_id}/map', headers=AUTH_HEADERS)
+    result_map = client.get(f'/api/v1/results/{result_id}/map?frames=1', headers=AUTH_HEADERS)
     result_detail = client.get(f'/api/v1/results/{result_id}', headers=AUTH_HEADERS)
     series = client.get(f'/api/v1/results/{result_id}/series', headers=AUTH_HEADERS)
     series_query = client.post(
@@ -173,8 +173,13 @@ def test_all_public_demo_routes_complete_the_documented_happy_path() -> None:
     assert proposed.json()['state'] == 'PROPOSED'
     assert executing.json()['state'] == 'IN_EXECUTION'
     assert completed.json()['state'] == 'COMPLETED'
-    assert result_map.json()['kind'] == 'DEMO_PLACEHOLDER'
+    assert result_map.json()['kind'] == 'DEMO_NDVI_STATIC'
     assert result_map.json()['is_demo'] is True
+    assert result_map.json()['legend']['title'] == 'NDVI'
+    assert result_map.json()['geotiff_url'].endswith('.tif')
+    assert len(result_map.json()['frames']) == 1
+    assert result_map.json()['frames'][0]['period_start'] == '2026-01-01'
+    assert result_map.json()['frames'][0]['is_reused_visual'] is True
     assert result_detail.json()['result_id'] == result_id
     assert result_detail.json()['temporal_frequency'] == 'monthly'
     assert series.json()['points'] == []

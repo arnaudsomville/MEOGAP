@@ -934,7 +934,7 @@
           "gateway"
         ],
         "summary": "Request a map representation.",
-        "description": "Return an explicit synthetic map representation.\n\nArgs:\n----\n    result_id(str): result identifier.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: synthetic map overlay descriptor.",
+        "description": "Return an explicit map representation with mock display frames.\n\nArgs:\n----\n    result_id(str): result identifier.\n    frames(int | None): optional number of mock display frames.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: map overlay descriptor.",
         "operationId": "gateway_get_result_map",
         "security": [
           {
@@ -950,6 +950,26 @@
               "type": "string",
               "title": "Result Id"
             }
+          },
+          {
+            "name": "frames",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 120,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional mock frame count.",
+              "title": "Frames"
+            },
+            "description": "Optional mock frame count."
           }
         ],
         "responses": {
@@ -2236,6 +2256,26 @@
         ],
         "description": "Liveness payload exposed by every MEOGAP service."
       },
+      "LegendStop": {
+        "properties": {
+          "value": {
+            "type": "number",
+            "title": "Value"
+          },
+          "color": {
+            "type": "string",
+            "title": "Color"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "value",
+          "color"
+        ],
+        "title": "LegendStop",
+        "description": "One value/color break in a display colour map."
+      },
       "ProductAvailability": {
         "type": "string",
         "enum": [
@@ -2678,6 +2718,44 @@
         "title": "ResultDetailResponse",
         "description": "Explicit result metadata and retained scope."
       },
+      "ResultLegend": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "units": {
+            "type": "string",
+            "title": "Units"
+          },
+          "min": {
+            "type": "number",
+            "title": "Min"
+          },
+          "max": {
+            "type": "number",
+            "title": "Max"
+          },
+          "stops": {
+            "items": {
+              "$ref": "#/components/schemas/LegendStop"
+            },
+            "type": "array",
+            "title": "Stops"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "units",
+          "min",
+          "max",
+          "stops"
+        ],
+        "title": "ResultLegend",
+        "description": "Colour-map metadata required to interpret a display representation."
+      },
       "ResultLineageResponse": {
         "properties": {
           "result_id": {
@@ -2716,6 +2794,56 @@
         ],
         "title": "ResultLineageResponse",
         "description": "Minimal reliable M0 provenance for one result."
+      },
+      "ResultMapFrame": {
+        "properties": {
+          "frame_id": {
+            "type": "string",
+            "title": "Frame Id"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "period_start": {
+            "type": "string",
+            "title": "Period Start"
+          },
+          "period_end": {
+            "type": "string",
+            "title": "Period End"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "visual_period_start": {
+            "type": "string",
+            "title": "Visual Period Start"
+          },
+          "visual_period_end": {
+            "type": "string",
+            "title": "Visual Period End"
+          },
+          "is_reused_visual": {
+            "type": "boolean",
+            "title": "Is Reused Visual"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "frame_id",
+          "url",
+          "period_start",
+          "period_end",
+          "label",
+          "visual_period_start",
+          "visual_period_end",
+          "is_reused_visual"
+        ],
+        "title": "ResultMapFrame",
+        "description": "One mock display frame with its request-period date and reused visual period."
       },
       "ResultMapResponse": {
         "properties": {
@@ -2772,6 +2900,34 @@
             "type": "string",
             "title": "Quality Note"
           },
+          "legend": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResultLegend"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "geotiff_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geotiff Url"
+          },
+          "frames": {
+            "items": {
+              "$ref": "#/components/schemas/ResultMapFrame"
+            },
+            "type": "array",
+            "title": "Frames"
+          },
           "is_demo": {
             "type": "boolean",
             "title": "Is Demo"
@@ -2792,10 +2948,13 @@
           "validation_status",
           "quality_status",
           "quality_note",
+          "legend",
+          "geotiff_url",
+          "frames",
           "is_demo"
         ],
         "title": "ResultMapResponse",
-        "description": "Map overlay descriptor for a synthetic completed result."
+        "description": "Map overlay descriptor for a synthetic or bundled completed result."
       },
       "ResultSeriesPoint": {
         "properties": {

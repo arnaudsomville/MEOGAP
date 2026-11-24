@@ -494,6 +494,7 @@ export default function App({
   const [startMonth, setStartMonth] = useState(EMPTY_MONTH)
   const [endMonth, setEndMonth] = useState(EMPTY_MONTH)
   const [resultMap, setResultMap] = useState<ResultMap | null>(null)
+  const [resultFrameIndex, setResultFrameIndex] = useState(0)
   const [resultDetail, setResultDetail] = useState<ResultDetail | null>(null)
   const [displayedRequest, setDisplayedRequest] = useState<AnalysisRequest | null>(null)
   const [deliveries, setDeliveries] = useState<Record<string, Delivery>>({})
@@ -1023,6 +1024,7 @@ export default function App({
       ])
       const resultMapResponse = receive(representation)
       setResultMap(resultMapResponse)
+      setResultFrameIndex(0)
       setResultDetail(receive(detail))
       if (resultMapResponse.bounds) {
         const [first, second] = resultMapResponse.bounds
@@ -1384,6 +1386,8 @@ export default function App({
     displayedProductName(displayedRequest?.productId ?? null) ??
     displayedRequest?.productId ??
     'Result'
+  const resultFrames = resultMap?.frames ?? []
+  const selectedResultFrame = resultFrames[resultFrameIndex] ?? null
   const resultPeriodLabel =
     displayedRequest?.startMonth && displayedRequest?.endMonth
       ? `${displayedRequest.startMonth} to ${displayedRequest.endMonth} UTC`
@@ -1415,6 +1419,7 @@ export default function App({
         focus={focus}
         focusRevision={focusRevision}
         resultMap={resultMap}
+        resultFrameIndex={resultFrameIndex}
         resultVisible={resultVisible}
         selectionMode={selectionMode}
         selectionPoint={selectionPoint}
@@ -2505,6 +2510,32 @@ export default function App({
               ) : (
                 <p>Select “Display on map” for a completed request to load a representation.</p>
               )}
+              {resultFrames.length ? (
+                <div className="result-frames">
+                  <label className="field-label" htmlFor="result-frame">
+                    Displayed frame
+                  </label>
+                  <input
+                    id="result-frame"
+                    type="range"
+                    min={0}
+                    max={resultFrames.length - 1}
+                    step={1}
+                    value={Math.min(resultFrameIndex, resultFrames.length - 1)}
+                    onChange={(event) => setResultFrameIndex(Number(event.target.value))}
+                  />
+                  <p>
+                    Frame {Math.min(resultFrameIndex + 1, resultFrames.length)} of{' '}
+                    {resultFrames.length} · {selectedResultFrame?.periodStart} →{' '}
+                    {selectedResultFrame?.periodEnd}
+                  </p>
+                  <p className="muted">
+                    Mock request-period date. Visual reused from the static NDVI map for{' '}
+                    {selectedResultFrame?.visualPeriodStart} →{' '}
+                    {selectedResultFrame?.visualPeriodEnd}.
+                  </p>
+                </div>
+              ) : null}
               <p className="muted">
                 Result layers are synthetic/demo representations, distinct from the satellite
                 basemap and from scientifically validated products.

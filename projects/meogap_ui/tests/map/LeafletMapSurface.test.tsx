@@ -120,8 +120,42 @@ describe('LeafletMapSurface', () => {
             validationStatus: 'NOT_VALIDATED',
             qualityStatus: 'PARTIAL',
             qualityNote: 'Synthetic demo quality.',
+            legend: {
+              title: 'NDVI',
+              units: 'unitless',
+              min: -0.2,
+              max: 0.9,
+              stops: [
+                { value: -0.2, color: '#744d2e' },
+                { value: 0.9, color: '#0c461c' },
+              ],
+            },
+            geotiffUrl: '/demo-assets/ndvi/geotiff/test.tif',
+            frames: [
+              {
+                id: 'frame-1',
+                url: 'https://example.test/frame-1.png',
+                periodStart: '2026-01-01',
+                periodEnd: '2026-01-31',
+                label: '2026-01',
+                visualPeriodStart: '2025-06-01',
+                visualPeriodEnd: '2025-07-31',
+                isReusedVisual: true,
+              },
+              {
+                id: 'frame-2',
+                url: 'https://example.test/frame-2.png',
+                periodStart: '2026-02-01',
+                periodEnd: '2026-02-28',
+                label: '2026-02',
+                visualPeriodStart: '2025-07-01',
+                visualPeriodEnd: '2025-08-31',
+                isReusedVisual: true,
+              },
+            ],
             isDemo: true,
           }}
+          resultFrameIndex={1}
           resultVisible
           selectionMode="point"
           selectionPoint={{ lat: 10.4, lng: -84.9 }}
@@ -143,7 +177,7 @@ describe('LeafletMapSurface', () => {
       expect(screen.getByTestId('scale-control')).toHaveAttribute('data-imperial', 'false')
       expect(screen.getByRole('img', { name: 'Result map' })).toHaveAttribute(
         'src',
-        'https://example.test/map.png',
+        'https://example.test/frame-2.png',
       )
       expect(leafletState.flyTo).toHaveBeenCalledWith([10.43, -84.91], 10)
       act(() => leafletState.click?.({ latlng: { lat: 10.48, lng: -84.88 } }))
@@ -151,6 +185,8 @@ describe('LeafletMapSurface', () => {
       act(() => leafletState.polygonClicks[0]?.())
       expect(onAoiSelect).toHaveBeenCalledWith('aoi-1')
       expect(screen.getByTestId('selection-point')).toHaveTextContent('[10.4,-84.9]')
+      expect(screen.getByLabelText('NDVI color scale')).toBeInTheDocument()
+      expect(screen.getByText('unitless')).toBeInTheDocument()
       expect(screen.getByRole('img', { name: 'Result map' })).toBeInTheDocument()
       expect(screen.getAllByTestId('area-tooltip')).toHaveLength(2)
       expect(screen.getAllByTestId('area-tooltip')[0]).toHaveTextContent(/Area: .* km²/)
@@ -167,6 +203,7 @@ describe('LeafletMapSurface', () => {
         focus={null}
         focusRevision={0}
         resultMap={null}
+        resultFrameIndex={0}
         resultVisible
         selectionMode="none"
         selectionPoint={null}
@@ -198,6 +235,7 @@ describe('LeafletMapSurface', () => {
         }}
         focusRevision={2}
         resultMap={null}
+        resultFrameIndex={0}
         resultVisible
         selectionMode="none"
         selectionPoint={null}
@@ -233,6 +271,7 @@ describe('LeafletMapSurface', () => {
           focus={null}
           focusRevision={0}
           resultMap={null}
+          resultFrameIndex={0}
           resultVisible
           selectionMode="none"
           selectionPoint={null}

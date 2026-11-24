@@ -30,6 +30,7 @@ def build_config(
     require_bearer: bool = True,
     cors_origins: tuple[str, ...] = (),
     extra_exempt_paths: tuple[str, ...] = (),
+    extra_exempt_prefixes: tuple[str, ...] = (),
 ) -> RestAppConfig:
     """Build a default application configuration with optional overrides.
 
@@ -38,6 +39,7 @@ def build_config(
         require_bearer(bool): whether business routes require a bearer token.
         cors_origins(tuple[str, ...]): allowed CORS origins.
         extra_exempt_paths(tuple[str, ...]): paths exempt from bearer enforcement.
+        extra_exempt_prefixes(tuple[str, ...]): path prefixes exempt from bearer enforcement.
 
     Returns:
     -------
@@ -52,6 +54,7 @@ def build_config(
         require_bearer=require_bearer,
         cors_origins=cors_origins,
         extra_exempt_paths=extra_exempt_paths,
+        extra_exempt_prefixes=extra_exempt_prefixes,
     )
 
 
@@ -351,3 +354,38 @@ def test_application_is_a_fastapi_instance() -> None:
     app = create_rest_app(build_config())
     # Assert
     assert isinstance(app, FastAPI)
+
+
+def test_extra_exempt_prefixes_remain_public() -> None:
+    """Validate extra exempt path prefixes bypass authentication.
+
+    Args:
+    ----
+        None
+
+    Returns:
+    -------
+        None
+
+    """
+    # Arrange
+    app = create_rest_app(build_config(extra_exempt_prefixes=('/public/',)), (OPERATION,))
+
+    @app.get('/public/assets/example.png')
+    def public_asset() -> dict[str, str]:
+        """Return a public asset payload.
+
+        Returns
+        -------
+            dict[str, str]: public payload.
+
+        """
+        return {'status': 'ok'}
+
+    client = TestClient(app)
+    # Act
+    result = client.get('/public/assets/example.png')
+    unknown = client.get('/private/assets/example.png')
+    # Assert
+    assert result.status_code == status.HTTP_200_OK
+    assert unknown.status_code == status.HTTP_401_UNAUTHORIZED

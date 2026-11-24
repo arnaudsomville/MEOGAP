@@ -30,6 +30,7 @@ from meogap.scientific.products import (
     SourceMission,
 )
 
+from gateway.core.assets import ndvi_asset_for_aoi
 from gateway.core.config import MAX_AOI_AREA_KM2
 from gateway.core.product_previews import build_product_preview
 
@@ -696,6 +697,29 @@ def _month_sequence(start_month: str, end_month: str) -> list[str]:
     return months
 
 
+def _evenly_spaced_months(start_month: str, end_month: str, count: int) -> list[str]:
+    """Select evenly spaced inclusive months from a request period.
+
+    Args:
+    ----
+        start_month(str): inclusive request start month.
+        end_month(str): inclusive request end month.
+        count(int): requested number of mock frames.
+
+    Returns:
+    -------
+        list[str]: selected YYYY-MM months.
+
+    """
+    months = _month_sequence(start_month, end_month)
+    if len(months) <= count:
+        return months
+    if count <= 1:
+        return [months[0]]
+    indexes = [round(index * (len(months) - 1) / (count - 1)) for index in range(count)]
+    return [months[index] for index in dict.fromkeys(indexes)]
+
+
 def _month_end(month: str) -> str:
     """Return the last UTC date of a YYYY-MM month.
 
@@ -1218,17 +1242,18 @@ class DemoStore:
         with self._lock:
             return self._balances.setdefault(owner_id, self.settings.starting_credits)
 
-    def get_result_map(self, owner_id: str, result_id: str) -> dict[str, Any]:
+    def get_result_map(self, owner_id: str, result_id: str, frame_count: int | None = None) -> dict[str, Any]:
         """Return a labelled synthetic representation for one completed result.
 
         Args:
         ----
             owner_id(str): trusted demo owner identifier.
             result_id(str): completed result identifier.
+            frame_count(int | None): optional number of mock display frames; None keeps every month.
 
         Returns:
         -------
-            dict[str, Any]: synthetic map overlay descriptor.
+            dict[str, Any]: map overlay descriptor with mock display frames.
 
         """
         with self._lock:
@@ -1238,6 +1263,56 @@ class DemoStore:
                     status.HTTP_404_NOT_FOUND, 'RESULT_UNAVAILABLE', 'The demo result representation is unavailable.'
                 )
             product = self.get_product(result.product_id)
+            request = self._requests[result.request_id]
+            asset = ndvi_asset_for_aoi(request.aoi_id) if result.product_id == 'ndvi' else None
+            if asset is not None:
+                mock_months = (
+                    _month_sequence(request.start_month, request.end_month)
+                    if frame_count is None
+                    else _evenly_spaced_months(request.start_month, request.end_month, frame_count)
+                )
+                visual_frames = asset['frames']
+                frames = []
+                for index, month in enumerate(mock_months):
+                    visual = visual_frames[index % len(visual_frames)]
+                    frames.append(
+                        {
+                            'frame_id': f'{result.result_id}-frame-{index + 1}',
+                            'url': visual['url'],
+                            'period_start': f'{month}-01',
+                            'period_end': _month_end(month),
+                            'label': month,
+                            'visual_period_start': visual['period_start'],
+                            'visual_period_end': visual['period_end'],
+                            'is_reused_visual': True,
+                        }
+                    )
+                return {
+                    'url': frames[0]['url'] if frames else None,
+                    'bounds': asset['bounds'],
+                    'kind': 'DEMO_NDVI_STATIC',
+                    'note': (
+                        'Static NDVI display frames derived from georeferenced Sentinel-2 '
+                        'median composites for this test AOI. Frame dates are mock dates '
+                        'inside the request period; visuals are reused from the bundled '
+                        'NDVI maps and are not scientifically validated.'
+                    ),
+                    'result_id': result.result_id,
+                    'request_id': result.request_id,
+                    'product_id': result.product_id,
+                    'result_version': RESULT_VERSION,
+                    'units': product['units'],
+                    'validation_status': product['validation_status'],
+                    'quality_status': QUALITY_PARTIAL,
+                    'quality_note': (
+                        'Static demo NDVI frames with cloud-masked source observations; '
+                        'missing pixels remain transparent.'
+                    ),
+                    'legend': asset['legend'],
+                    'geotiff_url': asset['geotiff_url'],
+                    'frames': frames,
+                    'is_demo': True,
+                }
             return {
                 'url': self._map_data_url(result.product_id),
                 'bounds': geometry_bounds(result.geometry_snapshot),
@@ -1251,6 +1326,9 @@ class DemoStore:
                 'validation_status': product['validation_status'],
                 'quality_status': QUALITY_PARTIAL,
                 'quality_note': 'Synthetic demo quality; no real observations were masked or validated.',
+                'legend': None,
+                'geotiff_url': None,
+                'frames': [],
                 'is_demo': True,
             }
 

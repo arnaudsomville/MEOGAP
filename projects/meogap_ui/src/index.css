@@ -1997,3 +1997,63 @@ textarea {
   color: #55e3d1;
   font-weight: 600;
 }
+
+.map-legend {
+  background: var(--panel-strong);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-soft);
+  left: 20px;
+  padding: 10px 12px;
+  position: absolute;
+  top: calc(var(--topbar-height) + 126px);
+  width: 210px;
+  z-index: 900;
+}
+
+.map-legend-heading {
+  align-items: baseline;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.map-legend-heading strong {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.map-legend-heading span {
+  color: rgb(234 242 242 / 64%);
+  font-size: 11px;
+}
+
+.map-legend-gradient {
+  border-radius: 4px;
+  height: 10px;
+  width: 100%;
+}
+
+.map-legend-labels {
+  color: rgb(234 242 242 / 70%);
+  display: flex;
+  font-size: 10px;
+  justify-content: space-between;
+  margin-top: 3px;
+}
+
+.result-frames {
+  border-top: 1px solid rgb(255 255 255 / 8%);
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
+.result-frames input[type='range'] {
+  accent-color: #55e3d1;
+  margin: 6px 0 8px;
+  width: 100%;
+}
+
+.result-frames p {
+  margin: 2px 0;
+}

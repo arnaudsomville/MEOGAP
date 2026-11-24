@@ -52,6 +52,7 @@ class RestAppConfig:
     cors_origins: tuple[str, ...] = ()
     require_bearer: bool = True
     extra_exempt_paths: tuple[str, ...] = ()
+    extra_exempt_prefixes: tuple[str, ...] = ()
 
 
 def error_code_for_status(status_code: int) -> str:
@@ -236,6 +237,7 @@ def create_rest_app(
             BearerIdentityMiddleware,
             service=config.service,
             exempt_paths=(config.health_path, *config.extra_exempt_paths),
+            exempt_prefixes=config.extra_exempt_prefixes,
         )
     if config.cors_origins:
         app.add_middleware(

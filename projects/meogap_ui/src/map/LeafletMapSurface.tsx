@@ -30,6 +30,7 @@ export type MapSurfaceProps = {
   focus: MapFocus | null
   focusRevision: number
   resultMap: ResultMap | null
+  resultFrameIndex: number
   resultVisible: boolean
   selectionMode: SelectionMode
   selectionPoint: Position | null
@@ -100,6 +101,7 @@ export function LeafletMapSurface({
   focus,
   focusRevision,
   resultMap,
+  resultFrameIndex,
   resultVisible,
   selectionMode,
   selectionPoint,
@@ -113,9 +115,36 @@ export function LeafletMapSurface({
   const basemap = BASEMAPS[basemapId]
   const draftAreaKm2 = verticesAreaKm2(draftVertices)
   const selectionAreaKm2 = verticesAreaKm2(selectionVertices)
+  const selectedFrame = resultMap?.frames[resultFrameIndex] ?? null
+  const resultUrl = selectedFrame?.url ?? resultMap?.url ?? null
+  const legend = resultMap?.legend ?? null
+  const legendGradient = legend
+    ? `linear-gradient(to right, ${legend.stops
+        .slice()
+        .sort((left, right) => left.value - right.value)
+        .map((stop) => {
+          const span = legend.max - legend.min
+          const position = span === 0 ? 0 : ((stop.value - legend.min) / span) * 100
+          return `${stop.color} ${Math.max(0, Math.min(100, position))}%`
+        })
+        .join(', ')})`
+    : null
   const nextBasemap = BASEMAPS[basemapId === 'satellite' ? 'openstreetmap' : 'satellite']
   return (
     <section className="map-region" aria-label="Interactive basemap">
+      {legend && legendGradient ? (
+        <aside className="map-legend" aria-label={`${legend.title} color scale`}>
+          <div className="map-legend-heading">
+            <strong>{legend.title}</strong>
+            <span>{legend.units}</span>
+          </div>
+          <div className="map-legend-gradient" style={{ background: legendGradient }} />
+          <div className="map-legend-labels">
+            <span>{legend.min}</span>
+            <span>{legend.max}</span>
+          </div>
+        </aside>
+      ) : null}
       <button
         type="button"
         className="basemap-switch"
@@ -176,9 +205,9 @@ export function LeafletMapSurface({
             ) : null}
           </Polygon>
         ) : null}
-        {resultMap?.bounds && resultVisible ? (
+        {resultMap?.bounds && resultVisible && resultUrl ? (
           <ImageOverlay
-            url={resultMap.url}
+            url={resultUrl}
             bounds={
               resultMap.bounds.map((point) => [point.lat, point.lng]) as [
                 [number, number],

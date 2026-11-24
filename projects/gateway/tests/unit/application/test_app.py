@@ -133,3 +133,28 @@ def test_gateway_labels_success_and_domain_errors_as_demo_responses() -> None:
     assert missing.status_code == status.HTTP_404_NOT_FOUND
     assert missing.headers['X-MEOGAP-Demo'] == 'true'
     assert missing.json()['code'] == 'AOI_NOT_FOUND'
+
+
+def test_demo_ndvi_display_and_geotiff_assets_are_served() -> None:
+    """Validate bundled NDVI display and georeferenced assets are available.
+
+    Args:
+    ----
+        None
+
+    Returns:
+    -------
+        None
+
+    """
+    # Act
+    png = client.get('/demo-assets/ndvi/toulouse-ndvi-2025-06-07.png')
+    geotiff = client.get('/demo-assets/ndvi/geotiff/toulouse-ndvi-2025.tif')
+    unknown = client.get('/demo-assets/ndvi/unknown.png')
+    # Assert
+    assert png.status_code == status.HTTP_200_OK
+    assert png.headers['content-type'] == 'image/png'
+    assert 'attachment' not in png.headers.get('content-disposition', '').lower()
+    assert geotiff.status_code == status.HTTP_200_OK
+    assert geotiff.headers['content-type'] == 'image/tiff'
+    assert unknown.status_code == status.HTTP_404_NOT_FOUND

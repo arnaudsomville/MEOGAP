@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from '../src/App'
@@ -202,12 +202,17 @@ function fakeMapSurface({
   onResultClick,
   onAoiSelect,
   aois,
+  resultMap,
+  resultFrameIndex,
 }: MapSurfaceProps) {
   return (
     <section aria-label="Test map">
       <output aria-label="Map focus">{describeFocus(focus)}</output>
       <output aria-label="Map padding">{describePadding(focus)}</output>
       <output aria-label="Selection mode">{selectionMode}</output>
+      <output aria-label="Displayed result frame">
+        {resultMap?.frames[resultFrameIndex]?.periodStart ?? 'none'}
+      </output>
       {drawing ? (
         <>
           <button
@@ -350,7 +355,7 @@ function stubGateway(
       return gatewayResponse(currentRequest)
     }
     if (path === '/api/v1/analysis-requests/request-1') return gatewayResponse(currentRequest)
-    if (path === '/api/v1/results/result-1/map')
+    if (path.startsWith('/api/v1/results/result-1/map'))
       return gatewayResponse({
         map_url: 'https://example.test/map.png',
         bounds: [
@@ -365,6 +370,39 @@ function stubGateway(
         validation_status: 'NOT_VALIDATED',
         quality_status: 'PARTIAL',
         quality_note: 'Synthetic demo quality.',
+        legend: {
+          title: 'NDVI',
+          units: 'unitless',
+          min: -0.2,
+          max: 0.9,
+          stops: [
+            { value: -0.2, color: '#744d2e' },
+            { value: 0.9, color: '#0c461c' },
+          ],
+        },
+        geotiff_url: '/demo-assets/ndvi/geotiff/test.tif',
+        frames: [
+          {
+            frame_id: 'result-1-frame-1',
+            url: '/demo-assets/ndvi/test-1.png',
+            period_start: '2026-01-01',
+            period_end: '2026-01-31',
+            label: '2026-01',
+            visual_period_start: '2025-06-01',
+            visual_period_end: '2025-07-31',
+            is_reused_visual: true,
+          },
+          {
+            frame_id: 'result-1-frame-2',
+            url: '/demo-assets/ndvi/test-2.png',
+            period_start: '2026-02-01',
+            period_end: '2026-02-28',
+            label: '2026-02',
+            visual_period_start: '2025-07-01',
+            visual_period_end: '2025-08-31',
+            is_reused_visual: true,
+          },
+        ],
         is_demo: true,
       })
     if (path === '/api/v1/results/result-1')
@@ -1539,4 +1577,22 @@ describe('App', () => {
       ),
     ).toHaveLength(1)
   })
+  it(
+    'steps through mock result frames with their period metadata',
+    { tags: ['unit'] },
+    async () => {
+      stubGateway({ request: { ...PROPOSED_REQUEST, state: 'COMPLETED', actual_credits: 2 } })
+      const user = userEvent.setup()
+      render(<App MapSurface={fakeMapSurface} />)
+
+      await user.click(screen.getByRole('button', { name: /^Requests/ }))
+      await user.click(await screen.findByRole('button', { name: 'Display on map' }))
+      expect(await screen.findByText(/Frame 1 of 2/)).toBeInTheDocument()
+      expect(screen.getByLabelText('Displayed result frame')).toHaveTextContent('2026-01-01')
+      fireEvent.change(screen.getByLabelText('Displayed frame'), { target: { value: '1' } })
+      expect(await screen.findByText(/Frame 2 of 2/)).toBeInTheDocument()
+      expect(screen.getByLabelText('Displayed result frame')).toHaveTextContent('2026-02-01')
+      expect(screen.getByText(/Visual reused from the static NDVI map/)).toBeInTheDocument()
+    },
+  )
 })

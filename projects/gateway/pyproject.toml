@@ -94,6 +94,9 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+gateway = ["assets/demo/ndvi/*.png", "assets/demo/ndvi/geotiff/*.tif"]
+
 ## Pytest ------------------------------------------------------------------------------------------ ""
 [tool.pytest.ini_options]
 addopts = "-p meogap.test_utilities.pytest_plugin"

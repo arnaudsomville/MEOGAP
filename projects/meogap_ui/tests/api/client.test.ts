@@ -638,3 +638,52 @@ describe('temporal frequency contract', () => {
     },
   )
 })
+
+describe('result map legend metadata', () => {
+  it('parses colour-map legend metadata and GeoTIFF provenance', { tags: ['unit'] }, () => {
+    const map = parseResultMap({
+      url: '/demo-assets/ndvi/toulouse-ndvi-2025.png',
+      bounds: [
+        [43.56, 1.38],
+        [43.66, 1.49],
+      ],
+      result_id: 'result-1',
+      legend: {
+        title: 'NDVI',
+        units: 'unitless',
+        min: -0.2,
+        max: 0.9,
+        stops: [
+          { value: -0.2, color: '#744d2e' },
+          { value: 0.9, color: '#0c461c' },
+        ],
+      },
+      geotiff_url: '/demo-assets/ndvi/geotiff/toulouse-ndvi-2025.tif',
+      frames: [
+        {
+          frame_id: 'result-1-frame-1',
+          url: '/demo-assets/ndvi/toulouse-ndvi-2025-06-07.png',
+          period_start: '2026-01-01',
+          period_end: '2026-01-31',
+          label: '2026-01',
+          visual_period_start: '2025-06-01',
+          visual_period_end: '2025-07-31',
+          is_reused_visual: true,
+        },
+      ],
+      is_demo: true,
+    })
+    expect(map.legend?.title).toBe('NDVI')
+    expect(map.frames[0].periodStart).toBe('2026-01-01')
+    expect(map.frames[0].isReusedVisual).toBe(true)
+    expect(map.legend?.stops).toHaveLength(2)
+    expect(map.geotiffUrl).toContain('.tif')
+    expect(() =>
+      parseResultMap({
+        url: 'x',
+        bounds: null,
+        legend: { title: 'NDVI', units: 'unitless', min: 0, max: 1, stops: [] },
+      }),
+    ).toThrow('legend stops')
+  })
+})

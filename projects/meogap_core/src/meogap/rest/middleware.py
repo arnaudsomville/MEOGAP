@@ -81,6 +81,7 @@ class BearerIdentityMiddleware(BaseHTTPMiddleware):
         *,
         service: str,
         exempt_paths: Sequence[str] = (),
+        exempt_prefixes: Sequence[str] = (),
     ) -> None:
         """Initialize the middleware.
 
@@ -89,6 +90,7 @@ class BearerIdentityMiddleware(BaseHTTPMiddleware):
             app(ASGIApp): wrapped ASGI application.
             service(str): logical service name used in error envelopes.
             exempt_paths(Sequence[str]): paths that do not require a bearer token.
+            exempt_prefixes(Sequence[str]): path prefixes that do not require a bearer token.
 
         Returns:
         -------
@@ -98,6 +100,7 @@ class BearerIdentityMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.service = service
         self.exempt_paths = frozenset(DEFAULT_EXEMPT_PATHS) | frozenset(exempt_paths)
+        self.exempt_prefixes = tuple(exempt_prefixes)
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """Validate the bearer credential shape before forwarding the request.
@@ -112,7 +115,12 @@ class BearerIdentityMiddleware(BaseHTTPMiddleware):
             Response: downstream response or a 401 error envelope.
 
         """
-        if request.method in EXEMPT_METHODS or request.url.path in self.exempt_paths:
+        path = request.url.path
+        if (
+            request.method in EXEMPT_METHODS
+            or path in self.exempt_paths
+            or (self.exempt_prefixes and path.startswith(self.exempt_prefixes))
+        ):
             return await call_next(request)
 
         values = request.headers.getlist(AUTHORIZATION_HEADER)

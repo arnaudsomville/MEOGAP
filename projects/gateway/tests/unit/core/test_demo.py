@@ -41,6 +41,7 @@ PRODUCT_COUNT = 4
 EXPECTED_MAX_PERIOD_MONTHS = 120
 EXPECTED_STARTING_BALANCE = 1000
 FULL_YEAR_MONTHS = 12
+EXPECTED_SHORT_REQUEST_FRAMES = 2
 NEW_GEOMETRY = {
     'type': 'Polygon',
     'coordinates': [[[1.4, 43.6], [1.41, 43.6], [1.41, 43.61], [1.4, 43.6]]],
@@ -145,8 +146,15 @@ def test_delivery_reaches_ready_with_a_valid_synthetic_artifact_and_map() -> Non
     delivery = store.create_delivery(DEMO_OWNER_ID, completed.result_id or '')
     ready_delivery = store.get_delivery(DEMO_OWNER_ID, delivery.delivery_id)
     # Assert
-    assert result_map['kind'] == 'DEMO_PLACEHOLDER'
-    assert 'not a computed scientific product' in result_map['note']
+    assert result_map['kind'] == 'DEMO_NDVI_STATIC'
+    assert 'georeferenced Sentinel-2' in result_map['note']
+    assert result_map['legend']['title'] == 'NDVI'
+    assert result_map['legend']['stops']
+    assert result_map['geotiff_url'].endswith('.tif')
+    assert len(result_map['frames']) == EXPECTED_SHORT_REQUEST_FRAMES
+    assert result_map['frames'][0]['period_start'] == '2026-01-01'
+    assert result_map['frames'][1]['period_start'] == '2026-02-01'
+    assert result_map['frames'][0]['visual_period_start'] == '2025-06-01'
     assert ready_delivery.state == DELIVERY_READY
     assert store.serialize_delivery(ready_delivery)['download_url'].startswith('data:application/geo+json;base64,')
 
@@ -669,3 +677,34 @@ def test_aoi_area_limit_rejects_creation_and_update_but_not_seed_references() ->
         )
     assert store.get_aoi(DEMO_OWNER_ID, created.aoi_id).revision == 1
     assert len(store.list_aois(DEMO_OWNER_ID)) == seeded_count + 1
+
+
+def test_result_map_generates_all_monthly_frames_and_honours_requested_count() -> None:
+    """Validate mock frame dates span the request period and can be limited.
+
+    Args:
+    ----
+        None
+
+    Returns:
+    -------
+        None
+
+    """
+    # Arrange
+    store = build_store()
+    result_id = build_completed_result(store, start_month='2026-01', end_month='2026-04')
+    # Act
+    all_frames = store.get_result_map(DEMO_OWNER_ID, result_id)
+    limited = store.get_result_map(DEMO_OWNER_ID, result_id, frame_count=2)
+    # Assert
+    assert [frame['period_start'] for frame in all_frames['frames']] == [
+        '2026-01-01',
+        '2026-02-01',
+        '2026-03-01',
+        '2026-04-01',
+    ]
+    assert len(limited['frames']) == EXPECTED_SHORT_REQUEST_FRAMES
+    assert limited['frames'][0]['period_start'] == '2026-01-01'
+    assert limited['frames'][1]['period_start'] == '2026-04-01'
+    assert all_frames['frames'][0]['url'].startswith('/demo-assets/ndvi/')
