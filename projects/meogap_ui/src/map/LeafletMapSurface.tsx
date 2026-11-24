@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import {
   CircleMarker,
   ImageOverlay,
@@ -6,12 +6,20 @@ import {
   Polygon,
   ScaleControl,
   TileLayer,
+  Tooltip,
   useMap,
   useMapEvents,
 } from 'react-leaflet'
 import type { Aoi, Position, ResultMap } from '../api/client'
-import { DEFAULT_BASEMAP, DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM } from './basemap'
-import { geometryToPositions, type MapFocus } from './coordinates'
+import { Icon } from '../components/Icon'
+import {
+  BASEMAPS,
+  BASEMAP_MAX_ZOOM,
+  DEFAULT_MAP_CENTER,
+  DEFAULT_MAP_ZOOM,
+  type BasemapId,
+} from './basemap'
+import { formatAreaKm2, geometryToPositions, verticesAreaKm2, type MapFocus } from './coordinates'
 
 export type SelectionMode = 'none' | 'point' | 'polygon'
 
@@ -101,19 +109,37 @@ export function LeafletMapSurface({
   onResultClick,
   onAoiSelect,
 }: MapSurfaceProps) {
+  const [basemapId, setBasemapId] = useState<BasemapId>('satellite')
+  const basemap = BASEMAPS[basemapId]
+  const draftAreaKm2 = verticesAreaKm2(draftVertices)
+  const selectionAreaKm2 = verticesAreaKm2(selectionVertices)
+  const nextBasemap = BASEMAPS[basemapId === 'satellite' ? 'openstreetmap' : 'satellite']
   return (
     <section className="map-region" aria-label="Interactive basemap">
+      <button
+        type="button"
+        className="basemap-switch"
+        onClick={() => setBasemapId(nextBasemap.id)}
+        aria-label={`Basemap: ${basemap.name}. Switch to ${nextBasemap.name}.`}
+        title={`Switch to ${nextBasemap.name}`}
+      >
+        <Icon name="layers" size={15} />
+        <span>Basemap</span>
+        <strong>{basemap.shortName}</strong>
+      </button>
       <MapContainer
         center={DEFAULT_MAP_CENTER}
         zoom={DEFAULT_MAP_ZOOM}
-        maxZoom={DEFAULT_BASEMAP.maxZoom}
+        maxZoom={BASEMAP_MAX_ZOOM}
         className="leaflet-map"
         zoomControl={false}
       >
         <TileLayer
-          url={DEFAULT_BASEMAP.url}
-          attribution={DEFAULT_BASEMAP.attribution}
-          maxZoom={DEFAULT_BASEMAP.maxZoom}
+          key={basemap.id}
+          url={basemap.url}
+          attribution={basemap.attribution}
+          maxZoom={basemap.maxZoom}
+          maxNativeZoom={basemap.maxNativeZoom}
         />
         <ScaleControl imperial={false} maxWidth={120} position="bottomright" />
         <MapClickHandler
@@ -142,7 +168,13 @@ export function LeafletMapSurface({
               (position) => [position.lat, position.lng] as [number, number],
             )}
             pathOptions={{ color: '#55e3d1', dashArray: '5 7', fillOpacity: 0.12 }}
-          />
+          >
+            {draftAreaKm2 !== null ? (
+              <Tooltip direction="top" offset={[0, -8]} sticky>
+                Area: {formatAreaKm2(draftAreaKm2)}
+              </Tooltip>
+            ) : null}
+          </Polygon>
         ) : null}
         {resultMap?.bounds && resultVisible ? (
           <ImageOverlay
@@ -169,7 +201,13 @@ export function LeafletMapSurface({
               (position) => [position.lat, position.lng] as [number, number],
             )}
             pathOptions={{ color: '#ffd166', weight: 2, dashArray: '4 5', fillOpacity: 0.1 }}
-          />
+          >
+            {selectionAreaKm2 !== null ? (
+              <Tooltip direction="top" offset={[0, -8]} sticky>
+                Area: {formatAreaKm2(selectionAreaKm2)}
+              </Tooltip>
+            ) : null}
+          </Polygon>
         ) : null}
       </MapContainer>
     </section>

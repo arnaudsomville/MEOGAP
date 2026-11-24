@@ -160,7 +160,7 @@ describe('REST reference contract', () => {
       supported_sources: ['Sentinel', 'Landsat'],
       supported_resolutions_m: [10, 20],
       supported_spatial_inputs: ['AOI', 'POI', 'LOI'],
-      supported_frequencies: ['monthly', 'seasonal', 'annual'],
+      supported_frequencies: ['monthly', 'semimonthly', 'weekly', 'three_day', 'two_day', 'daily'],
       max_period_months: 120,
       documentation_status: 'PLACEHOLDER',
       documentation_url: null,
@@ -182,10 +182,12 @@ describe('REST reference contract', () => {
       period: { start_month: '2026-01', end_month: '2026-02' },
       spatial_resolution_m: 20,
       sources: ['Sentinel', 'Landsat'],
+      temporal_frequency: 'monthly',
     }
     expect(validateCreateRequest(payload)).toBe(true)
     expect(validateCreateRequest({ ...payload, sources: ['Unknown mission'] })).toBe(false)
     expect(validateCreateRequest({ ...payload, spatial_resolution_m: 0 })).toBe(false)
+    expect(validateCreateRequest({ ...payload, temporal_frequency: 'hourly' })).toBe(false)
   })
 
   it(
@@ -297,6 +299,7 @@ describe('REST reference contract', () => {
           start_month: '2026-01',
           end_month: '2026-02',
           units: 'unitless',
+          temporal_frequency: 'monthly',
           validation_status: 'NOT_VALIDATED',
           quality_status: 'PARTIAL',
           quality_note: 'Demo.',

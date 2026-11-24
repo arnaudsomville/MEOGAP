@@ -351,7 +351,15 @@ describe('extended Gateway client', () => {
       native_resolution: '10 m',
       units: 'unitless',
       supported_spatial_inputs: ['AOI', 'POI', 'LOI', 'UNKNOWN'],
-      supported_frequencies: ['monthly', 'seasonal', 'custom'],
+      supported_frequencies: [
+        'monthly',
+        'semimonthly',
+        'weekly',
+        'three_day',
+        'two_day',
+        'daily',
+        'custom',
+      ],
       max_period_months: 120,
       documentation_status: 'PLACEHOLDER',
       documentation_url: null,
@@ -360,7 +368,14 @@ describe('extended Gateway client', () => {
     })
     expect(product.units).toBe('unitless')
     expect(product.supportedSpatialInputs).toEqual(['AOI', 'POI', 'LOI'])
-    expect(product.supportedFrequencies).toEqual(['monthly', 'seasonal'])
+    expect(product.supportedFrequencies).toEqual([
+      'monthly',
+      'semimonthly',
+      'weekly',
+      'three_day',
+      'two_day',
+      'daily',
+    ])
     expect(product.maxPeriodMonths).toBe(120)
     const missions = parseProductMissions({
       product_id: 'ndvi',
@@ -561,6 +576,65 @@ describe('extended Gateway client', () => {
         '/api/v1/catalogue/products/ndvi/missions',
         expect.any(Object),
       )
+    },
+  )
+})
+
+describe('temporal frequency contract', () => {
+  const RESULT_DETAIL = {
+    result_id: 'result-1',
+    request_id: 'request-1',
+    product_id: 'ndvi',
+    product_name: 'NDVI',
+    result_version: '1',
+    aoi_name: 'Toulouse',
+    geometry_snapshot: AOI.geometry,
+    start_month: '2026-01',
+    end_month: '2026-02',
+    units: 'unitless',
+    temporal_frequency: 'weekly',
+    validation_status: 'NOT_VALIDATED',
+    quality_status: 'PARTIAL',
+    quality_note: 'Synthetic.',
+    provenance_note: 'Demo lineage.',
+    is_demo: true,
+  }
+
+  it('parses retained temporal frequency from requests and results', { tags: ['unit'] }, () => {
+    expect(
+      parseAnalysisRequest({ ...REQUEST, temporal_frequency: 'semimonthly' }).temporalFrequency,
+    ).toBe('semimonthly')
+    expect(parseResultDetail(RESULT_DETAIL).temporalFrequency).toBe('weekly')
+    expect(() => parseAnalysisRequest({ ...REQUEST, temporal_frequency: 'hourly' })).toThrow(
+      'temporal_frequency',
+    )
+  })
+
+  it(
+    'transmits temporal frequency in estimate and creation payloads',
+    { tags: ['unit'] },
+    async () => {
+      const fetchMock = vi.fn(async (_path: string, _init?: RequestInit) => {
+        void _path
+        void _init
+        return response(REQUEST)
+      })
+      vi.stubGlobal('fetch', fetchMock)
+      await createAnalysisRequest({
+        productId: 'ndvi',
+        aoiId: 'aoi-1',
+        startMonth: '2026-01',
+        endMonth: '2026-02',
+        temporalFrequency: 'monthly',
+      })
+      const createCall = fetchMock.mock.calls.find(
+        ([path, init]) =>
+          path === '/api/v1/analysis-requests' &&
+          (init as RequestInit | undefined)?.method === 'POST',
+      )
+      expect(JSON.parse(String((createCall?.[1] as RequestInit).body))).toMatchObject({
+        temporal_frequency: 'monthly',
+      })
     },
   )
 })

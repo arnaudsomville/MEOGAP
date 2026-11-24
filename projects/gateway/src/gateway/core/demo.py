@@ -30,6 +30,7 @@ from meogap.scientific.products import (
     SourceMission,
 )
 
+from gateway.core.config import MAX_AOI_AREA_KM2
 from gateway.core.product_previews import build_product_preview
 
 DEMO_OWNER_ID = 'demo-user'
@@ -190,6 +191,7 @@ class DemoSettings:
     delivery_delay_seconds: int = DEFAULT_DELIVERY_DELAY_SECONDS
     failure_mode: str | None = None
     max_selection_area_km2: float = DEFAULT_MAX_SELECTION_AREA_KM2
+    max_aoi_area_km2: float = MAX_AOI_AREA_KM2
 
 
 @dataclass
@@ -231,6 +233,7 @@ class RequestRecord:
     failure_stage: str | None = None
     requested_sources: tuple[str, ...] = ()
     requested_spatial_resolution_m: int | None = None
+    temporal_frequency: str | None = None
 
 
 @dataclass
@@ -850,7 +853,15 @@ class DemoStore:
                 raise DemoError(status.HTTP_404_NOT_FOUND, 'AOI_NOT_FOUND', 'The requested AOI was not found.')
             return record
 
-    def create_aoi(self, owner_id: str, name: str, description: str | None, geometry: Geometry) -> AoiRecord:
+    def create_aoi(
+        self,
+        owner_id: str,
+        name: str,
+        description: str | None,
+        geometry: Geometry,
+        *,
+        enforce_area_limit: bool = True,
+    ) -> AoiRecord:
         """Persist one validated user-owned demo AOI.
 
         Args:
@@ -859,6 +870,7 @@ class DemoStore:
             name(str): caller-visible AOI name.
             description(str | None): optional caller-visible description.
             geometry(Geometry): GeoJSON polygonal geometry.
+            enforce_area_limit(bool): whether the configured AOI area limit applies.
 
         Returns:
         -------
@@ -869,6 +881,8 @@ class DemoStore:
         if not clean_name:
             raise DemoError(status.HTTP_422_UNPROCESSABLE_ENTITY, 'INVALID_AOI', 'An AOI name is required.')
         validated_geometry = validate_geometry(geometry)
+        if enforce_area_limit:
+            self._validate_aoi_area(validated_geometry)
         with self._lock:
             self._aoi_sequence += 1
             now = self.clock()
@@ -920,7 +934,9 @@ class DemoStore:
             if description_provided:
                 record.description = description.strip() if description else None
             if geometry is not None:
-                record.geometry = validate_geometry(geometry)
+                validated_geometry = validate_geometry(geometry)
+                self._validate_aoi_area(validated_geometry)
+                record.geometry = validated_geometry
             record.revision += 1
             record.updated_at = self.clock()
             return record
@@ -948,6 +964,7 @@ class DemoStore:
         *,
         spatial_resolution_m: int | None = None,
         sources: list[SourceMission] | None = None,
+        temporal_frequency: str | None = None,
     ) -> RequestRecord:
         """Persist a PREPARING request with an immutable AOI geometry snapshot.
 
@@ -960,6 +977,7 @@ class DemoStore:
             end_month(str): inclusive UTC month in YYYY-MM form.
             spatial_resolution_m(int | None): requested maximum pixel size in metres.
             sources(list[SourceMission] | None): requested source missions.
+            temporal_frequency(str | None): selected scientific temporal frequency.
 
         Returns:
         -------
@@ -973,6 +991,7 @@ class DemoStore:
             end_month,
             spatial_resolution_m,
             sources,
+            temporal_frequency,
         )
         with self._lock:
             aoi = self.get_aoi(owner_id, aoi_id)
@@ -994,6 +1013,7 @@ class DemoStore:
                 proposal_ready_at=now + timedelta(seconds=self.settings.preparation_delay_seconds),
                 requested_sources=requested_sources,
                 requested_spatial_resolution_m=spatial_resolution_m,
+                temporal_frequency=temporal_frequency,
             )
             self._requests[record.request_id] = record
             return record
@@ -1008,6 +1028,7 @@ class DemoStore:
         *,
         spatial_resolution_m: int | None = None,
         sources: list[SourceMission] | None = None,
+        temporal_frequency: str | None = None,
     ) -> dict[str, Any]:
         """Return the deterministic cost estimate and admission decision.
 
@@ -1020,6 +1041,7 @@ class DemoStore:
             end_month(str): inclusive UTC month in YYYY-MM form.
             spatial_resolution_m(int | None): requested maximum pixel size in metres.
             sources(list[SourceMission] | None): requested source missions.
+            temporal_frequency(str | None): selected scientific temporal frequency.
 
         Returns:
         -------
@@ -1033,6 +1055,7 @@ class DemoStore:
             end_month,
             spatial_resolution_m,
             sources,
+            temporal_frequency,
         )
         with self._lock:
             self.get_aoi(owner_id, aoi_id)
@@ -1258,6 +1281,7 @@ class DemoStore:
                 'start_month': result.start_month,
                 'end_month': result.end_month,
                 'units': product['units'],
+                'temporal_frequency': self._requests[result.request_id].temporal_frequency,
                 'validation_status': product['validation_status'],
                 'quality_status': QUALITY_PARTIAL,
                 'quality_note': 'Synthetic demo quality; no real source observations exist.',
@@ -1518,6 +1542,7 @@ class DemoStore:
             'end_month': record.end_month,
             'requested_sources': list(record.requested_sources),
             'requested_spatial_resolution_m': record.requested_spatial_resolution_m,
+            'temporal_frequency': record.temporal_frequency,
             'proposal': proposal,
             'actual_credits': record.actual_credits,
             'result_id': record.result_id,
@@ -1784,13 +1809,34 @@ class DemoStore:
             raise DemoError(status.HTTP_404_NOT_FOUND, 'RESULT_NOT_FOUND', 'The requested result was not found.')
         return result
 
-    def _validate_request_constraints(
+    def _validate_aoi_area(self, geometry: Geometry) -> None:
+        """Reject an AOI whose approximate area exceeds the configured limit.
+
+        Args:
+        ----
+            geometry(Geometry): validated polygonal geometry.
+
+        Raises:
+        ------
+            DemoError: when the AOI area exceeds the configured threshold.
+
+        """
+        area_km2 = geometry_area_km2(geometry)
+        if area_km2 > self.settings.max_aoi_area_km2:
+            raise DemoError(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                'AOI_AREA_EXCEEDED',
+                f'An AOI cannot exceed {self.settings.max_aoi_area_km2:g} km².',
+            )
+
+    def _validate_request_constraints(  # noqa: PLR0917
         self,
         product: dict[str, Any],
         start_month: str,
         end_month: str,
         spatial_resolution_m: int | None,
         sources: list[SourceMission] | None,
+        temporal_frequency: str | None,
     ) -> tuple[str, ...]:
         """Validate request constraints declared by one product descriptor.
 
@@ -1801,6 +1847,7 @@ class DemoStore:
             end_month(str): inclusive UTC month in YYYY-MM form.
             spatial_resolution_m(int | None): requested maximum pixel size in metres.
             sources(list[SourceMission] | None): requested source missions.
+            temporal_frequency(str | None): selected scientific temporal frequency.
 
         Returns:
         -------
@@ -1827,6 +1874,14 @@ class DemoStore:
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     'INVALID_RESOLUTION',
                     'Spatial resolution must be one of the product-declared resolutions in metres.',
+                )
+        if temporal_frequency is not None:
+            supported_frequencies = product.get('supported_frequencies', [])
+            if temporal_frequency not in supported_frequencies:
+                raise DemoError(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    'UNSUPPORTED_FREQUENCY',
+                    'The temporal frequency must be one declared by the product.',
                 )
         requested_sources = tuple(source.value for source in sources or ())
         unsupported = sorted(set(requested_sources) - set(product['supported_sources']))
@@ -1949,7 +2004,7 @@ class DemoStore:
                 'supported_sources': [source.value for source in supported_sources],
                 'supported_resolutions_m': supported_resolutions,
                 'supported_spatial_inputs': ['AOI', 'POI', 'LOI'],
-                'supported_frequencies': ['monthly', 'seasonal', 'annual'],
+                'supported_frequencies': ['monthly', 'semimonthly', 'weekly', 'three_day', 'two_day', 'daily'],
                 'max_period_months': 120,
                 'documentation_status': 'PLACEHOLDER',
                 'documentation_url': None,
@@ -2001,6 +2056,7 @@ class DemoStore:
                 name,
                 description,
                 {'type': 'Polygon', 'coordinates': [ring]},
+                enforce_area_limit=False,
             )
 
     def _map_data_url(self, product_id: str) -> str:

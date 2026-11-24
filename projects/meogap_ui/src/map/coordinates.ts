@@ -176,6 +176,15 @@ export function geometryToWkt(geometry: AoiGeometry): string {
     .join(', ')})`
 }
 
+export function verticesAreaKm2(vertices: Position[]): number | null {
+  const geometry = verticesToPolygon(vertices)
+  return geometry ? geometryAreaKm2(geometry) : null
+}
+
+export function formatAreaKm2(area: number): string {
+  return `${area >= 100 ? area.toFixed(0) : area.toFixed(2)} km²`
+}
+
 export function geometryAreaKm2(geometry: AoiGeometry): number {
   const rings =
     geometry.type === 'Polygon'

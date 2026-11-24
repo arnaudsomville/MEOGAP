@@ -47,19 +47,20 @@ import {
   type ResultMap,
   type SeriesResponse,
   type SourceMissionInfo,
+  type TemporalFrequency,
 } from './api/client'
+import { ChartWorkspace } from './components/ChartWorkspace'
 import { Icon, type IconName } from './components/Icon'
 import { Logo } from './components/Logo'
 import { OverlayPanel } from './components/OverlayPanel'
 import { ProductCard, ProductPreview } from './components/ProductCard'
-import { TemporalFilters as TemporalFiltersPanel } from './components/TemporalFilters'
-import { TimeSeriesChart } from './components/TimeSeriesChart'
 import {
   LeafletMapSurface,
   type MapSurfaceComponent,
   type SelectionMode,
 } from './map/LeafletMapSurface'
 import {
+  formatAreaKm2,
   geometryAreaKm2,
   geometryBounds,
   geometryToVertices,
@@ -70,16 +71,17 @@ import {
   positionToWktPoint,
   verticesToPolygon,
   verticesToWktPolygon,
+  verticesAreaKm2,
   verticesWithinBounds,
   type MapBounds,
   type MapFocus,
 } from './map/coordinates'
 import { searchPlaces } from './map/places'
+import { AOI_AREA_LIMIT_MESSAGE, AOI_MAX_AREA_KM2 } from './config'
 import {
   EMPTY_TEMPORAL_FILTERS,
   filterSeriesPoints,
   hemisphereForLatitudes,
-  isTemporalFilterActive,
   type TemporalFilters,
 } from './temporal'
 
@@ -116,6 +118,18 @@ const NARROW_LAYOUT_MAX_WIDTH_PX = 1000
 const TERMINAL_STATES: ReadonlySet<AnalysisState> = new Set(['COMPLETED', 'FAILED', 'CANCELLED'])
 const SELECTION_CRS = 'EPSG:4326'
 const MAX_SELECTION_AREA_KM2 = 25_000
+const TEMPORAL_FREQUENCY_LABELS: Record<TemporalFrequency, string> = {
+  monthly: 'Monthly',
+  semimonthly: 'Semi-monthly',
+  weekly: 'Weekly',
+  three_day: '3-day',
+  two_day: '2-day',
+  daily: '1-day',
+}
+
+function temporalFrequencyLabel(frequency: TemporalFrequency | null): string {
+  return frequency ? TEMPORAL_FREQUENCY_LABELS[frequency] : 'Not specified'
+}
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'The request could not be completed.'
@@ -226,6 +240,8 @@ function RequestCard({
   onCancel,
   onDisplay,
   onDelivery,
+  delivery,
+  onRefreshDelivery,
 }: {
   request: AnalysisRequest
   productName: string | null
@@ -235,6 +251,8 @@ function RequestCard({
   onCancel: (id: string) => void
   onDisplay: (request: AnalysisRequest) => void
   onDelivery: (request: AnalysisRequest, kind: DeliveryKind) => void
+  delivery: Delivery | null
+  onRefreshDelivery: (requestId: string, deliveryId: string) => void
 }) {
   const canCancel = !['COMPLETED', 'FAILED', 'CANCELLED'].includes(request.state)
   const hasResult = request.resultId !== null
@@ -267,6 +285,10 @@ function RequestCard({
         <div>
           <dt>Sources</dt>
           <dd>{sources}</dd>
+        </div>
+        <div>
+          <dt>Temporal frequency</dt>
+          <dd>{temporalFrequencyLabel(request.temporalFrequency)}</dd>
         </div>
         <div>
           <dt>Max pixel size</dt>
@@ -304,6 +326,47 @@ function RequestCard({
       ) : null}
       {request.state === 'COMPLETED' && !hasResult ? (
         <p>Completed, but no result identifier was provided for map or delivery access.</p>
+      ) : null}
+      {delivery ? (
+        <div className="request-delivery" aria-label={`Delivery for request ${request.id}`}>
+          <div className="request-delivery-heading">
+            <strong>
+              Delivery {delivery.kind ? `(${delivery.kind.replaceAll('_', ' ')})` : ''}
+            </strong>
+            <StatusPill state={delivery.state} />
+          </div>
+          {delivery.message ? <p>{delivery.message}</p> : null}
+          {delivery.state === 'FAILED' ? (
+            <p className="failure-text">The delivery could not be prepared.</p>
+          ) : null}
+          {delivery.state === 'READY' && !delivery.downloadUrl ? (
+            <p className="failure-text">The delivery is ready but no download URL was provided.</p>
+          ) : null}
+          {delivery.state === 'READY' && delivery.downloadUrl ? (
+            <a
+              className="button button-primary"
+              href={delivery.downloadUrl}
+              download={
+                delivery.kind === 'dependency_archive'
+                  ? 'meogap-archive.geojson'
+                  : 'meogap-product.geojson'
+              }
+            >
+              <Icon name="download" />
+              Download {delivery.kind === 'dependency_archive' ? 'archive' : 'product'}
+            </a>
+          ) : null}
+          {delivery.state !== 'READY' ? (
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={() => onRefreshDelivery(request.id, delivery.id)}
+            >
+              <Icon name="refresh" />
+              Refresh delivery
+            </button>
+          ) : null}
+        </div>
       ) : null}
       <div className="card-actions">
         <button
@@ -427,12 +490,13 @@ export default function App({
   const [requestAoiId, setRequestAoiId] = useState('')
   const [requestSources, setRequestSources] = useState<string[]>([])
   const [requestResolution, setRequestResolution] = useState('')
+  const [requestFrequency, setRequestFrequency] = useState<TemporalFrequency | ''>('')
   const [startMonth, setStartMonth] = useState(EMPTY_MONTH)
   const [endMonth, setEndMonth] = useState(EMPTY_MONTH)
   const [resultMap, setResultMap] = useState<ResultMap | null>(null)
   const [resultDetail, setResultDetail] = useState<ResultDetail | null>(null)
   const [displayedRequest, setDisplayedRequest] = useState<AnalysisRequest | null>(null)
-  const [delivery, setDelivery] = useState<Delivery | null>(null)
+  const [deliveries, setDeliveries] = useState<Record<string, Delivery>>({})
   const [creditBalance, setCreditBalance] = useState<CreditBalance | null>(null)
   const [account, setAccount] = useState<Account | null>(null)
   const [sessionActive, setSessionActive] = useState(true)
@@ -448,6 +512,10 @@ export default function App({
   const [selectionPoint, setSelectionPoint] = useState<Position | null>(null)
   const [selectionVertices, setSelectionVertices] = useState<Position[]>([])
   const [selectionReuse, setSelectionReuse] = useState<AoiGeometry | null>(null)
+  const [selectionSource, setSelectionSource] = useState<'request_aoi' | 'result_geometry' | null>(
+    null,
+  )
+  const [chartOpen, setChartOpen] = useState(false)
   const [series, setSeries] = useState<SeriesResponse | null>(null)
   const [seriesLoading, setSeriesLoading] = useState(false)
   const [seriesError, setSeriesError] = useState<string | null>(null)
@@ -586,6 +654,7 @@ export default function App({
         endMonth,
         spatialResolutionM: requestResolution ? Number(requestResolution) : null,
         sources: allMissionsSelected ? [] : requestSources,
+        temporalFrequency: requestFrequency || null,
       })
         .then((response) => {
           if (active) setEstimate(receive(response))
@@ -613,6 +682,7 @@ export default function App({
     endMonth,
     requestResolution,
     requestSources,
+    requestFrequency,
     missions,
     receive,
   ])
@@ -790,6 +860,11 @@ export default function App({
       setError('An AOI needs a name and at least three boundary points before it can be saved.')
       return
     }
+    const areaKm2 = geometryAreaKm2(geometry)
+    if (areaKm2 > AOI_MAX_AREA_KM2) {
+      setError(`${AOI_AREA_LIMIT_MESSAGE} Current area: ${formatAreaKm2(areaKm2)}.`)
+      return
+    }
     try {
       const input = { name, description: aoiDescription.trim() || null, geometry }
       const response = editingAoiId ? await updateAoi(editingAoiId, input) : await createAoi(input)
@@ -840,6 +915,7 @@ export default function App({
     setRequestProductId(productId)
     setRequestSources([])
     setRequestResolution('')
+    setRequestFrequency('')
     setEstimate(null)
     setEstimateError(null)
     setMissions([])
@@ -872,6 +948,10 @@ export default function App({
       setError('Select at least one compatible source mission.')
       return
     }
+    if (requestProduct?.supportedFrequencies.length && !requestFrequency) {
+      setError('Select a temporal frequency declared by the product.')
+      return
+    }
     if (!estimate) {
       setError('Wait for the cost estimate before submitting this request.')
       return
@@ -896,6 +976,7 @@ export default function App({
           endMonth,
           spatialResolutionM: resolution,
           sources: allMissionsSelected ? [] : requestSources,
+          temporalFrequency: requestFrequency || null,
         }),
       )
       setRequests((current) => replaceById(current, request))
@@ -968,18 +1049,16 @@ export default function App({
     if (!request.resultId) return
     try {
       const nextDelivery = receive(await createDelivery(request.resultId, kind))
-      setDelivery(nextDelivery)
-      setDisplayedRequest(request)
-      setInspectorOpen(true)
+      setDeliveries((current) => ({ ...current, [request.id]: nextDelivery }))
     } catch (reason) {
       showError('Delivery could not be prepared', reason)
     }
   }
 
-  async function refreshDelivery(): Promise<void> {
-    if (!delivery) return
+  async function refreshDelivery(requestId: string, deliveryId: string): Promise<void> {
     try {
-      setDelivery(receive(await getDelivery(delivery.id)))
+      const nextDelivery = receive(await getDelivery(deliveryId))
+      setDeliveries((current) => ({ ...current, [requestId]: nextDelivery }))
     } catch (reason) {
       showError('Delivery status could not be refreshed', reason)
     }
@@ -990,17 +1069,22 @@ export default function App({
     setSelectionPoint(null)
     setSelectionVertices([])
     setSelectionReuse(null)
+    setSelectionSource(null)
     setSeries(null)
     setSeriesError(null)
     setTemporalFilters(EMPTY_TEMPORAL_FILTERS)
+    setChartOpen(false)
   }
 
   function startPointSelection(): void {
     setSelectionMode('point')
     setSelectionVertices([])
     setSelectionReuse(null)
+    setSelectionSource(null)
     setSeries(null)
     setSeriesError(null)
+    setTemporalFilters(EMPTY_TEMPORAL_FILTERS)
+    setChartOpen(false)
   }
 
   function startPolygonSelection(): void {
@@ -1008,8 +1092,11 @@ export default function App({
     setSelectionPoint(null)
     setSelectionVertices([])
     setSelectionReuse(null)
+    setSelectionSource(null)
     setSeries(null)
     setSeriesError(null)
+    setTemporalFilters(EMPTY_TEMPORAL_FILTERS)
+    setChartOpen(false)
   }
 
   function reuseRequestAoi(): void {
@@ -1020,9 +1107,28 @@ export default function App({
     setSelectionMode('none')
     setSelectionPoint(null)
     setSelectionReuse(displayedRequest.geometrySnapshot)
+    setSelectionSource('request_aoi')
     setSelectionVertices(geometryToVertices(displayedRequest.geometrySnapshot))
     setSeries(null)
     setSeriesError(null)
+    setTemporalFilters(EMPTY_TEMPORAL_FILTERS)
+    setChartOpen(false)
+  }
+
+  function useResultGeometry(): void {
+    if (!resultDetail?.geometry) {
+      setError('The displayed result does not expose a selectable result geometry.')
+      return
+    }
+    setSelectionMode('none')
+    setSelectionPoint(null)
+    setSelectionReuse(resultDetail.geometry)
+    setSelectionSource('result_geometry')
+    setSelectionVertices(geometryToVertices(resultDetail.geometry))
+    setSeries(null)
+    setSeriesError(null)
+    setTemporalFilters(EMPTY_TEMPORAL_FILTERS)
+    setChartOpen(false)
   }
 
   function handleResultClick(position: Position): void {
@@ -1045,10 +1151,12 @@ export default function App({
     setSeries(null)
     setSeriesError(null)
     setTemporalFilters(EMPTY_TEMPORAL_FILTERS)
+    setChartOpen(false)
     if (selectionMode === 'point') {
       setSelectionPoint(position)
       setSelectionVertices([])
       setSelectionReuse(null)
+      setSelectionSource(null)
       setSelectionMode('none')
       return
     }
@@ -1059,14 +1167,15 @@ export default function App({
       }
       setSelectionPoint(null)
       setSelectionReuse(null)
+      setSelectionSource(null)
       setSelectionVertices((vertices) => [...vertices, position])
     }
   }
 
-  async function loadSeries(): Promise<void> {
+  async function loadSeries(openAfterLoad = false): Promise<boolean> {
     if (!displayedRequest?.resultId || !displayedRequest.startMonth || !displayedRequest.endMonth) {
       setSeriesError('The displayed result does not declare a supported period.')
-      return
+      return false
     }
     let geometryWkt: string | null = null
     let selectionGeometry: AoiGeometry | null = null
@@ -1081,7 +1190,7 @@ export default function App({
     }
     if (!geometryWkt) {
       setSeriesError('Select a point or draw a polygon with at least three vertices.')
-      return
+      return false
     }
     if (resultMap?.bounds) {
       const [first, second] = resultMap.bounds
@@ -1093,16 +1202,16 @@ export default function App({
       }
       if (selectionPoint && !pointInBounds(selectionPoint, resultBounds)) {
         setSeriesError('The selected point is outside the displayed result.')
-        return
+        return false
       }
       if (selectionVertices.length > 0 && !verticesWithinBounds(selectionVertices, resultBounds)) {
         setSeriesError('The selected polygon is outside the displayed result.')
-        return
+        return false
       }
     }
     if (selectionGeometry && geometryAreaKm2(selectionGeometry) > MAX_SELECTION_AREA_KM2) {
       setSeriesError(`The selected polygon exceeds ${MAX_SELECTION_AREA_KM2} km².`)
-      return
+      return false
     }
     setSeriesLoading(true)
     setSeriesError(null)
@@ -1117,12 +1226,23 @@ export default function App({
       )
       setSeries(response)
       setTemporalFilters(EMPTY_TEMPORAL_FILTERS)
+      if (openAfterLoad) setChartOpen(true)
+      return true
     } catch (reason) {
       setSeries(null)
       setSeriesError(errorMessage(reason))
+      return false
     } finally {
       setSeriesLoading(false)
     }
+  }
+
+  async function openTimeSeries(): Promise<void> {
+    if (series) {
+      setChartOpen(true)
+      return
+    }
+    await loadSeries(true)
   }
 
   function openAccount(): void {
@@ -1232,6 +1352,8 @@ export default function App({
     products.find((product) => product.id === id)?.name ?? null
   const displayedAoiName = (id: string | null): string | null =>
     aois.find((aoi) => aoi.id === id)?.name ?? null
+  const draftAreaKm2 = verticesAreaKm2(draftVertices)
+  const draftAreaExceeded = draftAreaKm2 !== null && draftAreaKm2 > AOI_MAX_AREA_KM2
   const nativeResolutionNote = requestProduct?.nativeResolution
     ? `Declared native resolution: ${requestProduct.nativeResolution}. A request cannot reveal detail finer than the source data.`
     : 'Selecting a pixel size cannot reveal detail finer than the source data.'
@@ -1245,7 +1367,29 @@ export default function App({
     ? filterSeriesPoints(series.points, temporalFilters, seriesHemisphere)
     : []
   const hasSelection = Boolean(selectionPoint || selectionReuse || selectionVertices.length >= 3)
+  const activeSelectionWkt = selectionPoint
+    ? positionToWktPoint(selectionPoint)
+    : selectionReuse
+      ? geometryToWkt(selectionReuse)
+      : verticesToWktPolygon(selectionVertices)
+  const selectionLabel = selectionPoint
+    ? `Point selection · ${activeSelectionWkt} · ${SELECTION_CRS}`
+    : selectionReuse
+      ? `${selectionSource === 'result_geometry' ? 'Entire result geometry' : 'Request AOI'} · ${SELECTION_CRS}`
+      : selectionVertices.length >= 3
+        ? `Drawn polygon · ${selectionVertices.length} vertices · ${SELECTION_CRS}`
+        : 'No spatial selection'
+  const resultProductName =
+    resultDetail?.productName ??
+    displayedProductName(displayedRequest?.productId ?? null) ??
+    displayedRequest?.productId ??
+    'Result'
+  const resultPeriodLabel =
+    displayedRequest?.startMonth && displayedRequest?.endMonth
+      ? `${displayedRequest.startMonth} to ${displayedRequest.endMonth} UTC`
+      : 'Period unavailable'
   const allMissionsSelected = missions.length > 0 && requestSources.length === missions.length
+  const requestFrequencyOptions = requestProduct?.supportedFrequencies ?? []
   const admissionLabel = estimate
     ? estimate.admission === 'ADMITTED'
       ? 'Admitted'
@@ -1257,6 +1401,9 @@ export default function App({
     Boolean(requestProductId && requestAoiId && startMonth && endMonth) &&
     startMonth <= endMonth &&
     (missions.length === 0 || requestSources.length > 0) &&
+    Boolean(requestProduct) &&
+    requestFrequencyOptions.length > 0 &&
+    Boolean(requestFrequency) &&
     estimate?.admission === 'ADMITTED'
 
   return (
@@ -1782,6 +1929,17 @@ export default function App({
                 Click the map to add boundary points. {draftVertices.length} boundary point
                 {draftVertices.length === 1 ? '' : 's'} selected.
               </p>
+              {draftAreaKm2 !== null ? (
+                <p className="draft-area">
+                  Area: <strong>{formatAreaKm2(draftAreaKm2)}</strong> / maximum {AOI_MAX_AREA_KM2}{' '}
+                  km²
+                </p>
+              ) : null}
+              {draftAreaExceeded ? (
+                <p className="failure-text" role="alert">
+                  {AOI_AREA_LIMIT_MESSAGE}
+                </p>
+              ) : null}
               {editingAoiId ? (
                 <p className="muted">
                   Saving replaces the boundary while preserving the existing AOI identity.
@@ -1828,7 +1986,7 @@ export default function App({
                   type="button"
                   className="button button-primary"
                   onClick={() => void saveAoi()}
-                  disabled={draftVertices.length < 3}
+                  disabled={draftVertices.length < 3 || draftAreaExceeded}
                 >
                   <Icon name="check" />
                   Save AOI
@@ -1937,6 +2095,44 @@ export default function App({
               Select a product, an AOI and an inclusive UTC period before submitting.
             </p>
           ) : null}
+
+          <div className="field">
+            <label className="field-label" htmlFor="request-frequency">
+              Temporal frequency
+            </label>
+            <select
+              id="request-frequency"
+              value={requestFrequency}
+              disabled={!requestProduct || requestFrequencyOptions.length === 0}
+              onChange={(event) => {
+                setRequestFrequency(event.target.value as TemporalFrequency | '')
+                setEstimate(null)
+                setEstimateError(null)
+              }}
+            >
+              <option value="">Select a temporal frequency</option>
+              {requestFrequencyOptions.map((frequency) => (
+                <option key={frequency} value={frequency}>
+                  {TEMPORAL_FREQUENCY_LABELS[frequency]}
+                </option>
+              ))}
+            </select>
+            {!requestProduct ? (
+              <p className="field-help">
+                Select a product to load its declared temporal frequencies.
+              </p>
+            ) : null}
+            {requestProduct && requestFrequencyOptions.length === 0 ? (
+              <p className="failure-text">
+                This product declares no supported temporal frequency. Submission is disabled.
+              </p>
+            ) : null}
+            {requestProduct && requestFrequencyOptions.length > 0 && !requestFrequency ? (
+              <p className="field-help">
+                Choose one of the product-declared temporal frequencies. No default is assumed.
+              </p>
+            ) : null}
+          </div>
 
           {missionsLoading ? (
             <StateNotice icon="refresh">Loading compatible missions…</StateNotice>
@@ -2141,6 +2337,10 @@ export default function App({
                 onCancel={(id) => void cancelRequest(id)}
                 onDisplay={(nextRequest) => void displayResult(nextRequest)}
                 onDelivery={(nextRequest, kind) => void requestDelivery(nextRequest, kind)}
+                delivery={deliveries[request.id] ?? null}
+                onRefreshDelivery={(requestId, deliveryId) =>
+                  void refreshDelivery(requestId, deliveryId)
+                }
               />
             ))}
           </div>
@@ -2259,6 +2459,14 @@ export default function App({
                         ? `${displayedRequest.startMonth} to ${displayedRequest.endMonth} UTC`
                         : 'Unavailable'}
                     </dd>
+                    <dt>Temporal frequency</dt>
+                    <dd>
+                      {temporalFrequencyLabel(
+                        displayedRequest.temporalFrequency ??
+                          resultDetail?.temporalFrequency ??
+                          null,
+                      )}
+                    </dd>
                     <dt>Units</dt>
                     <dd>{resultDetail?.units ?? resultMap?.units ?? 'Unavailable'}</dd>
                     <dt>Quality</dt>
@@ -2341,6 +2549,15 @@ export default function App({
                   <button
                     type="button"
                     className="button button-secondary"
+                    onClick={useResultGeometry}
+                    disabled={!resultDetail?.geometry}
+                  >
+                    <Icon name="image" />
+                    Use result geometry
+                  </button>
+                  <button
+                    type="button"
+                    className="button button-secondary"
                     onClick={clearSelection}
                   >
                     <Icon name="close" />
@@ -2360,11 +2577,21 @@ export default function App({
                     Point selection: {positionToWktPoint(selectionPoint)} ({SELECTION_CRS})
                   </p>
                 ) : null}
+                {activeSelectionWkt ? (
+                  <pre className="selection-wkt" aria-label="Selected geometry WKT">
+                    {activeSelectionWkt}
+                  </pre>
+                ) : null}
                 {selectionVertices.length ? (
                   <div>
                     <p>
                       Polygon selection: {selectionVertices.length} vertices
-                      {selectionReuse ? ' (reused request AOI)' : ''}.
+                      {selectionReuse
+                        ? selectionSource === 'result_geometry'
+                          ? ' (entire result geometry)'
+                          : ' (request AOI)'
+                        : ''}
+                      .
                     </p>
                     <div className="inline-actions">
                       <button
@@ -2382,11 +2609,11 @@ export default function App({
                 <button
                   type="button"
                   className="button button-primary"
-                  onClick={() => void loadSeries()}
+                  onClick={() => void openTimeSeries()}
                   disabled={!hasSelection || seriesLoading}
                 >
                   <Icon name="activity" />
-                  Load temporal series
+                  Open time series
                 </button>
               </section>
             ) : null}
@@ -2399,75 +2626,39 @@ export default function App({
                 {seriesError}
               </StateNotice>
             ) : null}
-            {series ? (
-              <section className="series-section" aria-label="Temporal series">
-                <p className="field-help">
-                  Global result period: {displayedRequest?.startMonth} to{' '}
-                  {displayedRequest?.endMonth} UTC. Displaying {filteredSeriesPoints.length} of{' '}
-                  {series.points.length} periods
-                  {isTemporalFilterActive(temporalFilters) ? ' after display filters' : ''}.
-                </p>
-                <TemporalFiltersPanel
-                  points={series.points}
-                  filters={temporalFilters}
-                  hemisphere={seriesHemisphere}
-                  onChange={setTemporalFilters}
-                  onReset={() => setTemporalFilters(EMPTY_TEMPORAL_FILTERS)}
-                />
-                <TimeSeriesChart
-                  points={filteredSeriesPoints}
-                  units={series.units}
-                  qualityStatus={series.qualityStatus}
-                  coverage={series.coverage}
-                  emptyMessage="No observation matches the selected temporal display filters."
-                />
-                <p className="muted">
-                  {series.note} Aggregation: {series.aggregationMethod}. {series.qualityNote}
-                </p>
-              </section>
-            ) : !seriesLoading && resultMap ? (
-              <StateNotice icon="activity">
-                Select a point or polygon, then load its temporal series. A period without
-                observation will remain a gap, never a zero.
-              </StateNotice>
+            {!seriesLoading && !seriesError && series ? (
+              <p className="field-help">
+                Time series loaded. Open the chart workspace to explore periods and display filters
+                without submitting a new request.
+              </p>
             ) : null}
-
-            {delivery ? (
-              <div className="delivery-status">
-                <strong>
-                  Delivery {delivery.kind ? `(${delivery.kind.replaceAll('_', ' ')})` : ''}{' '}
-                  <StatusPill state={delivery.state} />
-                </strong>
-                {delivery.message ? <p>{delivery.message}</p> : null}
-                {delivery.state === 'READY' && delivery.downloadUrl ? (
-                  <a
-                    className="button button-primary"
-                    href={delivery.downloadUrl}
-                    download={
-                      delivery.kind === 'dependency_archive'
-                        ? 'meogap-archive.geojson'
-                        : 'meogap-product.geojson'
-                    }
-                  >
-                    <Icon name="download" />
-                    Download {delivery.kind === 'dependency_archive' ? 'archive' : 'product'}
-                  </a>
-                ) : null}
-                {delivery.state !== 'READY' ? (
-                  <button
-                    type="button"
-                    className="button button-secondary"
-                    onClick={() => void refreshDelivery()}
-                  >
-                    <Icon name="refresh" />
-                    Refresh delivery
-                  </button>
-                ) : null}
-              </div>
+            {!seriesLoading && !seriesError && !series && resultMap ? (
+              <StateNotice icon="activity">
+                Select a point, draw a polygon, or reuse a geometry, then open its time series. A
+                period without observation will remain a gap, never a zero.
+              </StateNotice>
             ) : null}
           </div>
         ) : null}
       </section>
+
+      {chartOpen && series && displayedRequest?.resultId ? (
+        <ChartWorkspace
+          open={chartOpen}
+          onClose={() => setChartOpen(false)}
+          productName={resultProductName}
+          resultId={displayedRequest.resultId}
+          resultVersion={resultDetail?.resultVersion ?? resultMap?.resultVersion ?? null}
+          periodLabel={resultPeriodLabel}
+          selectionLabel={selectionLabel}
+          series={series}
+          points={filteredSeriesPoints}
+          filters={temporalFilters}
+          hemisphere={seriesHemisphere}
+          onFiltersChange={setTemporalFilters}
+          onResetFilters={() => setTemporalFilters(EMPTY_TEMPORAL_FILTERS)}
+        />
+      ) : null}
     </main>
   )
 }

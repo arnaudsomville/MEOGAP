@@ -240,6 +240,43 @@ def test_completed_request_cannot_be_cancelled_and_invalid_geometry_is_rejected(
     assert store.cancel_request(DEMO_OWNER_ID, cancelled.request_id).state == REQUEST_CANCELLED
 
 
+def test_request_retains_temporal_frequency_and_rejects_unsupported_frequency() -> None:
+    """Validate the scientific temporal frequency is retained and constrained by the product.
+
+    Args:
+    ----
+        None
+
+    Returns:
+    -------
+        None
+
+    """
+    # Arrange
+    store = build_store()
+    # Act
+    request = store.create_request(
+        DEMO_OWNER_ID,
+        PRODUCT_ID,
+        'aoi-1',
+        START_MONTH,
+        END_MONTH,
+        temporal_frequency='monthly',
+    )
+    completed_request = store.get_request(DEMO_OWNER_ID, request.request_id)
+    # Assert
+    assert store.serialize_request(completed_request)['temporal_frequency'] == 'monthly'
+    with pytest.raises(DemoError, match='declared by the product'):
+        store.create_request(
+            DEMO_OWNER_ID,
+            PRODUCT_ID,
+            'aoi-1',
+            START_MONTH,
+            END_MONTH,
+            temporal_frequency='hourly',
+        )
+
+
 def test_request_retains_requested_constraints_and_rejects_unsupported_sources() -> None:
     """Validate requested source missions and resolution are retained without pretending availability.
 
@@ -303,7 +340,13 @@ def test_product_previews_are_local_labelled_and_distinct() -> None:
     assert all('not a scientific result' in preview['attribution'].lower() for preview in previews)
 
 
-def build_completed_result(store: DemoStore, *, start_month: str = START_MONTH, end_month: str = END_MONTH) -> str:
+def build_completed_result(
+    store: DemoStore,
+    *,
+    start_month: str = START_MONTH,
+    end_month: str = END_MONTH,
+    temporal_frequency: str | None = None,
+) -> str:
     """Complete one request and return its deterministic result identifier.
 
     Args:
@@ -311,13 +354,21 @@ def build_completed_result(store: DemoStore, *, start_month: str = START_MONTH, 
         store(DemoStore): deterministic store.
         start_month(str): inclusive request start month.
         end_month(str): inclusive request end month.
+        temporal_frequency(str | None): optional request temporal frequency.
 
     Returns:
     -------
         str: completed result identifier.
 
     """
-    request = store.create_request(DEMO_OWNER_ID, PRODUCT_ID, 'aoi-1', start_month, end_month)
+    request = store.create_request(
+        DEMO_OWNER_ID,
+        PRODUCT_ID,
+        'aoi-1',
+        start_month,
+        end_month,
+        temporal_frequency=temporal_frequency,
+    )
     store.confirm_request(DEMO_OWNER_ID, request.request_id)
     completed = store.get_request(DEMO_OWNER_ID, request.request_id)
     assert completed.result_id is not None
@@ -530,7 +581,7 @@ def test_result_detail_and_delivery_archive_expose_explicit_demo_metadata() -> N
     """
     # Arrange
     store = build_store()
-    result_id = build_completed_result(store)
+    result_id = build_completed_result(store, temporal_frequency='weekly')
     # Act
     detail = store.get_result(DEMO_OWNER_ID, result_id)
     delivery = store.create_delivery(DEMO_OWNER_ID, result_id, DELIVERY_KIND_ARCHIVE)
@@ -540,6 +591,7 @@ def test_result_detail_and_delivery_archive_expose_explicit_demo_metadata() -> N
     assert detail['result_id'] == result_id
     assert detail['units'] == 'unitless'
     assert detail['is_demo'] is True
+    assert detail['temporal_frequency'] == 'weekly'
     assert 'Demo lineage' in detail['provenance_note']
     assert serialized['kind'] == DELIVERY_KIND_ARCHIVE
     assert serialized['download_url'].startswith('data:application/geo+json;base64,')
@@ -570,3 +622,50 @@ def test_demo_accounts_are_derived_from_bearer_tokens() -> None:
     assert unknown_owner == DEMO_OWNER_ID
     assert identity['user_id'] == 'demo-user-2'
     assert identity['display_name'] == 'MEOGAP second demo user'
+
+
+def test_aoi_area_limit_rejects_creation_and_update_but_not_seed_references() -> None:
+    """Validate the configured AOI area limit applies to public writes, not seeded demos.
+
+    Args:
+    ----
+        None
+
+    Returns:
+    -------
+        None
+
+    """
+    # Arrange
+    store = DemoStore(
+        DemoSettings(
+            preparation_delay_seconds=0,
+            execution_delay_seconds=0,
+            max_aoi_area_km2=1.0,
+        ),
+        clock=lambda: NOW,
+    )
+    oversized = {
+        'type': 'Polygon',
+        'coordinates': [[[1.40, 43.60], [1.42, 43.60], [1.42, 43.62], [1.40, 43.62], [1.40, 43.60]]],
+    }
+    small = {
+        'type': 'Polygon',
+        'coordinates': [[[1.40, 43.60], [1.405, 43.60], [1.405, 43.605], [1.40, 43.60]]],
+    }
+    seeded_count = len(store.list_aois(DEMO_OWNER_ID))
+    # Act / Assert
+    with pytest.raises(DemoError, match='cannot exceed 1 km'):
+        store.create_aoi(DEMO_OWNER_ID, 'Oversized area', None, oversized)
+    created = store.create_aoi(DEMO_OWNER_ID, 'Small area', None, small)
+    with pytest.raises(DemoError, match='cannot exceed 1 km'):
+        store.update_aoi(
+            DEMO_OWNER_ID,
+            created.aoi_id,
+            None,
+            None,
+            description_provided=False,
+            geometry=oversized,
+        )
+    assert store.get_aoi(DEMO_OWNER_ID, created.aoi_id).revision == 1
+    assert len(store.list_aois(DEMO_OWNER_ID)) == seeded_count + 1

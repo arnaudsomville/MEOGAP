@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  formatAreaKm2,
   geometryAreaKm2,
   geometryBounds,
   geometryToPositions,
@@ -10,6 +11,7 @@ import {
   pointInGeometry,
   positionToWktPoint,
   verticesToPolygon,
+  verticesAreaKm2,
   verticesToWktPolygon,
   verticesWithinBounds,
 } from '../../src/map/coordinates'
@@ -238,5 +240,19 @@ describe('WKT and selection validation', () => {
         ],
       }),
     ).toBe(0)
+  })
+})
+
+describe('area formatting for drafting', () => {
+  it('computes and formats drafted polygon areas', { tags: ['unit'] }, () => {
+    const vertices = [
+      { lat: 43.6, lng: 1.4 },
+      { lat: 43.6, lng: 1.42 },
+      { lat: 43.62, lng: 1.42 },
+    ]
+    expect(verticesAreaKm2(vertices)).toBeGreaterThan(0)
+    expect(verticesAreaKm2(vertices.slice(0, 2))).toBeNull()
+    expect(formatAreaKm2(12.345)).toBe('12.35 km²')
+    expect(formatAreaKm2(150.4)).toBe('150 km²')
   })
 })

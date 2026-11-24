@@ -21,6 +21,7 @@ from gateway.core.demo import DemoStore, account_identity, owner_for_token
 API_TAG = 'gateway'
 DESCRIPTION_MAX_LENGTH = 1000
 NAME_MAX_LENGTH = 120
+TemporalFrequency: TypeAlias = Literal['monthly', 'semimonthly', 'weekly', 'three_day', 'two_day', 'daily']
 
 
 class AoiGeometry(BaseModel):
@@ -122,7 +123,7 @@ class ProductResponse(BaseModel):
     supported_sources: list[SourceMission]
     supported_resolutions_m: list[int]
     supported_spatial_inputs: list[Literal['AOI', 'POI', 'LOI']]
-    supported_frequencies: list[Literal['monthly', 'seasonal', 'annual']]
+    supported_frequencies: list[TemporalFrequency]
     max_period_months: int
     documentation_status: str
     documentation_url: str | None
@@ -209,6 +210,7 @@ class AnalysisRequestCreateRequest(BaseModel):
     period: AnalysisPeriodRequest
     spatial_resolution_m: int | None = Field(default=None, ge=1)
     sources: list[SourceMission] | None = None
+    temporal_frequency: TemporalFrequency | None = None
 
 
 class ProposalResponse(BaseModel):
@@ -248,6 +250,7 @@ class AnalysisRequestResponse(BaseModel):
     end_month: str
     requested_sources: list[str]
     requested_spatial_resolution_m: int | None
+    temporal_frequency: TemporalFrequency | None
     proposal: ProposalResponse | None
     actual_credits: int | None
     result_id: str | None
@@ -310,6 +313,7 @@ class ResultDetailResponse(BaseModel):
     start_month: str
     end_month: str
     units: str
+    temporal_frequency: TemporalFrequency | None
     validation_status: ProductValidationStatus
     quality_status: str
     quality_note: str
@@ -710,6 +714,7 @@ def build_demo_router(store: DemoStore) -> APIRouter:  # noqa: C901
             payload.period.end_month,
             spatial_resolution_m=payload.spatial_resolution_m,
             sources=payload.sources,
+            temporal_frequency=payload.temporal_frequency,
         )
 
     @router.post(
@@ -744,6 +749,7 @@ def build_demo_router(store: DemoStore) -> APIRouter:  # noqa: C901
             payload.period.end_month,
             spatial_resolution_m=payload.spatial_resolution_m,
             sources=payload.sources,
+            temporal_frequency=payload.temporal_frequency,
         )
         return store.serialize_request(record)
 

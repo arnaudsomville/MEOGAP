@@ -56,7 +56,8 @@ export type ProductPreview = {
 }
 
 export type SpatialInputType = 'AOI' | 'POI' | 'LOI'
-export type TemporalFrequency = 'monthly' | 'seasonal' | 'annual'
+export type TemporalFrequency =
+  'monthly' | 'semimonthly' | 'weekly' | 'three_day' | 'two_day' | 'daily'
 
 export type Product = {
   id: string
@@ -127,6 +128,7 @@ export type AnalysisRequest = {
   endMonth: string | null
   requestedSources: string[]
   requestedSpatialResolutionM: number | null
+  temporalFrequency: TemporalFrequency | null
   estimatedCredits: number | null
   actualCredits: number | null
   resultId: string | null
@@ -141,6 +143,7 @@ export type AnalysisRequestInput = {
   endMonth: string
   spatialResolutionM?: number | null
   sources?: string[]
+  temporalFrequency?: TemporalFrequency | null
 }
 
 export type CostAdmission = 'ADMITTED' | 'INSUFFICIENT_CREDITS' | 'UNAVAILABLE'
@@ -184,6 +187,7 @@ export type ResultDetail = {
   startMonth: string
   endMonth: string
   units: string
+  temporalFrequency: TemporalFrequency | null
   validationStatus: string
   qualityStatus: string
   qualityNote: string
@@ -508,7 +512,14 @@ export function parseAoiList(payload: unknown): Aoi[] {
 }
 
 const SPATIAL_INPUT_TYPES: readonly SpatialInputType[] = ['AOI', 'POI', 'LOI']
-const TEMPORAL_FREQUENCIES: readonly TemporalFrequency[] = ['monthly', 'seasonal', 'annual']
+const TEMPORAL_FREQUENCIES: readonly TemporalFrequency[] = [
+  'monthly',
+  'semimonthly',
+  'weekly',
+  'three_day',
+  'two_day',
+  'daily',
+]
 
 function optionalSpatialInputList(value: Record<string, unknown>, key: string): SpatialInputType[] {
   return optionalStringListFrom(value, [key]).filter((item): item is SpatialInputType =>
@@ -586,6 +597,13 @@ export function parseProductRequirements(payload: unknown): ProductRequirements 
   }
 }
 
+function parseTemporalFrequency(value: unknown): TemporalFrequency | null {
+  if (value === null || value === undefined) return null
+  if (value === 'monthly' || value === 'semimonthly' || value === 'weekly') return value
+  if (value === 'three_day' || value === 'two_day' || value === 'daily') return value
+  throw new Error('Invalid payload: unsupported temporal_frequency')
+}
+
 export function parseAnalysisRequest(payload: unknown): AnalysisRequest {
   const request = requireRecord(payload, 'analysis request must be an object')
   const state = requireString(request, 'state')
@@ -610,6 +628,7 @@ export function parseAnalysisRequest(payload: unknown): AnalysisRequest {
       'requested_spatial_resolution_m',
       'spatial_resolution_m',
     ]),
+    temporalFrequency: parseTemporalFrequency(request.temporal_frequency),
     estimatedCredits: optionalNumberFrom(proposal, ['estimated_credits', 'estimated_cost']),
     actualCredits: optionalNumberFrom(request, ['actual_credits', 'actual_cost']),
     resultId: optionalStringFrom(request, ['result_id']),
@@ -661,6 +680,7 @@ export function parseResultDetail(payload: unknown): ResultDetail {
     startMonth: requireString(result, 'start_month'),
     endMonth: requireString(result, 'end_month'),
     units: requireString(result, 'units'),
+    temporalFrequency: parseTemporalFrequency(result.temporal_frequency),
     validationStatus: requireString(result, 'validation_status'),
     qualityStatus: requireString(result, 'quality_status'),
     qualityNote: requireString(result, 'quality_note'),
@@ -862,6 +882,7 @@ export function createAnalysisRequest(
         ? { spatial_resolution_m: input.spatialResolutionM }
         : {}),
       ...(input.sources && input.sources.length > 0 ? { sources: input.sources } : {}),
+      ...(input.temporalFrequency ? { temporal_frequency: input.temporalFrequency } : {}),
     }),
   )
 }
@@ -880,6 +901,7 @@ export function estimateAnalysisRequest(
         ? { spatial_resolution_m: input.spatialResolutionM }
         : {}),
       ...(input.sources && input.sources.length > 0 ? { sources: input.sources } : {}),
+      ...(input.temporalFrequency ? { temporal_frequency: input.temporalFrequency } : {}),
     }),
   )
 }

@@ -3,13 +3,14 @@
 from datetime import UTC, datetime
 
 import pytest
-from fastapi import status
+from fastapi import Request, status
+from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
-from meogap.rest.contracts import PUBLIC_HEALTH_PATH
+from meogap.rest.contracts import PUBLIC_HEALTH_PATH, ErrorResponse
 from meogap.rest.factory import RestAppConfig, create_rest_app
 
 from gateway.application.routes import build_demo_router
-from gateway.core.demo import DemoSettings, DemoStore
+from gateway.core.demo import DemoError, DemoSettings, DemoStore
 
 pytestmark = pytest.mark.unit
 
@@ -43,7 +44,31 @@ def build_client() -> TestClient:
         version='0.1.0',
         health_path=PUBLIC_HEALTH_PATH,
     )
-    return TestClient(create_rest_app(config, routers=(build_demo_router(store),)))
+    application = create_rest_app(config, routers=(build_demo_router(store),))
+
+    @application.exception_handler(DemoError)
+    async def handle_demo_error(request: Request, exc: DemoError) -> JSONResponse:
+        """Expose caller-safe deterministic domain errors in route tests.
+
+        Args:
+        ----
+            request(Request): request that triggered the domain error.
+            exc(DemoError): deterministic demo error.
+
+        Returns:
+        -------
+            JSONResponse: shared error envelope with the requested status.
+
+        """
+        payload = ErrorResponse(
+            code=exc.code,
+            message=exc.message,
+            service=SERVICE,
+            operation=request.url.path,
+        )
+        return JSONResponse(status_code=exc.status_code, content=payload.model_dump())
+
+    return TestClient(application)
 
 
 def test_all_public_demo_routes_complete_the_documented_happy_path() -> None:
@@ -81,12 +106,22 @@ def test_all_public_demo_routes_complete_the_documented_happy_path() -> None:
     estimate = client.post(
         '/api/v1/analysis-requests/estimate',
         headers=AUTH_HEADERS,
-        json={'product_id': 'ndvi', 'aoi_id': aoi_id, 'period': {'start_month': '2026-01', 'end_month': '2026-02'}},
+        json={
+            'product_id': 'ndvi',
+            'aoi_id': aoi_id,
+            'period': {'start_month': '2026-01', 'end_month': '2026-02'},
+            'temporal_frequency': 'monthly',
+        },
     )
     created_request = client.post(
         '/api/v1/analysis-requests',
         headers=AUTH_HEADERS,
-        json={'product_id': 'ndvi', 'aoi_id': aoi_id, 'period': {'start_month': '2026-01', 'end_month': '2026-02'}},
+        json={
+            'product_id': 'ndvi',
+            'aoi_id': aoi_id,
+            'period': {'start_month': '2026-01', 'end_month': '2026-02'},
+            'temporal_frequency': 'monthly',
+        },
     )
     request_id = created_request.json()['request_id']
     requests = client.get('/api/v1/analysis-requests', headers=AUTH_HEADERS)
@@ -133,6 +168,7 @@ def test_all_public_demo_routes_complete_the_documented_happy_path() -> None:
     assert updated_aoi.json()['revision'] == UPDATED_AOI_REVISION
     assert estimate.json()['admission'] == 'ADMITTED'
     assert created_request.status_code == status.HTTP_201_CREATED
+    assert created_request.json()['temporal_frequency'] == 'monthly'
     assert requests.status_code == status.HTTP_200_OK
     assert proposed.json()['state'] == 'PROPOSED'
     assert executing.json()['state'] == 'IN_EXECUTION'
@@ -140,6 +176,7 @@ def test_all_public_demo_routes_complete_the_documented_happy_path() -> None:
     assert result_map.json()['kind'] == 'DEMO_PLACEHOLDER'
     assert result_map.json()['is_demo'] is True
     assert result_detail.json()['result_id'] == result_id
+    assert result_detail.json()['temporal_frequency'] == 'monthly'
     assert series.json()['points'] == []
     assert series_query.status_code == status.HTTP_200_OK
     assert series_query.json()['selection_type'] == 'Point'
@@ -176,8 +213,32 @@ def test_routes_require_a_bearer_and_use_the_shared_validation_envelope() -> Non
         headers=AUTH_HEADERS,
         json={'name': 'Invalid Toulouse area', 'geometry': {'type': 'Point', 'coordinates': [1.4, 43.6]}},
     )
+    oversized_aoi = client.post(
+        '/api/v1/aois',
+        headers=AUTH_HEADERS,
+        json={
+            'name': 'Oversized area',
+            'geometry': {
+                'type': 'Polygon',
+                'coordinates': [[[1.0, 43.0], [2.0, 43.0], [2.0, 44.0], [1.0, 44.0], [1.0, 43.0]]],
+            },
+        },
+    )
+    unsupported_frequency = client.post(
+        '/api/v1/analysis-requests/estimate',
+        headers=AUTH_HEADERS,
+        json={
+            'product_id': 'ndvi',
+            'aoi_id': 'aoi-1',
+            'period': {'start_month': '2026-01', 'end_month': '2026-02'},
+            'temporal_frequency': 'hourly',
+        },
+    )
     # Assert
     assert unauthenticated.status_code == status.HTTP_401_UNAUTHORIZED
     assert unauthenticated.json()['code'] == 'UNAUTHORIZED'
     assert invalid.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     assert invalid.json()['code'] == 'UNPROCESSABLE_ENTITY'
+    assert oversized_aoi.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert oversized_aoi.json()['code'] == 'AOI_AREA_EXCEEDED'
+    assert unsupported_frequency.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY

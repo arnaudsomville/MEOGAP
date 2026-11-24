@@ -1592,6 +1592,25 @@
               }
             ],
             "title": "Sources"
+          },
+          "temporal_frequency": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "monthly",
+                  "semimonthly",
+                  "weekly",
+                  "three_day",
+                  "two_day",
+                  "daily"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temporal Frequency"
           }
         },
         "additionalProperties": false,
@@ -1677,6 +1696,25 @@
             ],
             "title": "Requested Spatial Resolution M"
           },
+          "temporal_frequency": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "monthly",
+                  "semimonthly",
+                  "weekly",
+                  "three_day",
+                  "two_day",
+                  "daily"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temporal Frequency"
+          },
           "proposal": {
             "anyOf": [
               {
@@ -1753,6 +1791,7 @@
           "end_month",
           "requested_sources",
           "requested_spatial_resolution_m",
+          "temporal_frequency",
           "proposal",
           "actual_credits",
           "result_id",
@@ -2418,8 +2457,11 @@
               "type": "string",
               "enum": [
                 "monthly",
-                "seasonal",
-                "annual"
+                "semimonthly",
+                "weekly",
+                "three_day",
+                "two_day",
+                "daily"
               ]
             },
             "type": "array",
@@ -2574,6 +2616,25 @@
             "type": "string",
             "title": "Units"
           },
+          "temporal_frequency": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "monthly",
+                  "semimonthly",
+                  "weekly",
+                  "three_day",
+                  "two_day",
+                  "daily"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temporal Frequency"
+          },
           "validation_status": {
             "$ref": "#/components/schemas/ProductValidationStatus"
           },
@@ -2607,6 +2668,7 @@
           "start_month",
           "end_month",
           "units",
+          "temporal_frequency",
           "validation_status",
           "quality_status",
           "quality_note",

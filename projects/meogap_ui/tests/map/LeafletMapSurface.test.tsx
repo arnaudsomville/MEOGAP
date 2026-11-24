@@ -14,7 +14,11 @@ vi.mock('react-leaflet', () => ({
   MapContainer: ({ children }: { children: ReactNode }) => (
     <div data-testid="map-container">{children}</div>
   ),
-  TileLayer: ({ attribution }: { attribution: string }) => <span>{attribution}</span>,
+  TileLayer: ({ attribution, url }: { attribution: string; url: string }) => (
+    <span data-testid="tile-layer" data-url={url}>
+      {attribution}
+    </span>
+  ),
   ScaleControl: ({ position, imperial }: { position?: string; imperial?: boolean }) => (
     <div data-imperial={String(imperial)} data-position={position} data-testid="scale-control">
       1 km
@@ -23,13 +27,23 @@ vi.mock('react-leaflet', () => ({
   Polygon: ({
     positions,
     eventHandlers,
+    children,
   }: {
     positions: unknown
     eventHandlers?: { click?: () => void }
+    children?: ReactNode
   }) => {
     leafletState.polygonClicks.push(eventHandlers?.click)
-    return <output>{JSON.stringify(positions)}</output>
+    return (
+      <output>
+        {JSON.stringify(positions)}
+        {children}
+      </output>
+    )
   },
+  Tooltip: ({ children }: { children?: ReactNode }) => (
+    <span data-testid="area-tooltip">{children}</span>
+  ),
   ImageOverlay: ({ url }: { url: string }) => <img alt="Result map" src={url} />,
   CircleMarker: ({ center }: { center: [number, number] }) => (
     <output data-testid="selection-point">{JSON.stringify(center)}</output>
@@ -88,6 +102,7 @@ describe('LeafletMapSurface', () => {
           draftVertices={[
             { lat: 10.4, lng: -84.98 },
             { lat: 10.45, lng: -84.9 },
+            { lat: 10.42, lng: -84.86 },
           ]}
           drawing
           focus={{ type: 'point', lat: 10.43, lng: -84.91, zoom: 10 }}
@@ -110,7 +125,11 @@ describe('LeafletMapSurface', () => {
           resultVisible
           selectionMode="point"
           selectionPoint={{ lat: 10.4, lng: -84.9 }}
-          selectionVertices={[]}
+          selectionVertices={[
+            { lat: 10.4, lng: -84.9 },
+            { lat: 10.45, lng: -84.9 },
+            { lat: 10.42, lng: -84.86 },
+          ]}
           selectedAoiId="aoi-1"
           onMapClick={onMapClick}
           onResultClick={vi.fn()}
@@ -133,6 +152,8 @@ describe('LeafletMapSurface', () => {
       expect(onAoiSelect).toHaveBeenCalledWith('aoi-1')
       expect(screen.getByTestId('selection-point')).toHaveTextContent('[10.4,-84.9]')
       expect(screen.getByRole('img', { name: 'Result map' })).toBeInTheDocument()
+      expect(screen.getAllByTestId('area-tooltip')).toHaveLength(2)
+      expect(screen.getAllByTestId('area-tooltip')[0]).toHaveTextContent(/Area: .* km²/)
     },
   )
 
@@ -198,4 +219,50 @@ describe('LeafletMapSurface', () => {
     expect(leafletState.flyTo).not.toHaveBeenCalled()
     expect(leafletState.setView).not.toHaveBeenCalled()
   })
+  it(
+    'switches between the default satellite basemap and OpenStreetMap',
+    { tags: ['unit'] },
+    async () => {
+      const userEvent = (await import('@testing-library/user-event')).default
+      const user = userEvent.setup()
+      render(
+        <LeafletMapSurface
+          aois={[]}
+          draftVertices={[]}
+          drawing={false}
+          focus={null}
+          focusRevision={0}
+          resultMap={null}
+          resultVisible
+          selectionMode="none"
+          selectionPoint={null}
+          selectionVertices={[]}
+          selectedAoiId={null}
+          onMapClick={vi.fn()}
+          onResultClick={vi.fn()}
+          onAoiSelect={vi.fn()}
+        />,
+      )
+      expect(screen.getByTestId('tile-layer')).toHaveAttribute(
+        'data-url',
+        expect.stringContaining('s2cloudless'),
+      )
+      await user.click(
+        screen.getByRole('button', {
+          name: /Basemap: EOxCloudless Sentinel-2 2025. Switch to OpenStreetMap/,
+        }),
+      )
+      expect(screen.getByTestId('tile-layer')).toHaveAttribute(
+        'data-url',
+        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      )
+      await user.click(
+        screen.getByRole('button', { name: /Basemap: OpenStreetMap. Switch to EOxCloudless/ }),
+      )
+      expect(screen.getByTestId('tile-layer')).toHaveAttribute(
+        'data-url',
+        expect.stringContaining('s2cloudless'),
+      )
+    },
+  )
 })
