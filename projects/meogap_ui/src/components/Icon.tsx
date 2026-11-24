@@ -22,6 +22,7 @@ export type IconName =
   | 'refresh'
   | 'plus'
   | 'map-pin'
+  | 'credit-card'
 
 const PATHS: Record<IconName, ReactNode> = {
   compass: (
@@ -89,6 +90,13 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <path d="M20 10c0 6-8 11-8 11S4 16 4 10a8 8 0 0 1 16 0Z" />
       <circle cx="12" cy="10" r="2.5" />
+    </>
+  ),
+  'credit-card': (
+    <>
+      <rect x="2.5" y="5" width="19" height="14" rx="2.5" />
+      <path d="M2.5 9.5h19" />
+      <path d="M6.5 14.5h4" />
     </>
   ),
 }

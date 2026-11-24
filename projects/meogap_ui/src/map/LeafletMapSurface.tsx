@@ -1,5 +1,13 @@
 import { useEffect } from 'react'
-import { ImageOverlay, MapContainer, Polygon, TileLayer, useMap, useMapEvents } from 'react-leaflet'
+import {
+  ImageOverlay,
+  MapContainer,
+  Polygon,
+  ScaleControl,
+  TileLayer,
+  useMap,
+  useMapEvents,
+} from 'react-leaflet'
 import type { Aoi, Position, ResultMap } from '../api/client'
 import { DEFAULT_BASEMAP, DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM } from './basemap'
 import { geometryToPositions, type MapFocus } from './coordinates'
@@ -80,6 +88,7 @@ export function LeafletMapSurface({
           attribution={DEFAULT_BASEMAP.attribution}
           maxZoom={DEFAULT_BASEMAP.maxZoom}
         />
+        <ScaleControl imperial={false} maxWidth={120} position="bottomright" />
         <MapClickHandler drawing={drawing} onMapClick={onMapClick} />
         <ViewHandler focus={focus} focusRevision={focusRevision} />
         {aois.map((aoi) => (

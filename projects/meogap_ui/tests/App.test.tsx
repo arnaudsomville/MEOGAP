@@ -111,10 +111,16 @@ function describeFocus(focus: MapSurfaceProps['focus']): string {
   return `${focus.lat},${focus.lng}`
 }
 
+function describePadding(focus: MapSurfaceProps['focus']): string {
+  if (!focus || focus.type !== 'bounds') return 'No map padding'
+  return JSON.stringify([focus.paddingTopLeft, focus.paddingBottomRight])
+}
+
 function fakeMapSurface({ drawing, focus, onMapClick, onAoiSelect, aois }: MapSurfaceProps) {
   return (
     <section aria-label="Test map">
       <output aria-label="Map focus">{describeFocus(focus)}</output>
+      <output aria-label="Map padding">{describePadding(focus)}</output>
       {drawing ? (
         <button
           type="button"
@@ -146,12 +152,14 @@ function stubGateway(
     deliveryPreparing?: boolean
     product?: Record<string, unknown>
     aoi?: Record<string, unknown>
+    credits?: { balance: number; unit: string }
   } = {},
 ) {
   const completed = { ...PROPOSED_REQUEST, state: 'COMPLETED', actual_credits: 2 }
   let currentRequest = options.request ?? PROPOSED_REQUEST
   const product = options.product ?? PRODUCT
   const aoi = options.aoi ?? AOI
+  const credits = options.credits ?? { balance: 12, unit: 'credits' }
   const fetchMock = vi.fn(async (path: string, init?: RequestInit) => {
     if (path === '/api/v1/health')
       return gatewayResponse({ status: 'ok', service: 'gateway', version: '0.2.0' }, options.demo)
@@ -205,7 +213,7 @@ function stubGateway(
         state: 'READY',
         download_url: 'https://example.test/result.zip',
       })
-    if (path === '/api/v1/credits/balance') return gatewayResponse({ balance: 12, unit: 'credits' })
+    if (path === '/api/v1/credits/balance') return gatewayResponse(credits)
     throw new Error(`Unexpected Gateway path ${path}`)
   })
   vi.stubGlobal('fetch', fetchMock)
@@ -283,15 +291,14 @@ describe('App', () => {
       const user = userEvent.setup()
       render(<App MapSurface={fakeMapSurface} />)
 
-      await user.click(screen.getByRole('button', { name: 'Requests' }))
+      await user.click(screen.getByRole('button', { name: /^Requests/ }))
       await user.click(await screen.findByRole('button', { name: 'Confirm execution' }))
       expect(await screen.findByText('COMPLETED')).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Display on map' }))
       expect(
         await screen.findByText('Map representation loaded for this result.'),
       ).toBeInTheDocument()
-      expect(screen.getByText('43.61,1.435')).toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: 'Requests' }))
+      expect(screen.getByLabelText('Map focus')).toHaveTextContent('Bounds 43.56,1.38,43.66,1.49')
       await user.click(screen.getByRole('button', { name: 'Prepare download' }))
       expect(await screen.findByRole('button', { name: 'Refresh delivery' })).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Refresh delivery' }))
@@ -310,16 +317,18 @@ describe('App', () => {
       const user = userEvent.setup()
       render(<App MapSurface={fakeMapSurface} />)
 
-      await user.type(screen.getByLabelText('Coordinates or saved AOI'), '43.6047, 1.4442')
-      await user.click(screen.getByRole('button', { name: 'Locate' }))
-      expect(screen.getByText('43.6047,1.4442')).toBeInTheDocument()
+      await user.type(screen.getByLabelText('Search location'), '43.6047, 1.4442')
+      await user.keyboard('{Enter}')
+      expect(await screen.findByText('43.6047,1.4442')).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Map click' }))
       expect(screen.getByText('43.6047,1.4442')).toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: 'Account' }))
-      expect(await screen.findByText('12 credits')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Credit balance: 12 credits/ })).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Account menu' }))
+      await user.click(await screen.findByRole('menuitem', { name: 'Account and credits' }))
+      const accountPanel = await screen.findByLabelText('Account and credits')
+      expect(within(accountPanel).getByText('12 credits')).toBeInTheDocument()
       await user.keyboard('{Escape}')
       expect(screen.queryByRole('heading', { name: 'Account and credits' })).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Account' })).toHaveFocus()
       await user.click(screen.getByRole('button', { name: 'Indicators' }))
       expect(screen.getByText('No indicators are configured.')).toBeInTheDocument()
       expect(
@@ -338,9 +347,12 @@ describe('App', () => {
       const user = userEvent.setup()
       render(<App MapSurface={fakeMapSurface} />)
 
-      await user.type(screen.getByLabelText('Coordinates or saved AOI'), 'Toulouse')
-      await user.click(screen.getByRole('button', { name: 'Locate' }))
+      await user.type(screen.getByLabelText('Search location'), 'Toulouse')
+      await user.keyboard('{Enter}')
       const library = await screen.findByLabelText('AOI library')
+      expect(
+        screen.queryByRole('listbox', { name: 'Location suggestions' }),
+      ).not.toBeInTheDocument()
       await user.click(within(library).getByRole('button', { name: /Toulouse/ }))
       await waitFor(() =>
         expect(screen.getByLabelText('Map focus')).toHaveTextContent(
@@ -404,7 +416,7 @@ describe('App', () => {
         await screen.findByRole('heading', { name: 'New analysis request' }),
       ).toBeInTheDocument()
       expect(screen.getByLabelText('Saved AOI')).toHaveValue('aoi-1')
-      await user.click(screen.getByRole('button', { name: 'Requests' }))
+      await user.click(screen.getByRole('button', { name: /^Requests/ }))
       await user.click(await screen.findByRole('button', { name: 'Refresh' }))
       await user.click(screen.getByRole('button', { name: 'Cancel request' }))
       expect(await screen.findByText('CANCELLED')).toBeInTheDocument()
@@ -441,14 +453,14 @@ describe('App', () => {
       const user = userEvent.setup()
       stubGateway({ request: { ...PROPOSED_REQUEST, state: 'PREPARING', result_id: undefined } })
       const preparing = render(<App MapSurface={fakeMapSurface} />)
-      await user.click(screen.getByRole('button', { name: 'Requests' }))
+      await user.click(screen.getByRole('button', { name: /^Requests/ }))
       expect(await screen.findByText('Preparing a proposal.')).toBeInTheDocument()
       preparing.unmount()
 
       vi.unstubAllGlobals()
       stubGateway({ request: { ...PROPOSED_REQUEST, state: 'IN_EXECUTION', message: 'Working' } })
       const executing = render(<App MapSurface={fakeMapSurface} />)
-      await user.click(screen.getByRole('button', { name: 'Requests' }))
+      await user.click(screen.getByRole('button', { name: /^Requests/ }))
       expect(
         await screen.findByText(
           'Execution is in progress. Result availability is not yet guaranteed.',
@@ -460,7 +472,7 @@ describe('App', () => {
       vi.unstubAllGlobals()
       stubGateway({ request: { request_id: 'request-1', state: 'COMPLETED' } })
       render(<App MapSurface={fakeMapSurface} />)
-      await user.click(screen.getByRole('button', { name: 'Requests' }))
+      await user.click(screen.getByRole('button', { name: /^Requests/ }))
       expect(await screen.findByText(/no result identifier was provided/)).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Display on map' })).toBeDisabled()
       expect(screen.getByRole('button', { name: 'Prepare download' })).toBeDisabled()
@@ -522,7 +534,11 @@ describe('App', () => {
       stubGateway()
       const withPreview = render(<App MapSurface={fakeMapSurface} />)
       await user.click(screen.getByRole('button', { name: 'Explore' }))
+      await user.click(await screen.findByRole('button', { name: /NDVI/ }))
       expect((await screen.findAllByAltText('NDVI illustrative preview')).length).toBeGreaterThan(0)
+      expect(
+        await screen.findByText('Illustrative preview, not a scientific result'),
+      ).toBeInTheDocument()
       withPreview.unmount()
 
       vi.unstubAllGlobals()
@@ -573,6 +589,208 @@ describe('App', () => {
   )
 
   it(
+    'keeps every application panel on the right while the map stays mounted',
+    { tags: ['unit'] },
+    async () => {
+      stubGateway()
+      const user = userEvent.setup()
+      render(<App MapSurface={fakeMapSurface} />)
+      const navigation: Array<[RegExp, string]> = [
+        [/^Explore/, 'Product catalogue'],
+        [/^Requests/, 'Analysis requests'],
+        [/^Indicators/, 'Indicators'],
+      ]
+
+      const navigationBar = screen.getByRole('navigation', { name: 'Main navigation' })
+      for (const [navLabel, panelLabel] of navigation) {
+        await user.click(within(navigationBar).getByRole('button', { name: navLabel }))
+        expect(await screen.findByRole('complementary', { name: panelLabel })).toHaveAttribute(
+          'data-side',
+          'right',
+        )
+        expect(screen.getByLabelText('Test map')).toBeInTheDocument()
+        await user.click(screen.getByRole('button', { name: `Close ${panelLabel}` }))
+      }
+
+      await user.click(screen.getByRole('button', { name: 'Open AOI library' }))
+      expect(await screen.findByRole('complementary', { name: 'AOI library' })).toHaveAttribute(
+        'data-side',
+        'right',
+      )
+      await user.click(screen.getByRole('button', { name: 'Close AOI library' }))
+
+      await user.click(screen.getByRole('button', { name: 'Account menu' }))
+      await user.click(await screen.findByRole('menuitem', { name: 'Account and credits' }))
+      expect(
+        await screen.findByRole('complementary', { name: 'Account and credits' }),
+      ).toHaveAttribute('data-side', 'right')
+      await user.click(screen.getByRole('button', { name: 'Close Account and credits' }))
+    },
+  )
+
+  it('reserves the right contextual panel when fitting an AOI', { tags: ['unit'] }, async () => {
+    stubGateway()
+    const user = userEvent.setup()
+    render(<App MapSurface={fakeMapSurface} />)
+
+    await user.click(screen.getByRole('button', { name: 'Open AOI library' }))
+    const library = await screen.findByLabelText('AOI library')
+    await user.click(within(library).getByRole('button', { name: /Toulouse study area/ }))
+
+    await waitFor(() =>
+      expect(screen.getByLabelText('Map padding')).toHaveTextContent('[[112,96],[480,140]]'),
+    )
+  })
+
+  it('does not reserve panel width on compact layouts', { tags: ['unit'] }, async () => {
+    const originalWidth = window.innerWidth
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 800 })
+    try {
+      stubGateway()
+      const user = userEvent.setup()
+      render(<App MapSurface={fakeMapSurface} />)
+
+      await user.click(screen.getByRole('button', { name: 'Open AOI library' }))
+      const library = await screen.findByLabelText('AOI library')
+      await user.click(within(library).getByRole('button', { name: /Toulouse study area/ }))
+
+      await waitFor(() =>
+        expect(screen.getByLabelText('Map padding')).toHaveTextContent('[[112,96],[112,140]]'),
+      )
+    } finally {
+      Object.defineProperty(window, 'innerWidth', {
+        configurable: true,
+        value: originalWidth,
+      })
+    }
+  })
+
+  it(
+    'focuses the geographic search with Ctrl K and closes suggestions on Escape',
+    { tags: ['unit'] },
+    async () => {
+      stubGateway()
+      const user = userEvent.setup()
+      render(<App MapSurface={fakeMapSurface} />)
+
+      await user.keyboard('{Control>}k{/Control}')
+      const search = screen.getByLabelText('Search location')
+      expect(search).toHaveFocus()
+      await user.type(search, 'Paris')
+      expect(await screen.findByRole('option', { name: /Paris/ })).toBeInTheDocument()
+      await user.keyboard('{Escape}')
+      expect(screen.queryByRole('option', { name: /Paris/ })).not.toBeInTheDocument()
+    },
+  )
+
+  it(
+    'searches places and navigates the map to the selected result',
+    { tags: ['unit'] },
+    async () => {
+      stubGateway()
+      const user = userEvent.setup()
+      render(<App MapSurface={fakeMapSurface} />)
+
+      await user.type(screen.getByLabelText('Search location'), 'London')
+      await user.click(await screen.findByRole('option', { name: /London/ }))
+
+      expect(screen.getByLabelText('Map focus')).toHaveTextContent('51.5072,-0.1276')
+      expect(screen.getByLabelText('Search location')).toHaveValue('London')
+      expect(
+        screen.queryByRole('listbox', { name: 'Location suggestions' }),
+      ).not.toBeInTheDocument()
+    },
+  )
+
+  it('shows a Gateway-driven active request badge', { tags: ['unit'] }, async () => {
+    stubGateway()
+    render(<App MapSurface={fakeMapSurface} />)
+
+    const navigation = screen.getByRole('navigation', { name: 'Main navigation' })
+    const requests = await within(navigation).findByRole('button', {
+      name: 'Requests, 1 active',
+    })
+    expect(within(requests).getByText('1')).toBeInTheDocument()
+  })
+
+  it('hides the request badge when requests are terminal', { tags: ['unit'] }, async () => {
+    stubGateway({ request: { ...PROPOSED_REQUEST, state: 'COMPLETED' } })
+    const user = userEvent.setup()
+    render(<App MapSurface={fakeMapSurface} />)
+
+    const navigation = screen.getByRole('navigation', { name: 'Main navigation' })
+    await user.click(within(navigation).getByRole('button', { name: 'Requests' }))
+    expect(await screen.findByText('COMPLETED')).toBeInTheDocument()
+    expect(within(navigation).queryByText('1')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Requests, 1 active' })).not.toBeInTheDocument()
+  })
+
+  it(
+    'shows the Gateway credit balance and opens account from the credits control',
+    { tags: ['unit'] },
+    async () => {
+      stubGateway({ credits: { balance: 7, unit: 'credits' } })
+      const user = userEvent.setup()
+      render(<App MapSurface={fakeMapSurface} />)
+
+      const credits = await screen.findByRole('button', {
+        name: /Credit balance: 7 credits/,
+      })
+      await user.click(credits)
+      const accountPanel = await screen.findByRole('complementary', {
+        name: 'Account and credits',
+      })
+      expect(within(accountPanel).getByText('7 credits')).toBeInTheDocument()
+    },
+  )
+
+  it(
+    'opens and closes the account menu with keyboard focus restoration',
+    { tags: ['unit'] },
+    async () => {
+      stubGateway()
+      const user = userEvent.setup()
+      render(<App MapSurface={fakeMapSurface} />)
+
+      const accountButton = screen.getByRole('button', { name: 'Account menu' })
+      await user.click(accountButton)
+      expect(screen.getByRole('menu', { name: 'Account' })).toBeInTheDocument()
+      await user.keyboard('{Escape}')
+      expect(screen.queryByRole('menu', { name: 'Account' })).not.toBeInTheDocument()
+      expect(accountButton).toHaveFocus()
+    },
+  )
+
+  it(
+    'keeps header search and navigation usable at compact widths',
+    { tags: ['unit'] },
+    async () => {
+      const originalWidth = window.innerWidth
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 760 })
+      try {
+        stubGateway()
+        const user = userEvent.setup()
+        render(<App MapSurface={fakeMapSurface} />)
+
+        await user.type(screen.getByLabelText('Search location'), 'Lyon')
+        await user.keyboard('{Enter}')
+        expect(screen.getByLabelText('Map focus')).toHaveTextContent('45.764,4.8357')
+
+        const navigation = screen.getByRole('navigation', { name: 'Main navigation' })
+        await user.click(within(navigation).getByRole('button', { name: /^Explore/ }))
+        expect(
+          await screen.findByRole('complementary', { name: 'Product catalogue' }),
+        ).toHaveAttribute('data-side', 'right')
+      } finally {
+        Object.defineProperty(window, 'innerWidth', {
+          configurable: true,
+          value: originalWidth,
+        })
+      }
+    },
+  )
+
+  it(
     'polls active request states while the requests panel is open',
     { tags: ['unit'] },
     async () => {
@@ -588,7 +806,7 @@ describe('App', () => {
         ).length
       const initialCalls = listCalls()
 
-      await user.click(screen.getByRole('button', { name: 'Requests' }))
+      await user.click(screen.getByRole('button', { name: /^Requests/ }))
       await waitFor(() => expect(listCalls()).toBeGreaterThan(initialCalls))
       expect(screen.getByText('Active request states update automatically.')).toBeInTheDocument()
 

@@ -13,6 +13,7 @@ describe('OverlayPanel', () => {
       </OverlayPanel>,
     )
 
+    expect(screen.getByLabelText('Catalogue')).toHaveAttribute('data-side', 'right')
     const close = screen.getByRole('button', { name: 'Close Catalogue' })
     expect(close).toHaveFocus()
     await user.click(close)

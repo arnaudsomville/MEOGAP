@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+} from 'react'
 import {
   cancelAnalysisRequest,
   confirmAnalysisRequest,
@@ -29,6 +37,7 @@ import {
   type ResultMap,
 } from './api/client'
 import { Icon, type IconName } from './components/Icon'
+import { Logo } from './components/Logo'
 import { OverlayPanel } from './components/OverlayPanel'
 import { ProductCard, ProductPreview } from './components/ProductCard'
 import { LeafletMapSurface, type MapSurfaceComponent } from './map/LeafletMapSurface'
@@ -40,6 +49,7 @@ import {
   type MapBounds,
   type MapFocus,
 } from './map/coordinates'
+import { searchPlaces } from './map/places'
 
 type Panel = 'catalogue' | 'aois' | 'requests' | 'indicators' | 'account' | 'request' | null
 
@@ -65,6 +75,12 @@ const INITIAL_AOI_NAME = ''
 const EMPTY_DESCRIPTION = ''
 const EMPTY_MONTH = ''
 const DEFAULT_POLL_INTERVAL_MS = 5000
+const PANEL_RESERVE_PX = 480
+const MAP_TOOL_RESERVE_PX = 112
+const TOP_RESERVE_PX = 96
+const INSPECTOR_COLLAPSED_RESERVE_PX = 140
+const INSPECTOR_EXPANDED_RESERVE_PX = 210
+const NARROW_LAYOUT_MAX_WIDTH_PX = 1000
 const TERMINAL_STATES: ReadonlySet<AnalysisState> = new Set(['COMPLETED', 'FAILED', 'CANCELLED'])
 
 function errorMessage(error: unknown): string {
@@ -90,24 +106,81 @@ function NavButton({
   icon,
   label,
   onClick,
+  badge,
 }: {
   active: boolean
   icon: IconName
   label: string
   onClick: () => void
+  badge?: number
 }) {
+  const accessibleLabel = badge ? `${label}, ${badge} active` : label
   return (
     <button
       type="button"
       className={active ? 'nav-active' : ''}
       onClick={onClick}
       aria-pressed={active}
-      title={label}
+      aria-label={accessibleLabel}
+      title={accessibleLabel}
     >
       <Icon name={icon} />
-      <span>{label}</span>
+      <span className="nav-label">{label}</span>
+      {badge ? (
+        <span className="nav-badge" aria-hidden="true">
+          {badge > 9 ? '9+' : badge}
+        </span>
+      ) : null}
     </button>
   )
+}
+
+type SearchSuggestion = {
+  id: string
+  kind: 'coordinate' | 'aoi' | 'place'
+  label: string
+  detail: string
+  icon: IconName
+  focus?: MapFocus
+  aoiId?: string
+}
+
+function buildSearchSuggestions(query: string, aois: Aoi[], limit = 8): SearchSuggestion[] {
+  const trimmed = query.trim()
+  if (!trimmed) return []
+  const suggestions: SearchSuggestion[] = []
+  const coordinates = parseCoordinates(trimmed)
+  if (coordinates && coordinates.type === 'point') {
+    suggestions.push({
+      id: 'coordinate',
+      kind: 'coordinate',
+      label: `${coordinates.lat}, ${coordinates.lng}`,
+      detail: 'Geographic coordinates',
+      icon: 'map-pin',
+      focus: coordinates,
+    })
+  }
+  const normalized = trimmed.toLowerCase()
+  const matchingAois = aois
+    .filter((aoi) => aoi.name.toLowerCase().includes(normalized))
+    .slice(0, 4)
+    .map<SearchSuggestion>((aoi) => ({
+      id: `aoi-${aoi.id}`,
+      kind: 'aoi',
+      label: aoi.name,
+      detail: `Saved AOI · Revision ${aoi.revision}`,
+      icon: 'layers',
+      aoiId: aoi.id,
+    }))
+  const matchingPlaces = searchPlaces(trimmed, 5).map<SearchSuggestion>((place) => ({
+    id: `place-${place.id}`,
+    kind: 'place',
+    label: place.name,
+    detail: `${place.region} · Place`,
+    icon: 'compass',
+    focus: { type: 'point', lat: place.lat, lng: place.lng, zoom: 10 },
+  }))
+  return [...suggestions, ...matchingAois, ...matchingPlaces].slice(0, limit)
 }
 
 function RequestCard({
@@ -282,7 +355,10 @@ export default function App({
   const [requirements, setRequirements] = useState<ProductRequirements | null>(null)
   const [selectedAoiId, setSelectedAoiId] = useState<string | null>(null)
   const [aoiQuery, setAoiQuery] = useState('')
-  const [locationQuery, setLocationQuery] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [activeSuggestion, setActiveSuggestion] = useState(0)
+  const [accountOpen, setAccountOpen] = useState(false)
   const [focus, setFocus] = useState<MapFocus | null>(null)
   const [focusRevision, setFocusRevision] = useState(0)
   const [draftVertices, setDraftVertices] = useState<Position[]>([])
@@ -292,6 +368,11 @@ export default function App({
   const [aoiName, setAoiName] = useState(INITIAL_AOI_NAME)
   const [aoiDescription, setAoiDescription] = useState(EMPTY_DESCRIPTION)
   const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(null)
+  const drawingFormRef = useRef<HTMLElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const searchContainerRef = useRef<HTMLFormElement>(null)
+  const accountMenuRef = useRef<HTMLDivElement>(null)
+  const accountButtonRef = useRef<HTMLButtonElement>(null)
   const [requestProductId, setRequestProductId] = useState('')
   const [requestAoiId, setRequestAoiId] = useState('')
   const [requestSources, setRequestSources] = useState<string[]>([])
@@ -362,16 +443,31 @@ export default function App({
     }
   }, [receive, showError])
 
+  const refreshBalance = useCallback(async (): Promise<void> => {
+    setIsLoading((current) => ({ ...current, balance: true }))
+    try {
+      setCreditBalance(receive(await getCreditBalance()))
+    } catch (reason) {
+      showError('Credit balance could not be loaded', reason)
+    } finally {
+      setIsLoading((current) => ({ ...current, balance: false }))
+    }
+  }, [receive, showError])
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void loadCatalogue()
       void loadAois()
       void loadRequests()
+      void refreshBalance()
     }, 0)
     return () => window.clearTimeout(timer)
-  }, [loadCatalogue, loadAois, loadRequests])
+  }, [loadCatalogue, loadAois, loadRequests, refreshBalance])
 
   const hasActiveRequests = requests.some((request) => !TERMINAL_STATES.has(request.state))
+  const activeRequestCount = requests.filter(
+    (request) => !TERMINAL_STATES.has(request.state),
+  ).length
 
   useEffect(() => {
     if (panel !== 'requests' || !hasActiveRequests) return
@@ -391,22 +487,81 @@ export default function App({
     }
   }, [panel, hasActiveRequests, pollIntervalMs, receive, showError])
 
+  useEffect(() => {
+    if (panel !== 'aois' || !drawing) return
+    const node = drawingFormRef.current
+    if (node && typeof node.scrollIntoView === 'function') {
+      node.scrollIntoView({ block: 'start', behavior: 'smooth' })
+    }
+  }, [panel, drawing])
+
+  useEffect(() => {
+    const focusSearch = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        searchInputRef.current?.focus()
+        searchInputRef.current?.select()
+        setAccountOpen(false)
+        setSearchOpen(true)
+      }
+    }
+    window.addEventListener('keydown', focusSearch)
+    return () => window.removeEventListener('keydown', focusSearch)
+  }, [])
+
+  useEffect(() => {
+    if (!searchOpen && !accountOpen) return
+    const closeOnOutsidePointer = (event: MouseEvent) => {
+      const target = event.target
+      if (!(target instanceof Node)) return
+      if (
+        searchOpen &&
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(target)
+      ) {
+        setSearchOpen(false)
+      }
+      if (accountOpen && accountMenuRef.current && !accountMenuRef.current.contains(target)) {
+        setAccountOpen(false)
+      }
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      setSearchOpen(false)
+      if (accountOpen) {
+        setAccountOpen(false)
+        accountButtonRef.current?.focus()
+      }
+    }
+    document.addEventListener('mousedown', closeOnOutsidePointer)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('mousedown', closeOnOutsidePointer)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [searchOpen, accountOpen])
+
   function applyFocus(nextFocus: MapFocus | null): void {
     setFocus(nextFocus)
     setFocusRevision((revision) => revision + 1)
   }
 
-  function focusBounds(bounds: MapBounds): void {
-    const wide = typeof window === 'undefined' || window.innerWidth >= 900
-    const leftPanelOpen = panel === 'aois' || panel === 'catalogue'
-    const rightPanelOpen =
-      panel === 'requests' || panel === 'indicators' || panel === 'account' || panel === 'request'
+  function focusBounds(
+    bounds: MapBounds,
+    options: { reserveRightPanel?: boolean; reserveInspector?: boolean } = {},
+  ): void {
+    const wide = typeof window === 'undefined' || window.innerWidth > NARROW_LAYOUT_MAX_WIDTH_PX
+    const reserveRightPanel = wide && (options.reserveRightPanel ?? panel !== null)
+    const reserveInspector = options.reserveInspector ?? inspectorOpen
     applyFocus({
       type: 'bounds',
       bounds,
       maxZoom: 13,
-      paddingTopLeft: [wide && leftPanelOpen ? 470 : 48, 96],
-      paddingBottomRight: [wide && rightPanelOpen ? 470 : 48, inspectorOpen ? 200 : 130],
+      paddingTopLeft: [MAP_TOOL_RESERVE_PX, TOP_RESERVE_PX],
+      paddingBottomRight: [
+        reserveRightPanel ? PANEL_RESERVE_PX : MAP_TOOL_RESERVE_PX,
+        reserveInspector ? INSPECTOR_EXPANDED_RESERVE_PX : INSPECTOR_COLLAPSED_RESERVE_PX,
+      ],
     })
   }
 
@@ -426,14 +581,17 @@ export default function App({
     }
   }
 
-  async function selectAoi(id: string): Promise<void> {
+  async function selectAoi(
+    id: string,
+    options: { reserveRightPanel?: boolean } = {},
+  ): Promise<void> {
     setSelectedAoiId(id)
     try {
       const response = await getAoi(id)
       const aoi = receive(response)
       setAois((current) => replaceById(current, aoi))
       const bounds = geometryBounds(aoi.geometry)
-      if (bounds) focusBounds(bounds)
+      if (bounds) focusBounds(bounds, { reserveRightPanel: options.reserveRightPanel })
     } catch (reason) {
       showError('AOI details could not be loaded', reason)
     }
@@ -591,17 +749,19 @@ export default function App({
       const representation = receive(await getResultMap(request.resultId))
       setResultMap(representation)
       if (representation.bounds) {
-        const [southwest, northeast] = representation.bounds
-        applyFocus({
-          type: 'point',
-          lat: (southwest.lat + northeast.lat) / 2,
-          lng: (southwest.lng + northeast.lng) / 2,
-          zoom: 11,
-        })
+        const [first, second] = representation.bounds
+        focusBounds(
+          {
+            south: Math.min(first.lat, second.lat),
+            west: Math.min(first.lng, second.lng),
+            north: Math.max(first.lat, second.lat),
+            east: Math.max(first.lng, second.lng),
+          },
+          { reserveRightPanel: true, reserveInspector: true },
+        )
       }
       setDisplayedRequest(request)
       setInspectorOpen(true)
-      setPanel(null)
     } catch (reason) {
       showError('Map representation could not be loaded', reason)
     }
@@ -628,36 +788,85 @@ export default function App({
     }
   }
 
-  async function refreshBalance(): Promise<void> {
-    setIsLoading((current) => ({ ...current, balance: true }))
-    try {
-      setCreditBalance(receive(await getCreditBalance()))
-    } catch (reason) {
-      showError('Credit balance could not be loaded', reason)
-    } finally {
-      setIsLoading((current) => ({ ...current, balance: false }))
-    }
-  }
-
   function openAccount(): void {
+    setAccountOpen(false)
+    setSearchOpen(false)
     setPanel('account')
     void refreshBalance()
-  }
-
-  function locate(event: FormEvent<HTMLFormElement>): void {
-    event.preventDefault()
-    const coordinates = parseCoordinates(locationQuery)
-    if (coordinates) {
-      applyFocus(coordinates)
-      return
-    }
-    setAoiQuery(locationQuery)
-    setPanel('aois')
   }
 
   function togglePanel(nextPanel: Panel): void {
     setPanel((current) => (current === nextPanel ? null : nextPanel))
   }
+
+  const suggestions = buildSearchSuggestions(searchQuery, aois)
+  const highlightedSuggestion = suggestions.length
+    ? Math.min(activeSuggestion, suggestions.length - 1)
+    : -1
+
+  function chooseSuggestion(suggestion: SearchSuggestion): void {
+    searchInputRef.current?.blur()
+    setSearchOpen(false)
+    setActiveSuggestion(0)
+    setSearchQuery(suggestion.label)
+    if (suggestion.kind === 'aoi' && suggestion.aoiId) {
+      setPanel('aois')
+      void selectAoi(suggestion.aoiId, { reserveRightPanel: true })
+      return
+    }
+    if (suggestion.focus) applyFocus(suggestion.focus)
+  }
+
+  function submitSearch(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault()
+    if (suggestions.length === 0) {
+      setSearchOpen(true)
+      return
+    }
+    chooseSuggestion(suggestions[highlightedSuggestion])
+  }
+
+  function changeSearch(value: string): void {
+    setSearchQuery(value)
+    setSearchOpen(true)
+    setActiveSuggestion(0)
+  }
+
+  function handleSearchKeyDown(event: ReactKeyboardEvent<HTMLInputElement>): void {
+    if (event.key === 'Escape') {
+      if (searchOpen) {
+        event.stopPropagation()
+        setSearchOpen(false)
+      }
+      return
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      setSearchOpen(true)
+      if (suggestions.length) {
+        setActiveSuggestion((index) => (index + 1) % suggestions.length)
+      }
+      return
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      if (suggestions.length) {
+        setActiveSuggestion((index) => (index - 1 + suggestions.length) % suggestions.length)
+      }
+      return
+    }
+    if (event.key === 'Enter' && searchOpen && suggestions.length) {
+      event.preventDefault()
+      chooseSuggestion(suggestions[highlightedSuggestion])
+    }
+  }
+
+  const creditSummary =
+    isLoading.balance && !creditBalance
+      ? 'Loading credits'
+      : creditBalance
+        ? `${creditBalance.balance} ${creditBalance.unit ?? 'credits'}`
+        : 'Unavailable'
 
   const selectedAoi = aois.find((aoi) => aoi.id === selectedAoiId) ?? null
   const visibleAois = aois.filter((aoi) => aoi.name.toLowerCase().includes(aoiQuery.toLowerCase()))
@@ -673,7 +882,7 @@ export default function App({
     : 'Selecting a pixel size cannot reveal detail finer than the source data.'
 
   return (
-    <main className="workspace">
+    <main className={panel ? 'workspace panel-open' : 'workspace'}>
       <MapSurface
         aois={aois}
         draftVertices={draftVertices}
@@ -689,58 +898,179 @@ export default function App({
       />
 
       <header className="topbar">
-        <div className="brand-lockup">
-          <span className="brand-mark" aria-hidden="true">
-            M
-          </span>
-          <div>
-            <p>MEOGAP</p>
-            <span>Earth observation workspace</span>
+        <div className="topbar-left">
+          <div className="topbar-brand" role="img" aria-label="MEOGAP">
+            <Logo size={30} />
+            <span className="brand-wordmark">MEOGAP</span>
+          </div>
+          <span className="topbar-divider" aria-hidden="true" />
+          <nav className="main-nav" aria-label="Main navigation">
+            <NavButton
+              active={panel === 'catalogue'}
+              icon="compass"
+              label="Explore"
+              onClick={() => togglePanel('catalogue')}
+            />
+            <NavButton
+              active={panel === 'requests'}
+              icon="clipboard"
+              label="Requests"
+              onClick={() => togglePanel('requests')}
+              badge={activeRequestCount}
+            />
+            <NavButton
+              active={panel === 'indicators'}
+              icon="activity"
+              label="Indicators"
+              onClick={() => togglePanel('indicators')}
+            />
+          </nav>
+        </div>
+
+        <form
+          ref={searchContainerRef}
+          className="header-search"
+          role="search"
+          onSubmit={submitSearch}
+        >
+          <Icon name="search" className="header-search-icon" />
+          <input
+            ref={searchInputRef}
+            id="geographic-search"
+            type="text"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={searchOpen}
+            aria-controls="geographic-search-suggestions"
+            aria-activedescendant={
+              searchOpen && highlightedSuggestion >= 0
+                ? `search-suggestion-${highlightedSuggestion}`
+                : undefined
+            }
+            aria-label="Search location"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="Search location (place, coordinates...)"
+            value={searchQuery}
+            onChange={(event) => changeSearch(event.target.value)}
+            onFocus={() => {
+              if (searchQuery.trim()) setSearchOpen(true)
+            }}
+            onKeyDown={handleSearchKeyDown}
+          />
+          {searchQuery ? (
+            <button
+              type="button"
+              className="header-search-clear"
+              aria-label="Clear search"
+              onClick={() => {
+                setSearchQuery('')
+                setSearchOpen(false)
+                searchInputRef.current?.focus()
+              }}
+            >
+              <Icon name="close" size={14} />
+            </button>
+          ) : null}
+          <kbd className="search-shortcut">Ctrl K</kbd>
+          {searchOpen ? (
+            <div
+              className="search-suggestions"
+              id="geographic-search-suggestions"
+              role="listbox"
+              aria-label="Location suggestions"
+            >
+              {suggestions.length ? (
+                <ul role="presentation">
+                  {suggestions.map((suggestion, index) => (
+                    <li key={suggestion.id} role="presentation">
+                      <button
+                        id={`search-suggestion-${index}`}
+                        type="button"
+                        role="option"
+                        aria-selected={index === highlightedSuggestion}
+                        tabIndex={-1}
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => chooseSuggestion(suggestion)}
+                      >
+                        <span className="search-suggestion-icon">
+                          <Icon name={suggestion.icon} size={16} />
+                        </span>
+                        <span className="search-suggestion-copy">
+                          <strong>{suggestion.label}</strong>
+                          <small>{suggestion.detail}</small>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="search-suggestions-empty">
+                  No matching place, coordinates, or saved AOI.
+                </p>
+              )}
+            </div>
+          ) : null}
+        </form>
+
+        <div className="topbar-meta">
+          <button
+            type="button"
+            className="credits-chip"
+            onClick={openAccount}
+            aria-label={`Credit balance: ${creditSummary}. Open account and credits.`}
+            title={`Credit balance: ${creditSummary}`}
+          >
+            <Icon name="credit-card" />
+            <span className="credits-value">{creditSummary}</span>
+          </button>
+          <div className="account-menu" ref={accountMenuRef}>
+            <button
+              ref={accountButtonRef}
+              type="button"
+              className={
+                panel === 'account' || accountOpen
+                  ? 'account-button account-button-active'
+                  : 'account-button'
+              }
+              aria-haspopup="menu"
+              aria-expanded={accountOpen}
+              aria-label="Account menu"
+              title="Account menu"
+              onClick={() => {
+                setSearchOpen(false)
+                setAccountOpen((open) => !open)
+              }}
+            >
+              <Icon name="user" />
+              <Icon name="chevron-down" size={14} className="account-caret" />
+            </button>
+            {accountOpen ? (
+              <div className="account-dropdown" role="menu" aria-label="Account">
+                <div className="account-dropdown-header">
+                  <span>Demo account</span>
+                  <strong>{creditSummary}</strong>
+                </div>
+                <button type="button" role="menuitem" onClick={openAccount}>
+                  <Icon name="credit-card" />
+                  <span>Account and credits</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setAccountOpen(false)
+                    void refreshBalance()
+                  }}
+                >
+                  <Icon name="refresh" />
+                  <span>Refresh credit balance</span>
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
-        <nav className="main-nav" aria-label="Main navigation">
-          <NavButton
-            active={panel === 'catalogue'}
-            icon="compass"
-            label="Explore"
-            onClick={() => togglePanel('catalogue')}
-          />
-          <NavButton
-            active={panel === 'requests'}
-            icon="clipboard"
-            label="Requests"
-            onClick={() => togglePanel('requests')}
-          />
-          <NavButton
-            active={panel === 'indicators'}
-            icon="activity"
-            label="Indicators"
-            onClick={() => togglePanel('indicators')}
-          />
-          <NavButton
-            active={panel === 'account'}
-            icon="user"
-            label="Account"
-            onClick={openAccount}
-          />
-        </nav>
       </header>
-
-      <form className="location-search" onSubmit={locate} role="search">
-        <label htmlFor="location-search">Coordinates or saved AOI</label>
-        <div>
-          <Icon name="search" className="search-icon" />
-          <input
-            id="location-search"
-            value={locationQuery}
-            onChange={(event) => setLocationQuery(event.target.value)}
-            placeholder="Latitude, longitude or AOI name"
-          />
-          <button type="submit" className="button button-primary">
-            Locate
-          </button>
-        </div>
-      </form>
 
       <aside className="map-toolbar" aria-label="Map tools">
         <button
@@ -833,6 +1163,14 @@ export default function App({
               <ProductPreview product={selectedProduct} />
               <h3>{selectedProduct.name}</h3>
               <p>{selectedProduct.description ?? 'No product description was supplied.'}</p>
+              <button
+                type="button"
+                className="button button-primary button-wide"
+                onClick={() => openRequest(selectedProduct.id)}
+              >
+                <Icon name="plus" />
+                Configure request
+              </button>
               <dl className="metadata-grid">
                 <dt>Processing level</dt>
                 <dd>{selectedProduct.level ?? 'Unavailable'}</dd>
@@ -890,14 +1228,6 @@ export default function App({
               ) : (
                 <StateNotice icon="refresh">Loading input requirements…</StateNotice>
               )}
-              <button
-                type="button"
-                className="button button-primary button-wide"
-                onClick={() => openRequest(selectedProduct.id)}
-              >
-                <Icon name="plus" />
-                Configure request
-              </button>
             </section>
           ) : null}
         </OverlayPanel>
@@ -1011,7 +1341,11 @@ export default function App({
             </section>
           ) : null}
           {drawing ? (
-            <section className="detail-section drawing-form" aria-label="AOI drawing form">
+            <section
+              ref={drawingFormRef}
+              className="detail-section drawing-form"
+              aria-label="AOI drawing form"
+            >
               <div className="drawing-heading">
                 <h3>{editingAoiId ? 'Edit saved area' : 'Draw a new area'}</h3>
                 <span className={editingAoiId ? 'drawing-badge badge-editing' : 'drawing-badge'}>
@@ -1088,7 +1422,6 @@ export default function App({
           title="New analysis request"
           icon={<Icon name="plus" />}
           onClose={() => setPanel(null)}
-          position="right"
         >
           <p className="panel-intro">
             Configure the scientific constraints, then submit. Confirmation of a proposal is a
@@ -1209,14 +1542,16 @@ export default function App({
             </div>
           ) : null}
 
-          <button
-            type="button"
-            className="button button-primary button-wide"
-            onClick={() => void submitRequest()}
-          >
-            <Icon name="check" />
-            Submit request
-          </button>
+          <div className="panel-footer">
+            <button
+              type="button"
+              className="button button-primary button-wide"
+              onClick={() => void submitRequest()}
+            >
+              <Icon name="check" />
+              Submit request
+            </button>
+          </div>
         </OverlayPanel>
       ) : null}
 
@@ -1225,7 +1560,6 @@ export default function App({
           title="Analysis requests"
           icon={<Icon name="clipboard" />}
           onClose={() => setPanel(null)}
-          position="right"
         >
           <div className="panel-toolbar">
             <p className="panel-intro">
@@ -1282,7 +1616,6 @@ export default function App({
           title="Indicators"
           icon={<Icon name="activity" />}
           onClose={() => setPanel(null)}
-          position="right"
         >
           <div className="empty-state">
             <span className="empty-state-icon">
@@ -1302,7 +1635,6 @@ export default function App({
           title="Account and credits"
           icon={<Icon name="user" />}
           onClose={() => setPanel(null)}
-          position="right"
         >
           <p className="panel-intro">
             Credit balances are supplied by the server and are shown before confirming a proposal

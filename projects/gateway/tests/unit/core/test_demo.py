@@ -28,6 +28,7 @@ PRODUCT_ID = 'ndvi'
 START_MONTH = '2026-01'
 END_MONTH = '2026-02'
 REQUESTED_RESOLUTION_M = 20
+PRODUCT_COUNT = 4
 NEW_GEOMETRY = {
     'type': 'Polygon',
     'coordinates': [[[1.4, 43.6], [1.41, 43.6], [1.41, 43.61], [1.4, 43.6]]],
@@ -264,3 +265,27 @@ def test_request_retains_requested_constraints_and_rejects_unsupported_sources()
             END_MONTH,
             sources=[SourceMission.GOES],
         )
+
+
+def test_product_previews_are_local_labelled_and_distinct() -> None:
+    """Validate each demo product carries a distinct, explicitly illustrative preview.
+
+    Args:
+    ----
+        None
+
+    Returns:
+    -------
+        None
+
+    """
+    # Arrange
+    store = build_store()
+    # Act
+    previews = [product['preview'] for product in store.list_products()]
+    # Assert
+    assert len(previews) == PRODUCT_COUNT
+    assert len({preview['url'] for preview in previews}) == PRODUCT_COUNT
+    assert all(preview['url'].startswith('data:image/svg+xml,') for preview in previews)
+    assert all('illustrative' in preview['alt'].lower() for preview in previews)
+    assert all('not a scientific result' in preview['attribution'].lower() for preview in previews)

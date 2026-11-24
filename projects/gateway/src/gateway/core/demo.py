@@ -28,6 +28,8 @@ from meogap.scientific.products import (
     SourceMission,
 )
 
+from gateway.core.product_previews import build_product_preview
+
 DEMO_OWNER_ID = 'demo-user'
 MONTH_PATTERN = re.compile(r'^\d{4}-(0[1-9]|1[0-2])$')
 REQUEST_PREPARING = 'PREPARING'
@@ -1200,7 +1202,7 @@ class DemoStore:
                 ],
                 'supported_sources': [source.value for source in supported_sources],
                 'supported_resolutions_m': supported_resolutions,
-                'preview': self._product_preview(product_id, name),
+                'preview': build_product_preview(product_id, name),
             }
             for (
                 product_id,
@@ -1248,53 +1250,6 @@ class DemoStore:
                 description,
                 {'type': 'Polygon', 'coordinates': [ring]},
             )
-
-    def _product_preview(self, product_id: str, name: str) -> dict[str, Any]:
-        """Build a local illustrative preview descriptor for a demo product.
-
-        The SVG is clearly labelled as an illustration and is not a scientific
-        result. It is embedded so the prototype does not depend on remote images.
-
-        Args:
-        ----
-            product_id(str): product identifier used to select an illustration.
-            name(str): display name shown by the illustration.
-
-        Returns:
-        -------
-            dict[str, Any]: preview URL, alternative text, and attribution.
-
-        """
-        palettes = {
-            'ndvi': ('#08251d', '#1f6b45', '#79b77a', '#d8efb4'),
-            'ndwi': ('#052033', '#0b5f7a', '#26b8b0', '#9ceef0'),
-            'lst': ('#2a1014', '#7a3520', '#d8863c', '#f7dd94'),
-            'ch4': ('#1a1030', '#4b2a72', '#8c5bd1', '#dcc3fa'),
-        }
-        background, mid, accent, light = palettes.get(product_id, palettes['ndvi'])
-        svg = (
-            "<svg xmlns='http://www.w3.org/2000/svg' width='320' height='180' "
-            "viewBox='0 0 320 180'>"
-            "<defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>"
-            f"<stop offset='0' stop-color='{background}'/>"
-            f"<stop offset='1' stop-color='{mid}'/></linearGradient></defs>"
-            "<rect width='320' height='180' fill='url(#g)'/>"
-            "<path d='M0 130 C60 96 108 142 162 112 S258 78 320 104 V180 H0 Z' "
-            f"fill='{accent}' fill-opacity='.55'/>"
-            f"<circle cx='246' cy='48' r='30' fill='{light}' fill-opacity='.35'/>"
-            "<path d='M24 150 C74 122 122 158 178 130 S268 112 306 136' "
-            f"fill='none' stroke='{light}' stroke-opacity='.8' stroke-width='2'/>"
-            "<text x='16' y='28' fill='#f4fffc' font-family='sans-serif' "
-            f"font-size='17' font-weight='700'>{name}</text>"
-            "<text x='16' y='47' fill='#e7f2ef' fill-opacity='.8' "
-            "font-family='sans-serif' font-size='10'>ILLUSTRATIVE PREVIEW</text>"
-            '</svg>'
-        )
-        return {
-            'url': f'data:image/svg+xml,{quote(svg)}',
-            'alt': f'Illustrative preview for the {name} demo product',
-            'attribution': 'MEOGAP synthetic illustration, not a scientific result',
-        }
 
     def _map_data_url(self, product_id: str) -> str:
         """Build a synthetic SVG data URL for an explicit demo overlay.

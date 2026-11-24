@@ -15,6 +15,11 @@ vi.mock('react-leaflet', () => ({
     <div data-testid="map-container">{children}</div>
   ),
   TileLayer: ({ attribution }: { attribution: string }) => <span>{attribution}</span>,
+  ScaleControl: ({ position, imperial }: { position?: string; imperial?: boolean }) => (
+    <div data-imperial={String(imperial)} data-position={position} data-testid="scale-control">
+      1 km
+    </div>
+  ),
   Polygon: ({
     positions,
     eventHandlers,
@@ -69,7 +74,7 @@ describe('LeafletMapSurface', () => {
   })
 
   it(
-    'wires Leaflet map events, OSM attribution, AOIs, and result overlays',
+    'wires Leaflet events, scale, attribution, AOIs, and result overlays',
     { tags: ['unit'] },
     () => {
       const onMapClick = vi.fn()
@@ -99,6 +104,8 @@ describe('LeafletMapSurface', () => {
 
       expect(screen.getByTestId('map-container')).toBeInTheDocument()
       expect(screen.getByText(/EOxCloudless/)).toBeInTheDocument()
+      expect(screen.getByTestId('scale-control')).toHaveAttribute('data-position', 'bottomright')
+      expect(screen.getByTestId('scale-control')).toHaveAttribute('data-imperial', 'false')
       expect(screen.getByRole('img', { name: 'Result map' })).toHaveAttribute(
         'src',
         'https://example.test/map.png',
@@ -142,8 +149,8 @@ describe('LeafletMapSurface', () => {
           type: 'bounds',
           bounds: { south: 10.35, west: -85, north: 10.5, east: -84.82 },
           maxZoom: 13,
-          paddingTopLeft: [470, 96],
-          paddingBottomRight: [48, 130],
+          paddingTopLeft: [112, 96],
+          paddingBottomRight: [480, 210],
         }}
         focusRevision={2}
         resultMap={null}
@@ -158,7 +165,7 @@ describe('LeafletMapSurface', () => {
         [10.35, -85],
         [10.5, -84.82],
       ],
-      { maxZoom: 13, paddingTopLeft: [470, 96], paddingBottomRight: [48, 130] },
+      { maxZoom: 13, paddingTopLeft: [112, 96], paddingBottomRight: [480, 210] },
     )
     expect(leafletState.flyTo).not.toHaveBeenCalled()
     expect(leafletState.setView).not.toHaveBeenCalled()
