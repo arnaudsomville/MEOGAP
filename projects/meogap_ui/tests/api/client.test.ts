@@ -10,21 +10,30 @@ import {
   getAoi,
   getCreditBalance,
   getDelivery,
+  getAccount,
   getHealth,
   getProduct,
+  getProductMissions,
   getProductRequirements,
+  getResult,
   getResultMap,
   listAnalysisRequests,
   listAois,
   listProducts,
+  parseAccount,
   parseAnalysisRequest,
   parseAoi,
   parseAoiGeometry,
   parseAoiList,
+  parseCostEstimate,
   parseCreditBalance,
   parseDelivery,
   parseProduct,
+  parseProductMissions,
+  parseResultDetail,
   parseResultMap,
+  parseSeries,
+  queryResultSeries,
   updateAoi,
 } from '../../src/api/client'
 
@@ -331,6 +340,227 @@ describe('Gateway client', () => {
         ),
       )
       await expect(getHealth()).rejects.toThrow('did not contain JSON')
+    },
+  )
+})
+
+describe('extended Gateway client', () => {
+  it('parses product scientific constraints and mission metadata', { tags: ['unit'] }, () => {
+    const product = parseProduct({
+      ...PRODUCT,
+      native_resolution: '10 m',
+      units: 'unitless',
+      supported_spatial_inputs: ['AOI', 'POI', 'LOI', 'UNKNOWN'],
+      supported_frequencies: ['monthly', 'seasonal', 'custom'],
+      max_period_months: 120,
+      documentation_status: 'PLACEHOLDER',
+      documentation_url: null,
+      supported_sources: ['Sentinel'],
+      supported_resolutions_m: [10, 20],
+    })
+    expect(product.units).toBe('unitless')
+    expect(product.supportedSpatialInputs).toEqual(['AOI', 'POI', 'LOI'])
+    expect(product.supportedFrequencies).toEqual(['monthly', 'seasonal'])
+    expect(product.maxPeriodMonths).toBe(120)
+    const missions = parseProductMissions({
+      product_id: 'ndvi',
+      items: [
+        {
+          source_id: 'Sentinel',
+          name: 'Sentinel',
+          provider: 'ESA',
+          instrument: 'MSI',
+          native_resolution: '10 m',
+          temporal_resolution: '5 days',
+          availability: 'DEMO',
+        },
+      ],
+    })
+    expect(missions.items[0].id).toBe('Sentinel')
+  })
+
+  it('parses cost estimates and rejects unsupported admission', { tags: ['unit'] }, () => {
+    const payload = {
+      product_id: 'ndvi',
+      aoi_id: 'aoi-1',
+      start_month: '2026-01',
+      end_month: '2026-02',
+      feasible: true,
+      estimated_credits: 3,
+      currency: 'credits',
+      balance: 12,
+      balance_available: true,
+      admission: 'ADMITTED',
+      conditions: [],
+      limitations: [],
+    }
+    expect(parseCostEstimate(payload)).toMatchObject({ admission: 'ADMITTED', balance: 12 })
+    expect(() => parseCostEstimate({ ...payload, admission: 'MAYBE' })).toThrow(
+      'unsupported admission',
+    )
+    expect(() => parseCostEstimate({ ...payload, estimated_credits: null })).toThrow(
+      'estimated_credits',
+    )
+  })
+
+  it('parses result metadata, series and missing values distinctly', { tags: ['unit'] }, () => {
+    const detail = parseResultDetail({
+      result_id: 'result-1',
+      request_id: 'request-1',
+      product_id: 'ndvi',
+      product_name: 'NDVI',
+      result_version: '1',
+      aoi_name: 'Toulouse',
+      geometry_snapshot: AOI.geometry,
+      start_month: '2026-01',
+      end_month: '2026-02',
+      units: 'unitless',
+      validation_status: 'NOT_VALIDATED',
+      quality_status: 'PARTIAL',
+      quality_note: 'Synthetic.',
+      provenance_note: 'Demo lineage.',
+      is_demo: true,
+    })
+    expect(detail.id).toBe('result-1')
+    expect(detail.isDemo).toBe(true)
+    const series = parseSeries({
+      result_id: 'result-1',
+      product_id: 'ndvi',
+      geometry_wkt: 'POINT(1.44 43.6)',
+      crs: 'EPSG:4326',
+      selection_type: 'Point',
+      aggregation_method: 'point_sample',
+      units: 'unitless',
+      quality_status: 'PARTIAL',
+      quality_note: 'Demo.',
+      coverage: null,
+      is_demo: true,
+      note: 'Demo.',
+      points: [
+        {
+          period_start: '2026-01-01',
+          period_end: '2026-01-31',
+          value: 0,
+          unit: 'unitless',
+          state: 'VALID',
+          quality_status: 'VALID',
+          coverage: null,
+          note: null,
+        },
+        {
+          period_start: '2026-02-01',
+          period_end: '2026-02-28',
+          value: null,
+          unit: 'unitless',
+          state: 'MISSING',
+          quality_status: 'UNKNOWN',
+          coverage: null,
+          note: 'No observation.',
+        },
+      ],
+    })
+    expect(series.points[0].value).toBe(0)
+    expect(series.points[1].value).toBeNull()
+    expect(series.points[1].state).toBe('MISSING')
+    expect(() =>
+      parseSeries({
+        result_id: 'result-1',
+        product_id: 'ndvi',
+        geometry_wkt: 'POINT(1.44 43.6)',
+        crs: 'EPSG:4326',
+        selection_type: 'LineString',
+        aggregation_method: 'point_sample',
+        units: 'unitless',
+        quality_status: 'PARTIAL',
+        quality_note: 'Demo.',
+        coverage: null,
+        is_demo: true,
+        note: 'Demo.',
+        points: [],
+      }),
+    ).toThrow('Point or Polygon')
+  })
+
+  it('parses account identity and delivery kind', { tags: ['unit'] }, () => {
+    expect(
+      parseAccount({ user_id: 'demo-user', display_name: 'Demo', session_status: 'AUTHENTICATED' }),
+    ).toMatchObject({ userId: 'demo-user' })
+    expect(
+      parseDelivery({
+        delivery_id: 'delivery-1',
+        kind: 'dependency_archive',
+        state: 'READY',
+        download_url: 'data:application/geo+json;base64,abc',
+      }),
+    ).toMatchObject({ kind: 'dependency_archive' })
+  })
+
+  it(
+    'posts WKT series requests and fetches missions, results and account',
+    { tags: ['unit'] },
+    async () => {
+      const fetchMock = vi.fn(async (path: string) => {
+        if (path === '/api/v1/catalogue/products/ndvi/missions')
+          return response({ product_id: 'ndvi', items: [] })
+        if (path === '/api/v1/account')
+          return response({
+            user_id: 'demo-user',
+            display_name: 'Demo',
+            session_status: 'AUTHENTICATED',
+          })
+        if (path === '/api/v1/results/result-1')
+          return response({
+            result_id: 'result-1',
+            request_id: 'request-1',
+            product_id: 'ndvi',
+            product_name: 'NDVI',
+            result_version: '1',
+            aoi_name: 'Toulouse',
+            geometry_snapshot: AOI.geometry,
+            start_month: '2026-01',
+            end_month: '2026-02',
+            units: 'unitless',
+            validation_status: 'NOT_VALIDATED',
+            quality_status: 'PARTIAL',
+            quality_note: 'Synthetic.',
+            provenance_note: 'Demo lineage.',
+            is_demo: true,
+          })
+        return response({
+          result_id: 'result-1',
+          product_id: 'ndvi',
+          geometry_wkt: 'POINT(1.44 43.6)',
+          crs: 'EPSG:4326',
+          selection_type: 'Point',
+          aggregation_method: 'point_sample',
+          units: 'unitless',
+          quality_status: 'PARTIAL',
+          quality_note: 'Demo.',
+          coverage: null,
+          is_demo: true,
+          note: 'Demo.',
+          points: [],
+        })
+      })
+      vi.stubGlobal('fetch', fetchMock)
+      await getProductMissions('ndvi')
+      await getResult('result-1')
+      await getAccount()
+      await queryResultSeries('result-1', {
+        geometryWkt: 'POINT(1.44 43.6)',
+        crs: 'EPSG:4326',
+        startMonth: '2026-01',
+        endMonth: '2026-02',
+        parameters: ['quality'],
+      })
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/v1/results/result-1/series',
+        expect.objectContaining({ method: 'POST' }),
+      )
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/v1/catalogue/products/ndvi/missions',
+        expect.any(Object),
+      )
     },
   )
 })

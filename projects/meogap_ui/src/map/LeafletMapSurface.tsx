@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import {
+  CircleMarker,
   ImageOverlay,
   MapContainer,
   Polygon,
@@ -12,6 +13,8 @@ import type { Aoi, Position, ResultMap } from '../api/client'
 import { DEFAULT_BASEMAP, DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM } from './basemap'
 import { geometryToPositions, type MapFocus } from './coordinates'
 
+export type SelectionMode = 'none' | 'point' | 'polygon'
+
 export type MapSurfaceProps = {
   aois: Aoi[]
   draftVertices: Position[]
@@ -19,8 +22,13 @@ export type MapSurfaceProps = {
   focus: MapFocus | null
   focusRevision: number
   resultMap: ResultMap | null
+  resultVisible: boolean
+  selectionMode: SelectionMode
+  selectionPoint: Position | null
+  selectionVertices: Position[]
   selectedAoiId: string | null
   onMapClick: (position: Position) => void
+  onResultClick: (position: Position) => void
   onAoiSelect: (id: string) => void
 }
 
@@ -28,10 +36,24 @@ export type MapSurfaceComponent = (props: MapSurfaceProps) => React.JSX.Element
 
 const DEFAULT_FIT_MAX_ZOOM = 14
 
-function MapClickHandler({ drawing, onMapClick }: Pick<MapSurfaceProps, 'drawing' | 'onMapClick'>) {
+function MapClickHandler({
+  drawing,
+  resultMap,
+  selectionMode,
+  onMapClick,
+  onResultClick,
+}: Pick<
+  MapSurfaceProps,
+  'drawing' | 'resultMap' | 'selectionMode' | 'onMapClick' | 'onResultClick'
+>) {
   useMapEvents({
     click(event) {
-      if (drawing) onMapClick({ lat: event.latlng.lat, lng: event.latlng.lng })
+      const position = { lat: event.latlng.lat, lng: event.latlng.lng }
+      if (drawing) {
+        onMapClick(position)
+        return
+      }
+      if (resultMap && selectionMode !== 'none') onResultClick(position)
     },
   })
   return null
@@ -70,8 +92,13 @@ export function LeafletMapSurface({
   focus,
   focusRevision,
   resultMap,
+  resultVisible,
+  selectionMode,
+  selectionPoint,
+  selectionVertices,
   selectedAoiId,
   onMapClick,
+  onResultClick,
   onAoiSelect,
 }: MapSurfaceProps) {
   return (
@@ -89,7 +116,13 @@ export function LeafletMapSurface({
           maxZoom={DEFAULT_BASEMAP.maxZoom}
         />
         <ScaleControl imperial={false} maxWidth={120} position="bottomright" />
-        <MapClickHandler drawing={drawing} onMapClick={onMapClick} />
+        <MapClickHandler
+          drawing={drawing}
+          resultMap={resultMap}
+          selectionMode={selectionMode}
+          onMapClick={onMapClick}
+          onResultClick={onResultClick}
+        />
         <ViewHandler focus={focus} focusRevision={focusRevision} />
         {aois.map((aoi) => (
           <Polygon
@@ -111,7 +144,7 @@ export function LeafletMapSurface({
             pathOptions={{ color: '#55e3d1', dashArray: '5 7', fillOpacity: 0.12 }}
           />
         ) : null}
-        {resultMap?.bounds ? (
+        {resultMap?.bounds && resultVisible ? (
           <ImageOverlay
             url={resultMap.url}
             bounds={
@@ -121,6 +154,21 @@ export function LeafletMapSurface({
               ]
             }
             opacity={0.75}
+          />
+        ) : null}
+        {selectionPoint ? (
+          <CircleMarker
+            center={[selectionPoint.lat, selectionPoint.lng]}
+            radius={7}
+            pathOptions={{ color: '#ffd166', weight: 2, fillColor: '#ffd166', fillOpacity: 0.9 }}
+          />
+        ) : null}
+        {selectionVertices.length > 1 ? (
+          <Polygon
+            positions={selectionVertices.map(
+              (position) => [position.lat, position.lng] as [number, number],
+            )}
+            pathOptions={{ color: '#ffd166', weight: 2, dashArray: '4 5', fillOpacity: 0.1 }}
           />
         ) : null}
       </MapContainer>

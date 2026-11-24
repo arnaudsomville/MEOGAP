@@ -8,7 +8,9 @@ processing, a scientific product, production identity, or a credit ledger.
 from __future__ import annotations
 
 import base64
+import calendar
 import copy
+import hashlib
 import json
 import math
 import re
@@ -59,6 +61,92 @@ LATITUDE_MINIMUM = -90
 LATITUDE_MAXIMUM = 90
 MIN_RING_POSITIONS = 4
 MIN_BOUNDARY_POINTS = 3
+MONTHS_PER_YEAR = 12
+SERIES_MISSING_INTERVAL = 5
+SERIES_MASKED_INTERVAL = 7
+SERIES_ZERO_INTERVAL = 11
+SERIES_MISSING_INDEX = 2
+SERIES_MASKED_INDEX = 3
+SERIES_ZERO_INDEX = 5
+MIN_SELECTION_VERTICES = 3
+SUPPORTED_CRS = 'EPSG:4326'
+SUPPORTED_CRS_ALIASES = frozenset({SUPPORTED_CRS, 'EPSG:4326', 'urn:ogc:def:crs:EPSG::4326'})
+DEFAULT_MAX_SELECTION_AREA_KM2 = 25_000.0
+WKT_NUMBER = r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?'
+WKT_POINT_PATTERN = re.compile(
+    rf'^\s*POINT\s*\(\s*(?P<longitude>{WKT_NUMBER})\s+(?P<latitude>{WKT_NUMBER})\s*\)\s*$',
+    re.IGNORECASE,
+)
+WKT_POLYGON_HEADER_PATTERN = re.compile(r'^\s*POLYGON\s*', re.IGNORECASE)
+WKT_RING_PATTERN = re.compile(r'\(([^()]*)\)')
+WKT_COORDINATE_PATTERN = re.compile(rf'^\s*({WKT_NUMBER})\s+({WKT_NUMBER})\s*$')
+DELIVERY_KIND_FINAL_PRODUCT = 'final_product'
+DELIVERY_KIND_ARCHIVE = 'dependency_archive'
+DELIVERY_KINDS = frozenset({DELIVERY_KIND_FINAL_PRODUCT, DELIVERY_KIND_ARCHIVE})
+RESULT_VERSION = '1'
+QUALITY_VALID = 'VALID'
+QUALITY_PARTIAL = 'PARTIAL'
+QUALITY_UNKNOWN = 'UNKNOWN'
+SERIES_VALID = 'VALID'
+SERIES_MISSING = 'MISSING'
+SERIES_MASKED = 'MASKED'
+SERIES_INVALID = 'INVALID'
+SERIES_POINT_AGGREGATION = 'point_sample'
+SERIES_ZONAL_AGGREGATION = 'zonal_mean'
+DEMO_ACCOUNTS = {
+    'm0-ui-demo-token': ('demo-user', 'MEOGAP demo user'),
+    'm0-ui-demo-token-2': ('demo-user-2', 'MEOGAP second demo user'),
+}
+MISSION_METADATA = {
+    SourceMission.SENTINEL: {
+        'name': 'Sentinel',
+        'provider': 'European Space Agency',
+        'instrument': 'MSI',
+        'native_resolution': '10 m',
+        'temporal_resolution': '5 days',
+        'availability': 'DEMO',
+    },
+    SourceMission.LANDSAT: {
+        'name': 'Landsat',
+        'provider': 'NASA / USGS',
+        'instrument': 'OLI/TIRS',
+        'native_resolution': '30 m',
+        'temporal_resolution': '16 days',
+        'availability': 'DEMO',
+    },
+    SourceMission.MODIS: {
+        'name': 'MODIS',
+        'provider': 'NASA',
+        'instrument': 'MODIS',
+        'native_resolution': '250 m',
+        'temporal_resolution': '1 day',
+        'availability': 'DEMO',
+    },
+    SourceMission.VIIRS: {
+        'name': 'VIIRS',
+        'provider': 'NOAA / NASA',
+        'instrument': 'VIIRS',
+        'native_resolution': '375 m',
+        'temporal_resolution': '1 day',
+        'availability': 'DEMO',
+    },
+    SourceMission.ECOSTRESS: {
+        'name': 'ECOSTRESS',
+        'provider': 'NASA',
+        'instrument': 'ECOSTRESS',
+        'native_resolution': '70 m',
+        'temporal_resolution': 'irregular',
+        'availability': 'DEMO',
+    },
+    SourceMission.GOES: {
+        'name': 'GOES',
+        'provider': 'NOAA',
+        'instrument': 'ABI',
+        'native_resolution': '2 km',
+        'temporal_resolution': '10 minutes',
+        'availability': 'DEMO',
+    },
+}
 
 Geometry = dict[str, Any]
 Clock = Callable[[], datetime]
@@ -101,6 +189,7 @@ class DemoSettings:
     execution_delay_seconds: int = DEFAULT_EXECUTION_DELAY_SECONDS
     delivery_delay_seconds: int = DEFAULT_DELIVERY_DELAY_SECONDS
     failure_mode: str | None = None
+    max_selection_area_km2: float = DEFAULT_MAX_SELECTION_AREA_KM2
 
 
 @dataclass
@@ -154,6 +243,8 @@ class ResultRecord:
     product_id: str
     aoi_name: str
     geometry_snapshot: Geometry
+    start_month: str
+    end_month: str
     created_at: datetime
 
 
@@ -164,6 +255,7 @@ class DeliveryRecord:
     delivery_id: str
     result_id: str
     owner_id: str
+    kind: str
     state: str
     created_at: datetime
     updated_at: datetime
@@ -376,6 +468,247 @@ def geometry_bounds(geometry: Geometry) -> list[list[float]]:
     return [[min(latitudes), min(longitudes)], [max(latitudes), max(longitudes)]]
 
 
+def owner_for_token(token: str) -> str:
+    """Map a deterministic demo bearer token to an owner identifier.
+
+    Args:
+    ----
+        token(str): syntactically validated bearer credential.
+
+    Returns:
+    -------
+        str: deterministic owner identifier derived by the Gateway.
+
+    """
+    return DEMO_ACCOUNTS.get(token, (DEMO_OWNER_ID, ''))[0]
+
+
+def account_identity(owner_id: str) -> dict[str, str]:
+    """Return the deterministic demo account identity for an owner.
+
+    Args:
+    ----
+        owner_id(str): trusted owner identifier.
+
+    Returns:
+    -------
+        dict[str, str]: public account identity.
+
+    """
+    display_name = next(
+        (name for account_owner, name in DEMO_ACCOUNTS.values() if account_owner == owner_id),
+        'MEOGAP demo user',
+    )
+    return {
+        'user_id': owner_id,
+        'display_name': display_name,
+        'session_status': 'AUTHENTICATED',
+    }
+
+
+def _validate_crs(crs: str) -> str:
+    """Validate the explicitly declared selection CRS.
+
+    Args:
+    ----
+        crs(str): caller-declared coordinate reference system.
+
+    Returns:
+    -------
+        str: normalized supported CRS.
+
+    Raises:
+    ------
+        DemoError: when the CRS is missing or unsupported.
+
+    """
+    normalized = crs.strip()
+    if normalized not in SUPPORTED_CRS_ALIASES:
+        raise DemoError(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            'UNSUPPORTED_CRS',
+            'The selection CRS must be EPSG:4326 with longitude/latitude coordinates.',
+        )
+    return SUPPORTED_CRS
+
+
+def _wkt_position(text: str) -> list[float]:
+    """Parse one WKT longitude/latitude position.
+
+    Args:
+    ----
+        text(str): coordinate pair text.
+
+    Returns:
+    -------
+        list[float]: GeoJSON-compatible longitude/latitude position.
+
+    Raises:
+    ------
+        DemoError: when the position is malformed or outside WGS 84 bounds.
+
+    """
+    match = WKT_COORDINATE_PATTERN.fullmatch(text)
+    if match is None:
+        raise DemoError(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            'INVALID_GEOMETRY',
+            'WKT positions must contain longitude then latitude.',
+        )
+    longitude = float(match.group(1))
+    latitude = float(match.group(2))
+    _as_position([longitude, latitude])
+    return [longitude, latitude]
+
+
+def parse_wkt_geometry(wkt: str, crs: str) -> tuple[str, Geometry]:
+    """Parse and validate a point or polygon WKT selection.
+
+    Args:
+    ----
+        wkt(str): WKT geometry supplied by the client.
+        crs(str): explicitly declared coordinate reference system.
+
+    Returns:
+    -------
+        tuple[str, Geometry]: selection kind and validated GeoJSON geometry.
+
+    Raises:
+    ------
+        DemoError: when the CRS or WKT geometry is invalid.
+
+    """
+    _validate_crs(crs)
+    point_match = WKT_POINT_PATTERN.fullmatch(wkt)
+    if point_match is not None:
+        longitude = float(point_match.group('longitude'))
+        latitude = float(point_match.group('latitude'))
+        _as_position([longitude, latitude])
+        return 'Point', {'type': 'Point', 'coordinates': [longitude, latitude]}
+    if WKT_POLYGON_HEADER_PATTERN.match(wkt) is None:
+        raise DemoError(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            'INVALID_GEOMETRY',
+            'Selections must use POINT(...) or POLYGON((...)) WKT.',
+        )
+    opening = wkt.find('(')
+    closing = wkt.rfind(')')
+    if opening < 0 or closing <= opening:
+        raise DemoError(status.HTTP_422_UNPROCESSABLE_ENTITY, 'INVALID_GEOMETRY', 'A WKT polygon needs parentheses.')
+    rings = WKT_RING_PATTERN.findall(wkt[opening + 1 : closing])
+    if not rings:
+        raise DemoError(status.HTTP_422_UNPROCESSABLE_ENTITY, 'INVALID_GEOMETRY', 'A WKT polygon needs a closed ring.')
+    coordinates: list[list[list[float]]] = []
+    for ring_text in rings:
+        positions = [_wkt_position(item) for item in ring_text.split(',')]
+        _validate_ring(positions)
+        coordinates.append(positions)
+    return 'Polygon', {'type': 'Polygon', 'coordinates': coordinates}
+
+
+def _point_in_ring(longitude: float, latitude: float, ring: list[list[float]]) -> bool:
+    """Return whether a point lies inside one closed ring using ray casting.
+
+    Args:
+    ----
+        longitude(float): point longitude.
+        latitude(float): point latitude.
+        ring(list[list[float]]): closed longitude/latitude ring.
+
+    Returns:
+    -------
+        bool: whether the point is inside the ring.
+
+    """
+    inside = False
+    previous_longitude, previous_latitude = ring[-1][0], ring[-1][1]
+    for current_longitude, current_latitude in ring:
+        crosses = (current_latitude > latitude) != (previous_latitude > latitude)
+        if crosses:
+            intersection = (previous_longitude - current_longitude) * (latitude - current_latitude) / (
+                previous_latitude - current_latitude
+            ) + current_longitude
+            if longitude < intersection:
+                inside = not inside
+        previous_longitude, previous_latitude = current_longitude, current_latitude
+    return inside
+
+
+def point_in_geometry(longitude: float, latitude: float, geometry: Geometry) -> bool:
+    """Return whether a position lies inside a supported polygonal geometry.
+
+    Args:
+    ----
+        longitude(float): point longitude.
+        latitude(float): point latitude.
+        geometry(Geometry): validated polygonal geometry.
+
+    Returns:
+    -------
+        bool: whether the position is inside the geometry.
+
+    """
+    polygons = [geometry['coordinates']] if geometry['type'] == 'Polygon' else geometry['coordinates']
+    return any(polygon and _point_in_ring(longitude, latitude, polygon[0]) for polygon in polygons)
+
+
+def geometry_bounds_tuple(geometry: Geometry) -> tuple[float, float, float, float]:
+    """Return south, west, north and east bounds for a geometry.
+
+    Args:
+    ----
+        geometry(Geometry): validated geometry.
+
+    Returns:
+    -------
+        tuple[float, float, float, float]: south, west, north and east bounds.
+
+    """
+    bounds = geometry_bounds(geometry)
+    return bounds[0][0], bounds[0][1], bounds[1][0], bounds[1][1]
+
+
+def _month_sequence(start_month: str, end_month: str) -> list[str]:
+    """Return the inclusive YYYY-MM month sequence between two bounds.
+
+    Args:
+    ----
+        start_month(str): inclusive start month.
+        end_month(str): inclusive end month.
+
+    Returns:
+    -------
+        list[str]: ordered inclusive months.
+
+    """
+    year, month = (int(part) for part in start_month.split('-'))
+    end_year, end = (int(part) for part in end_month.split('-'))
+    months: list[str] = []
+    while (year, month) <= (end_year, end):
+        months.append(f'{year:04d}-{month:02d}')
+        month += 1
+        if month > MONTHS_PER_YEAR:
+            year += 1
+            month = 1
+    return months
+
+
+def _month_end(month: str) -> str:
+    """Return the last UTC date of a YYYY-MM month.
+
+    Args:
+    ----
+        month(str): YYYY-MM month.
+
+    Returns:
+    -------
+        str: ISO date for the last day of the month.
+
+    """
+    year, month_number = (int(part) for part in month.split('-'))
+    return f'{month}-{calendar.monthrange(year, month_number)[1]:02d}'
+
+
 class DemoStore:
     """Thread-safe deterministic M0 Gateway state.
 
@@ -458,6 +791,25 @@ class DemoStore:
             'limitations': product['limitations'],
             'note': 'Demo requirements only; this Gateway does not resolve real acquisitions.',
         }
+
+    def list_product_missions(self, product_id: str) -> dict[str, Any]:
+        """Return compatible source missions with their declared metadata.
+
+        Args:
+        ----
+            product_id(str): product identifier requested by the caller.
+
+        Returns:
+        -------
+            dict[str, Any]: product mission descriptors.
+
+        """
+        product = self.get_product(product_id)
+        items = []
+        for source in product['supported_sources']:
+            metadata = MISSION_METADATA[SourceMission(source)]
+            items.append({'source_id': source, **metadata})
+        return {'product_id': product_id, 'items': items}
 
     def list_aois(self, owner_id: str) -> list[AoiRecord]:
         """Return AOIs owned by a caller.
@@ -615,21 +967,13 @@ class DemoStore:
 
         """
         product = self.get_product(product_id)
-        self._validate_period(start_month, end_month)
-        if spatial_resolution_m is not None and spatial_resolution_m < 1:
-            raise DemoError(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
-                'INVALID_RESOLUTION',
-                'Spatial resolution must be a positive number of metres.',
-            )
-        requested_sources = tuple(source.value for source in sources or ())
-        unsupported = sorted(set(requested_sources) - set(product['supported_sources']))
-        if unsupported:
-            raise DemoError(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
-                'UNSUPPORTED_SOURCE',
-                f'The product does not declare these source missions: {", ".join(unsupported)}.',
-            )
+        requested_sources = self._validate_request_constraints(
+            product,
+            start_month,
+            end_month,
+            spatial_resolution_m,
+            sources,
+        )
         with self._lock:
             aoi = self.get_aoi(owner_id, aoi_id)
             self._request_sequence += 1
@@ -653,6 +997,75 @@ class DemoStore:
             )
             self._requests[record.request_id] = record
             return record
+
+    def estimate_request(
+        self,
+        owner_id: str,
+        product_id: str,
+        aoi_id: str,
+        start_month: str,
+        end_month: str,
+        *,
+        spatial_resolution_m: int | None = None,
+        sources: list[SourceMission] | None = None,
+    ) -> dict[str, Any]:
+        """Return the deterministic cost estimate and admission decision.
+
+        Args:
+        ----
+            owner_id(str): trusted demo owner identifier.
+            product_id(str): selected product identifier.
+            aoi_id(str): selected saved AOI identifier.
+            start_month(str): inclusive UTC month in YYYY-MM form.
+            end_month(str): inclusive UTC month in YYYY-MM form.
+            spatial_resolution_m(int | None): requested maximum pixel size in metres.
+            sources(list[SourceMission] | None): requested source missions.
+
+        Returns:
+        -------
+            dict[str, Any]: estimate, current balance and admission decision.
+
+        """
+        product = self.get_product(product_id)
+        self._validate_request_constraints(
+            product,
+            start_month,
+            end_month,
+            spatial_resolution_m,
+            sources,
+        )
+        with self._lock:
+            self.get_aoi(owner_id, aoi_id)
+            estimated_cost = self.settings.request_cost
+            if self.settings.failure_mode == FAILURE_CREDITS_UNAVAILABLE:
+                balance_available = False
+                balance = None
+            else:
+                balance_available = True
+                balance = self._balances.setdefault(owner_id, self.settings.starting_credits)
+            if not balance_available:
+                admission = 'UNAVAILABLE'
+            elif balance is not None and balance >= estimated_cost:
+                admission = 'ADMITTED'
+            else:
+                admission = 'INSUFFICIENT_CREDITS'
+            return {
+                'product_id': product_id,
+                'aoi_id': aoi_id,
+                'start_month': start_month,
+                'end_month': end_month,
+                'feasible': admission == 'ADMITTED',
+                'estimated_credits': estimated_cost,
+                'currency': 'credits',
+                'balance': balance,
+                'balance_available': balance_available,
+                'admission': admission,
+                'conditions': ['Deterministic M0 demo estimate.'],
+                'limitations': [
+                    'No real EO acquisition, processing, or scientific validation is performed.',
+                    'The estimate is not a financial commitment.',
+                ],
+            }
 
     def list_requests(self, owner_id: str) -> list[RequestRecord]:
         """Return current owner-scoped request state after applying transitions.
@@ -801,12 +1214,55 @@ class DemoStore:
                 raise DemoError(
                     status.HTTP_404_NOT_FOUND, 'RESULT_UNAVAILABLE', 'The demo result representation is unavailable.'
                 )
+            product = self.get_product(result.product_id)
             return {
                 'url': self._map_data_url(result.product_id),
                 'bounds': geometry_bounds(result.geometry_snapshot),
                 'kind': 'DEMO_PLACEHOLDER',
                 'note': 'Synthetic display placeholder. This is not a computed scientific product.',
                 'result_id': result.result_id,
+                'request_id': result.request_id,
+                'product_id': result.product_id,
+                'result_version': RESULT_VERSION,
+                'units': product['units'],
+                'validation_status': product['validation_status'],
+                'quality_status': QUALITY_PARTIAL,
+                'quality_note': 'Synthetic demo quality; no real observations were masked or validated.',
+                'is_demo': True,
+            }
+
+    def get_result(self, owner_id: str, result_id: str) -> dict[str, Any]:
+        """Return explicit result metadata without inventing provenance.
+
+        Args:
+        ----
+            owner_id(str): trusted demo owner identifier.
+            result_id(str): completed result identifier.
+
+        Returns:
+        -------
+            dict[str, Any]: public result metadata.
+
+        """
+        with self._lock:
+            result = self._require_result(owner_id, result_id)
+            product = self.get_product(result.product_id)
+            return {
+                'result_id': result.result_id,
+                'request_id': result.request_id,
+                'product_id': result.product_id,
+                'product_name': product['name'],
+                'result_version': RESULT_VERSION,
+                'aoi_name': result.aoi_name,
+                'geometry_snapshot': _copy_geometry(result.geometry_snapshot),
+                'start_month': result.start_month,
+                'end_month': result.end_month,
+                'units': product['units'],
+                'validation_status': product['validation_status'],
+                'quality_status': QUALITY_PARTIAL,
+                'quality_note': 'Synthetic demo quality; no real source observations exist.',
+                'provenance_note': 'Demo lineage contains request metadata only; no real source assets were used.',
+                'is_demo': True,
             }
 
     def get_result_series(self, owner_id: str, result_id: str) -> dict[str, Any]:
@@ -828,6 +1284,82 @@ class DemoStore:
                 'result_id': result.result_id,
                 'points': [],
                 'note': 'No analytical series is available in the deterministic M0 demo.',
+            }
+
+    def query_result_series(  # noqa: PLR0917
+        self,
+        owner_id: str,
+        result_id: str,
+        geometry_wkt: str,
+        crs: str,
+        start_month: str,
+        end_month: str,
+    ) -> dict[str, Any]:
+        """Return a deterministic demo series for one bounded selection.
+
+        Args:
+        ----
+            owner_id(str): trusted demo owner identifier.
+            result_id(str): completed result identifier.
+            geometry_wkt(str): point or polygon selection in WKT.
+            crs(str): explicitly declared selection CRS.
+            start_month(str): inclusive requested start month.
+            end_month(str): inclusive requested end month.
+
+        Returns:
+        -------
+            dict[str, Any]: structured series with explicit missing values.
+
+        Raises:
+        ------
+            DemoError: when the selection, CRS or period is unsupported.
+
+        """
+        with self._lock:
+            result = self._require_result(owner_id, result_id)
+            selection_type, selection_geometry = parse_wkt_geometry(geometry_wkt, crs)
+            self._validate_selection(result, selection_type, selection_geometry)
+            self._validate_period(start_month, end_month)
+            requested_months = _month_sequence(start_month, end_month)
+            allowed_months = set(_month_sequence(result.start_month, result.end_month))
+            if not set(requested_months).issubset(allowed_months):
+                raise DemoError(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    'UNSUPPORTED_PERIOD',
+                    'The requested period must stay within the original result period.',
+                )
+            product = self.get_product(result.product_id)
+            points = [
+                self._series_point(
+                    result,
+                    selection_type,
+                    geometry_wkt,
+                    month,
+                    index,
+                )
+                for index, month in enumerate(requested_months)
+            ]
+            available = sum(1 for point in points if point['state'] == SERIES_VALID)
+            quality = QUALITY_VALID if available == len(points) else QUALITY_PARTIAL
+            if available == 0:
+                quality = QUALITY_UNKNOWN
+            average_coverage = self._average_coverage(points)
+            return {
+                'result_id': result.result_id,
+                'product_id': result.product_id,
+                'geometry_wkt': geometry_wkt,
+                'crs': SUPPORTED_CRS,
+                'selection_type': selection_type,
+                'aggregation_method': SERIES_POINT_AGGREGATION
+                if selection_type == 'Point'
+                else SERIES_ZONAL_AGGREGATION,
+                'units': product['units'],
+                'quality_status': quality,
+                'quality_note': 'Deterministic demo series; missing and masked values are not zeros.',
+                'coverage': average_coverage,
+                'is_demo': True,
+                'note': 'Synthetic demonstration values. They are not Earth observation measurements.',
+                'points': points,
             }
 
     def get_result_lineage(self, owner_id: str, result_id: str) -> dict[str, Any]:
@@ -855,19 +1387,30 @@ class DemoStore:
                 'note': 'Demo lineage contains request metadata only; no real source assets were used.',
             }
 
-    def create_delivery(self, owner_id: str, result_id: str) -> DeliveryRecord:
+    def create_delivery(self, owner_id: str, result_id: str, kind: str = DELIVERY_KIND_FINAL_PRODUCT) -> DeliveryRecord:
         """Create an asynchronous delivery for a completed demo result.
 
         Args:
         ----
             owner_id(str): trusted demo owner identifier.
             result_id(str): completed result identifier.
+            kind(str): requested delivery kind.
 
         Returns:
         -------
             DeliveryRecord: newly persisted PREPARING delivery.
 
+        Raises:
+        ------
+            DemoError: when the delivery kind is unsupported.
+
         """
+        if kind not in DELIVERY_KINDS:
+            raise DemoError(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                'INVALID_DELIVERY_KIND',
+                'Deliveries must request final_product or dependency_archive.',
+            )
         with self._lock:
             self._require_result(owner_id, result_id)
             self._delivery_sequence += 1
@@ -876,6 +1419,7 @@ class DemoStore:
                 delivery_id=f'delivery-{self._delivery_sequence}',
                 result_id=result_id,
                 owner_id=owner_id,
+                kind=kind,
                 state=DELIVERY_PREPARING,
                 created_at=now,
                 updated_at=now,
@@ -995,15 +1539,156 @@ class DemoStore:
             dict[str, Any]: public delivery payload.
 
         """
-        download_url = self._artifact_data_url(record.result_id) if record.state == DELIVERY_READY else None
+        download_url = (
+            self._artifact_data_url(record.result_id, record.kind) if record.state == DELIVERY_READY else None
+        )
         return {
             'delivery_id': record.delivery_id,
+            'kind': record.kind,
             'state': record.state,
             'download_url': download_url,
             'message': record.message,
             'created_at': record.created_at.isoformat(),
             'updated_at': record.updated_at.isoformat(),
         }
+
+    def _validate_selection(
+        self,
+        result: ResultRecord,
+        selection_type: str,
+        selection_geometry: Geometry,
+    ) -> None:
+        """Validate that one selection stays inside the displayed result.
+
+        Args:
+        ----
+            result(ResultRecord): completed result holding the spatial extent.
+            selection_type(str): parsed WKT geometry type.
+            selection_geometry(Geometry): parsed WKT geometry.
+
+        Returns:
+        -------
+            None
+
+        Raises:
+        ------
+            DemoError: when the selection lies outside the result or is too large.
+
+        """
+        result_south, result_west, result_north, result_east = geometry_bounds_tuple(result.geometry_snapshot)
+        if selection_type == 'Point':
+            longitude, latitude = selection_geometry['coordinates']
+            inside_bounds = result_west <= longitude <= result_east and result_south <= latitude <= result_north
+            if not inside_bounds or not point_in_geometry(longitude, latitude, result.geometry_snapshot):
+                raise DemoError(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    'SELECTION_OUTSIDE_RESULT',
+                    'The selected point must lie inside the displayed result.',
+                )
+            return
+        south, west, north, east = geometry_bounds_tuple(selection_geometry)
+        if west < result_west or east > result_east or south < result_south or north > result_north:
+            raise DemoError(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                'SELECTION_OUTSIDE_RESULT',
+                'The selected polygon must stay inside the displayed result extent.',
+            )
+        ring = selection_geometry['coordinates'][0]
+        centroid_longitude = sum(position[0] for position in ring[:-1]) / (len(ring) - 1)
+        centroid_latitude = sum(position[1] for position in ring[:-1]) / (len(ring) - 1)
+        if not point_in_geometry(centroid_longitude, centroid_latitude, result.geometry_snapshot):
+            raise DemoError(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                'SELECTION_OUTSIDE_RESULT',
+                'The selected polygon must lie inside the displayed result geometry.',
+            )
+        if geometry_area_km2(selection_geometry) > self.settings.max_selection_area_km2:
+            raise DemoError(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                'SELECTION_TOO_LARGE',
+                f'The selected polygon exceeds {self.settings.max_selection_area_km2:g} km².',
+            )
+
+    def _series_point(
+        self,
+        result: ResultRecord,
+        selection_type: str,
+        geometry_wkt: str,
+        month: str,
+        index: int,
+    ) -> dict[str, Any]:
+        """Build one deterministic demo series point.
+
+        Args:
+        ----
+            result(ResultRecord): completed result owning the series.
+            selection_type(str): parsed WKT geometry type.
+            geometry_wkt(str): selection WKT used as a deterministic seed.
+            month(str): YYYY-MM period.
+            index(int): zero-based period index.
+
+        Returns:
+        -------
+            dict[str, Any]: series point with explicit state and quality.
+
+        """
+        digest = hashlib.sha256(f'{result.result_id}:{geometry_wkt}:{month}'.encode()).hexdigest()
+        seed = int(digest[:8], 16) / 0xFFFFFFFF
+        period_start = f'{month}-01'
+        period_end = _month_end(month)
+        if index % SERIES_MASKED_INTERVAL == SERIES_MASKED_INDEX:
+            state = SERIES_MASKED
+            value = None
+            quality_status = QUALITY_PARTIAL
+            note = 'Demo observation masked by quality filtering.'
+        elif index % SERIES_MISSING_INTERVAL == SERIES_MISSING_INDEX:
+            state = SERIES_MISSING
+            value = None
+            quality_status = QUALITY_UNKNOWN
+            note = 'Demo period has no observation. This is not a zero.'
+        else:
+            state = SERIES_VALID
+            baseline = 0.25 + 0.35 * seed
+            seasonal = 0.18 * math.sin((index + seed) * math.pi / 3)
+            value = round(baseline + seasonal, 3)
+            quality_status = QUALITY_VALID
+            note = None
+            if index % SERIES_ZERO_INTERVAL == SERIES_ZERO_INDEX:
+                value = 0.0
+                note = 'Demo measured zero, distinct from a missing observation.'
+        coverage = (
+            None if selection_type == 'Point' else round(0.55 + 0.4 * abs(math.sin((index + seed) * math.pi / 4)), 3)
+        )
+        if state == SERIES_MASKED:
+            coverage = round((coverage or 0.6) * 0.35, 3)
+        return {
+            'period_start': period_start,
+            'period_end': period_end,
+            'value': value,
+            'unit': self.get_product(result.product_id)['units'],
+            'state': state,
+            'quality_status': quality_status,
+            'coverage': coverage,
+            'note': note,
+        }
+
+    @staticmethod
+    def _average_coverage(points: list[dict[str, Any]]) -> float | None:
+        """Return the average available coverage across series points.
+
+        Args:
+        ----
+            points(list[dict[str, Any]]): structured series points.
+
+        Returns:
+        -------
+            float | None: average coverage or None when all points are point samples.
+
+        """
+        coverages = [float(point['coverage']) for point in points if point['coverage'] is not None]
+        if not coverages:
+            return None
+        return round(sum(coverages) / len(coverages), 3)
 
     def _advance_request(self, record: RequestRecord) -> None:
         """Apply elapsed-time transitions while holding the store lock.
@@ -1045,6 +1730,8 @@ class DemoStore:
                 product_id=record.product_id,
                 aoi_name=record.aoi_name,
                 geometry_snapshot=_copy_geometry(record.geometry_snapshot),
+                start_month=record.start_month,
+                end_month=record.end_month,
                 created_at=now,
             )
             self._results[result.result_id] = result
@@ -1097,6 +1784,60 @@ class DemoStore:
             raise DemoError(status.HTTP_404_NOT_FOUND, 'RESULT_NOT_FOUND', 'The requested result was not found.')
         return result
 
+    def _validate_request_constraints(
+        self,
+        product: dict[str, Any],
+        start_month: str,
+        end_month: str,
+        spatial_resolution_m: int | None,
+        sources: list[SourceMission] | None,
+    ) -> tuple[str, ...]:
+        """Validate request constraints declared by one product descriptor.
+
+        Args:
+        ----
+            product(dict[str, Any]): product descriptor.
+            start_month(str): inclusive UTC month in YYYY-MM form.
+            end_month(str): inclusive UTC month in YYYY-MM form.
+            spatial_resolution_m(int | None): requested maximum pixel size in metres.
+            sources(list[SourceMission] | None): requested source missions.
+
+        Returns:
+        -------
+            tuple[str, ...]: requested source labels.
+
+        Raises:
+        ------
+            DemoError: when a request violates a declared product constraint.
+
+        """
+        self._validate_period(start_month, end_month)
+        months = len(_month_sequence(start_month, end_month))
+        max_period_months = product.get('max_period_months')
+        if isinstance(max_period_months, int) and months > max_period_months:
+            raise DemoError(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                'UNSUPPORTED_PERIOD',
+                f'The product supports at most {max_period_months} months per request.',
+            )
+        if spatial_resolution_m is not None:
+            supported_resolutions = product.get('supported_resolutions_m', [])
+            if spatial_resolution_m < 1 or spatial_resolution_m not in supported_resolutions:
+                raise DemoError(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    'INVALID_RESOLUTION',
+                    'Spatial resolution must be one of the product-declared resolutions in metres.',
+                )
+        requested_sources = tuple(source.value for source in sources or ())
+        unsupported = sorted(set(requested_sources) - set(product['supported_sources']))
+        if unsupported:
+            raise DemoError(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                'UNSUPPORTED_SOURCE',
+                f'The product does not declare these source missions: {", ".join(unsupported)}.',
+            )
+        return requested_sources
+
     def _validate_period(self, start_month: str, end_month: str) -> None:
         """Validate an inclusive month range.
 
@@ -1136,6 +1877,7 @@ class DemoStore:
                 ProductCategory.VEGETATION,
                 '10 m',
                 '5 days',
+                'unitless',
                 ['Red reflectance', 'Near-infrared reflectance', 'Quality mask'],
                 (SourceMission.SENTINEL, SourceMission.LANDSAT, SourceMission.MODIS, SourceMission.VIIRS),
                 [10, 20, 30],
@@ -1148,6 +1890,7 @@ class DemoStore:
                 ProductCategory.WATER,
                 '10 m',
                 '5 days',
+                'unitless',
                 ['Green reflectance', 'Near-infrared reflectance', 'Quality mask'],
                 (SourceMission.SENTINEL, SourceMission.LANDSAT, SourceMission.MODIS),
                 [10, 20, 30],
@@ -1160,6 +1903,7 @@ class DemoStore:
                 ProductCategory.LAND,
                 '30 m',
                 '5 days',
+                'K',
                 ['Thermal radiance', 'Emissivity estimate', 'Atmospheric inputs'],
                 (
                     SourceMission.LANDSAT,
@@ -1178,6 +1922,7 @@ class DemoStore:
                 ProductCategory.ATMOSPHERE,
                 '100 m',
                 '10 days',
+                'ppb',
                 ['Atmospheric spectral observations', 'Quality mask'],
                 (SourceMission.SENTINEL, SourceMission.MODIS, SourceMission.VIIRS),
                 [500, 1000, 2000],
@@ -1192,6 +1937,7 @@ class DemoStore:
                 'category': category.value,
                 'native_resolution': resolution,
                 'temporal_resolution': revisit,
+                'units': units,
                 'availability': ProductAvailability.DEMO.value,
                 'validation_status': ProductValidationStatus.NOT_VALIDATED.value,
                 'inputs': inputs,
@@ -1202,6 +1948,11 @@ class DemoStore:
                 ],
                 'supported_sources': [source.value for source in supported_sources],
                 'supported_resolutions_m': supported_resolutions,
+                'supported_spatial_inputs': ['AOI', 'POI', 'LOI'],
+                'supported_frequencies': ['monthly', 'seasonal', 'annual'],
+                'max_period_months': 120,
+                'documentation_status': 'PLACEHOLDER',
+                'documentation_url': None,
                 'preview': build_product_preview(product_id, name),
             }
             for (
@@ -1212,6 +1963,7 @@ class DemoStore:
                 category,
                 resolution,
                 revisit,
+                units,
                 inputs,
                 supported_sources,
                 supported_resolutions,
@@ -1278,12 +2030,13 @@ class DemoStore:
         )
         return f'data:image/svg+xml,{quote(svg)}'
 
-    def _artifact_data_url(self, result_id: str) -> str:
+    def _artifact_data_url(self, result_id: str, kind: str) -> str:
         """Build a local download URL for a clearly labelled demo GeoJSON artifact.
 
         Args:
         ----
             result_id(str): completed result identifier.
+            kind(str): final product or complete dependency archive.
 
         Returns:
         -------
@@ -1291,21 +2044,63 @@ class DemoStore:
 
         """
         result = self._results[result_id]
+        product = self.get_product(result.product_id)
+        features: list[dict[str, Any]] = [
+            {
+                'type': 'Feature',
+                'properties': {
+                    'entry': 'final_product',
+                    'aoi_name': result.aoi_name,
+                    'product_id': result.product_id,
+                    'units': product['units'],
+                    'validation_status': product['validation_status'],
+                    'start_month': result.start_month,
+                    'end_month': result.end_month,
+                },
+                'geometry': result.geometry_snapshot,
+            }
+        ]
+        if kind == DELIVERY_KIND_ARCHIVE:
+            features.extend(
+                [
+                    {
+                        'type': 'Feature',
+                        'properties': {
+                            'entry': 'intermediate_product',
+                            'note': 'Demo placeholder; no intermediate product was computed.',
+                        },
+                        'geometry': None,
+                    },
+                    {
+                        'type': 'Feature',
+                        'properties': {
+                            'entry': 'source_observation',
+                            'note': 'Demo placeholder; no real source observation was acquired.',
+                        },
+                        'geometry': None,
+                    },
+                    {
+                        'type': 'Feature',
+                        'properties': {
+                            'entry': 'provenance',
+                            'note': 'Demo provenance metadata only.',
+                            'request_id': result.request_id,
+                            'product_id': result.product_id,
+                        },
+                        'geometry': None,
+                    },
+                ]
+            )
         payload = {
             'type': 'FeatureCollection',
             'properties': {
                 'note': 'MEOGAP DEMO - synthetic artifact, not a scientific product',
+                'kind': kind,
                 'result_id': result.result_id,
                 'request_id': result.request_id,
                 'product_id': result.product_id,
             },
-            'features': [
-                {
-                    'type': 'Feature',
-                    'properties': {'aoi_name': result.aoi_name},
-                    'geometry': result.geometry_snapshot,
-                }
-            ],
+            'features': features,
         }
         encoded = base64.b64encode(json.dumps(payload, separators=(',', ':')).encode('utf-8')).decode('ascii')
         return f'data:application/geo+json;base64,{encoded}'

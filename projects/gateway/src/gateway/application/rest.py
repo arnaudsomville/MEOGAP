@@ -23,6 +23,12 @@ OPERATIONS: tuple[Operation, ...] = (
     ),
     Operation(
         'GET',
+        f'{PUBLIC_API_PREFIX}/catalogue/products/{{product_id}}/missions',
+        'gateway_list_product_missions',
+        'List compatible source missions for a product.',
+    ),
+    Operation(
+        'GET',
         f'{PUBLIC_API_PREFIX}/aois',
         'gateway_list_user_aois',
         'List AOIs owned by the authenticated user.',
@@ -50,6 +56,12 @@ OPERATIONS: tuple[Operation, ...] = (
         f'{PUBLIC_API_PREFIX}/aois/{{aoi_id}}',
         'gateway_delete_user_aoi',
         'Delete an owned AOI. Existing request snapshots are unaffected.',
+    ),
+    Operation(
+        'POST',
+        f'{PUBLIC_API_PREFIX}/analysis-requests/estimate',
+        'gateway_estimate_analysis_request',
+        'Estimate cost and admission for an analysis request.',
     ),
     Operation(
         'POST',
@@ -89,9 +101,21 @@ OPERATIONS: tuple[Operation, ...] = (
     ),
     Operation(
         'GET',
+        f'{PUBLIC_API_PREFIX}/results/{{result_id}}',
+        'gateway_get_result',
+        'Retrieve result metadata and retained scope.',
+    ),
+    Operation(
+        'GET',
         f'{PUBLIC_API_PREFIX}/results/{{result_id}}/series',
         'gateway_get_result_series',
         'Request an analytical series.',
+    ),
+    Operation(
+        'POST',
+        f'{PUBLIC_API_PREFIX}/results/{{result_id}}/series',
+        'gateway_query_result_series',
+        'Query a bounded spatial and temporal series.',
     ),
     Operation(
         'GET',
@@ -110,6 +134,12 @@ OPERATIONS: tuple[Operation, ...] = (
         f'{PUBLIC_API_PREFIX}/deliveries/{{delivery_id}}',
         'gateway_get_delivery',
         'Retrieve delivery state and access.',
+    ),
+    Operation(
+        'GET',
+        f'{PUBLIC_API_PREFIX}/account',
+        'gateway_get_account',
+        'Retrieve the authenticated demo account identity.',
     ),
     Operation(
         'GET',

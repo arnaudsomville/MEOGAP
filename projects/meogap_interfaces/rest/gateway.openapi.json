@@ -35,7 +35,7 @@
           "gateway"
         ],
         "summary": "Browse the scientific product catalogue.",
-        "description": "Return deterministic public product descriptors.\n\nReturns:\n-------\n    dict[str, list[dict[str, Any]]]: public product collection.",
+        "description": "Return deterministic public product descriptors.\n\nReturns\n-------\n    dict[str, list[dict[str, Any]]]: public product collection.",
         "operationId": "gateway_list_products",
         "responses": {
           "200": {
@@ -165,6 +165,74 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProductRequirementsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/catalogue/products/{product_id}/missions": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "List compatible source missions for a product.",
+        "description": "Return product-compatible missions and their declared metadata.\n\nArgs:\n----\n    product_id(str): requested product identifier.\n\nReturns:\n-------\n    dict[str, Any]: compatible mission descriptors.",
+        "operationId": "gateway_list_product_missions",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Product Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductMissionsResponse"
                 }
               }
             }
@@ -485,6 +553,73 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/analysis-requests/estimate": {
+      "post": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Estimate cost and admission for an analysis request.",
+        "description": "Return the deterministic estimate and admission decision.\n\nArgs:\n----\n    payload(AnalysisRequestCreateRequest): candidate request constraints.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: estimate, balance and admission decision.",
+        "operationId": "gateway_estimate_analysis_request",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalysisRequestCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostEstimateResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/analysis-requests": {
@@ -861,6 +996,74 @@
         }
       }
     },
+    "/api/v1/results/{result_id}": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Retrieve result metadata and retained scope.",
+        "description": "Return explicit metadata for one completed result.\n\nArgs:\n----\n    result_id(str): result identifier.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: result metadata and retained scope.",
+        "operationId": "gateway_get_result",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "result_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Result Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/results/{result_id}/series": {
       "get": {
         "tags": [
@@ -892,6 +1095,82 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ResultSeriesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Query a bounded spatial and temporal series.",
+        "description": "Return a deterministic series for one explicit selection.\n\nArgs:\n----\n    result_id(str): result identifier.\n    payload(ResultSeriesQueryRequest): WKT selection, CRS and period.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: structured demonstration series.",
+        "operationId": "gateway_query_result_series",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "result_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Result Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResultSeriesQueryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultSeriesQueryResponse"
                 }
               }
             }
@@ -1003,7 +1282,7 @@
           "gateway"
         ],
         "summary": "Request final-product or dependency-archive delivery.",
-        "description": "Start deterministic delivery preparation.\n\nArgs:\n----\n    result_id(str): completed result identifier.\n    _(DeliveryCreateRequest): requested delivery kind.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: newly preparing delivery.",
+        "description": "Start deterministic delivery preparation.\n\nArgs:\n----\n    result_id(str): completed result identifier.\n    payload(DeliveryCreateRequest): requested delivery kind.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: newly preparing delivery.",
         "operationId": "gateway_create_delivery",
         "security": [
           {
@@ -1143,6 +1422,43 @@
         }
       }
     },
+    "/api/v1/account": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Retrieve the authenticated demo account identity.",
+        "description": "Return the deterministic demo account identity.\n\nArgs:\n----\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: public account identity.",
+        "operationId": "gateway_get_account",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/credits/balance": {
       "get": {
         "tags": [
@@ -1193,6 +1509,31 @@
   },
   "components": {
     "schemas": {
+      "AccountResponse": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "session_status": {
+            "type": "string",
+            "title": "Session Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "user_id",
+          "display_name",
+          "session_status"
+        ],
+        "title": "AccountResponse",
+        "description": "Deterministic demo account identity."
+      },
       "AnalysisPeriodRequest": {
         "properties": {
           "start_month": {
@@ -1593,6 +1934,89 @@
         "title": "AoiUpdateRequest",
         "description": "Partial payload for an existing saved AOI."
       },
+      "CostEstimateResponse": {
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "title": "Product Id"
+          },
+          "aoi_id": {
+            "type": "string",
+            "title": "Aoi Id"
+          },
+          "start_month": {
+            "type": "string",
+            "title": "Start Month"
+          },
+          "end_month": {
+            "type": "string",
+            "title": "End Month"
+          },
+          "feasible": {
+            "type": "boolean",
+            "title": "Feasible"
+          },
+          "estimated_credits": {
+            "type": "integer",
+            "title": "Estimated Credits"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "balance": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Balance"
+          },
+          "balance_available": {
+            "type": "boolean",
+            "title": "Balance Available"
+          },
+          "admission": {
+            "type": "string",
+            "title": "Admission"
+          },
+          "conditions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Conditions"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Limitations"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "product_id",
+          "aoi_id",
+          "start_month",
+          "end_month",
+          "feasible",
+          "estimated_credits",
+          "currency",
+          "balance",
+          "balance_available",
+          "admission",
+          "conditions",
+          "limitations"
+        ],
+        "title": "CostEstimateResponse",
+        "description": "Deterministic cost estimate and admission decision."
+      },
       "CreditBalanceResponse": {
         "properties": {
           "balance": {
@@ -1640,6 +2064,10 @@
             "type": "string",
             "title": "Delivery Id"
           },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
           "state": {
             "type": "string",
             "title": "State"
@@ -1679,6 +2107,7 @@
         "type": "object",
         "required": [
           "delivery_id",
+          "kind",
           "state",
           "download_url",
           "message",
@@ -1768,6 +2197,27 @@
         ],
         "description": "Liveness payload exposed by every MEOGAP service."
       },
+      "ProductAvailability": {
+        "type": "string",
+        "enum": [
+          "DEMO",
+          "AVAILABLE",
+          "UNAVAILABLE"
+        ],
+        "title": "ProductAvailability",
+        "description": "Lifecycle availability of a product definition."
+      },
+      "ProductCategory": {
+        "type": "string",
+        "enum": [
+          "Vegetation",
+          "Water",
+          "Land",
+          "Atmosphere"
+        ],
+        "title": "ProductCategory",
+        "description": "Broad scientific domain used to group products."
+      },
       "ProductListResponse": {
         "properties": {
           "items": {
@@ -1785,6 +2235,61 @@
         ],
         "title": "ProductListResponse",
         "description": "Public product catalogue collection."
+      },
+      "ProductMissionsResponse": {
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "title": "Product Id"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SourceMissionInfo"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "product_id",
+          "items"
+        ],
+        "title": "ProductMissionsResponse",
+        "description": "Compatible source missions for one product."
+      },
+      "ProductPreview": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "alt": {
+            "type": "string",
+            "title": "Alt"
+          },
+          "attribution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attribution"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "url",
+          "alt",
+          "attribution"
+        ],
+        "title": "ProductPreview",
+        "description": "Local illustrative preview metadata owned by the product descriptor."
       },
       "ProductRequirementsResponse": {
         "properties": {
@@ -1851,6 +2356,10 @@
             "type": "string",
             "title": "Temporal Resolution"
           },
+          "units": {
+            "type": "string",
+            "title": "Units"
+          },
           "availability": {
             "$ref": "#/components/schemas/ProductAvailability"
           },
@@ -1892,6 +2401,49 @@
             "type": "array",
             "title": "Supported Resolutions M"
           },
+          "supported_spatial_inputs": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "AOI",
+                "POI",
+                "LOI"
+              ]
+            },
+            "type": "array",
+            "title": "Supported Spatial Inputs"
+          },
+          "supported_frequencies": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "monthly",
+                "seasonal",
+                "annual"
+              ]
+            },
+            "type": "array",
+            "title": "Supported Frequencies"
+          },
+          "max_period_months": {
+            "type": "integer",
+            "title": "Max Period Months"
+          },
+          "documentation_status": {
+            "type": "string",
+            "title": "Documentation Status"
+          },
+          "documentation_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Documentation Url"
+          },
           "preview": {
             "anyOf": [
               {
@@ -1913,6 +2465,7 @@
           "category",
           "native_resolution",
           "temporal_resolution",
+          "units",
           "availability",
           "validation_status",
           "inputs",
@@ -1920,10 +2473,24 @@
           "limitations",
           "supported_sources",
           "supported_resolutions_m",
+          "supported_spatial_inputs",
+          "supported_frequencies",
+          "max_period_months",
+          "documentation_status",
+          "documentation_url",
           "preview"
         ],
         "title": "ProductResponse",
         "description": "Public deterministic product descriptor."
+      },
+      "ProductValidationStatus": {
+        "type": "string",
+        "enum": [
+          "NOT_VALIDATED",
+          "VALIDATED"
+        ],
+        "title": "ProductValidationStatus",
+        "description": "Scientific validation state explicitly declared by the product owner."
       },
       "ProposalResponse": {
         "properties": {
@@ -1965,6 +2532,89 @@
         ],
         "title": "ProposalResponse",
         "description": "Explicit estimate and limitations available for a proposed request."
+      },
+      "ResultDetailResponse": {
+        "properties": {
+          "result_id": {
+            "type": "string",
+            "title": "Result Id"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "product_id": {
+            "type": "string",
+            "title": "Product Id"
+          },
+          "product_name": {
+            "type": "string",
+            "title": "Product Name"
+          },
+          "result_version": {
+            "type": "string",
+            "title": "Result Version"
+          },
+          "aoi_name": {
+            "type": "string",
+            "title": "Aoi Name"
+          },
+          "geometry_snapshot": {
+            "$ref": "#/components/schemas/AoiGeometry"
+          },
+          "start_month": {
+            "type": "string",
+            "title": "Start Month"
+          },
+          "end_month": {
+            "type": "string",
+            "title": "End Month"
+          },
+          "units": {
+            "type": "string",
+            "title": "Units"
+          },
+          "validation_status": {
+            "$ref": "#/components/schemas/ProductValidationStatus"
+          },
+          "quality_status": {
+            "type": "string",
+            "title": "Quality Status"
+          },
+          "quality_note": {
+            "type": "string",
+            "title": "Quality Note"
+          },
+          "provenance_note": {
+            "type": "string",
+            "title": "Provenance Note"
+          },
+          "is_demo": {
+            "type": "boolean",
+            "title": "Is Demo"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "result_id",
+          "request_id",
+          "product_id",
+          "product_name",
+          "result_version",
+          "aoi_name",
+          "geometry_snapshot",
+          "start_month",
+          "end_month",
+          "units",
+          "validation_status",
+          "quality_status",
+          "quality_note",
+          "provenance_note",
+          "is_demo"
+        ],
+        "title": "ResultDetailResponse",
+        "description": "Explicit result metadata and retained scope."
       },
       "ResultLineageResponse": {
         "properties": {
@@ -2032,6 +2682,37 @@
           "result_id": {
             "type": "string",
             "title": "Result Id"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "product_id": {
+            "type": "string",
+            "title": "Product Id"
+          },
+          "result_version": {
+            "type": "string",
+            "title": "Result Version"
+          },
+          "units": {
+            "type": "string",
+            "title": "Units"
+          },
+          "validation_status": {
+            "$ref": "#/components/schemas/ProductValidationStatus"
+          },
+          "quality_status": {
+            "type": "string",
+            "title": "Quality Status"
+          },
+          "quality_note": {
+            "type": "string",
+            "title": "Quality Note"
+          },
+          "is_demo": {
+            "type": "boolean",
+            "title": "Is Demo"
           }
         },
         "additionalProperties": false,
@@ -2041,10 +2722,214 @@
           "bounds",
           "kind",
           "note",
-          "result_id"
+          "result_id",
+          "request_id",
+          "product_id",
+          "result_version",
+          "units",
+          "validation_status",
+          "quality_status",
+          "quality_note",
+          "is_demo"
         ],
         "title": "ResultMapResponse",
         "description": "Map overlay descriptor for a synthetic completed result."
+      },
+      "ResultSeriesPoint": {
+        "properties": {
+          "period_start": {
+            "type": "string",
+            "title": "Period Start"
+          },
+          "period_end": {
+            "type": "string",
+            "title": "Period End"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "quality_status": {
+            "type": "string",
+            "title": "Quality Status"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "period_start",
+          "period_end",
+          "value",
+          "unit",
+          "state",
+          "quality_status",
+          "coverage",
+          "note"
+        ],
+        "title": "ResultSeriesPoint",
+        "description": "One explicit period value, gap, mask or invalid observation."
+      },
+      "ResultSeriesQueryRequest": {
+        "properties": {
+          "geometry_wkt": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Geometry Wkt"
+          },
+          "crs": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Crs"
+          },
+          "period": {
+            "$ref": "#/components/schemas/AnalysisPeriodRequest"
+          },
+          "parameters": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parameters"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "geometry_wkt",
+          "crs",
+          "period"
+        ],
+        "title": "ResultSeriesQueryRequest",
+        "description": "Bounded spatial/temporal series request for one result."
+      },
+      "ResultSeriesQueryResponse": {
+        "properties": {
+          "result_id": {
+            "type": "string",
+            "title": "Result Id"
+          },
+          "product_id": {
+            "type": "string",
+            "title": "Product Id"
+          },
+          "geometry_wkt": {
+            "type": "string",
+            "title": "Geometry Wkt"
+          },
+          "crs": {
+            "type": "string",
+            "title": "Crs"
+          },
+          "selection_type": {
+            "type": "string",
+            "title": "Selection Type"
+          },
+          "aggregation_method": {
+            "type": "string",
+            "title": "Aggregation Method"
+          },
+          "units": {
+            "type": "string",
+            "title": "Units"
+          },
+          "quality_status": {
+            "type": "string",
+            "title": "Quality Status"
+          },
+          "quality_note": {
+            "type": "string",
+            "title": "Quality Note"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage"
+          },
+          "is_demo": {
+            "type": "boolean",
+            "title": "Is Demo"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/ResultSeriesPoint"
+            },
+            "type": "array",
+            "title": "Points"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "result_id",
+          "product_id",
+          "geometry_wkt",
+          "crs",
+          "selection_type",
+          "aggregation_method",
+          "units",
+          "quality_status",
+          "quality_note",
+          "coverage",
+          "is_demo",
+          "note",
+          "points"
+        ],
+        "title": "ResultSeriesQueryResponse",
+        "description": "Structured deterministic series explicitly marked as demonstration data."
       },
       "ResultSeriesResponse": {
         "properties": {
@@ -2070,39 +2955,7 @@
           "note"
         ],
         "title": "ResultSeriesResponse",
-        "description": "Series response that avoids fabricating scientific observations."
-      },
-      "ProductPreview": {
-        "properties": {
-          "url": {
-            "type": "string",
-            "title": "Url"
-          },
-          "alt": {
-            "type": "string",
-            "title": "Alt"
-          },
-          "attribution": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Attribution"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "url",
-          "alt",
-          "attribution"
-        ],
-        "title": "ProductPreview",
-        "description": "Local illustrative preview metadata owned by the product descriptor."
+        "description": "Legacy empty series placeholder retained for compatibility."
       },
       "SourceMission": {
         "type": "string",
@@ -2117,35 +2970,49 @@
         "title": "SourceMission",
         "description": "Source mission labels a product may declare as a requestable input."
       },
-      "ProductCategory": {
-        "type": "string",
-        "enum": [
-          "Vegetation",
-          "Water",
-          "Land",
-          "Atmosphere"
+      "SourceMissionInfo": {
+        "properties": {
+          "source_id": {
+            "$ref": "#/components/schemas/SourceMission"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "instrument": {
+            "type": "string",
+            "title": "Instrument"
+          },
+          "native_resolution": {
+            "type": "string",
+            "title": "Native Resolution"
+          },
+          "temporal_resolution": {
+            "type": "string",
+            "title": "Temporal Resolution"
+          },
+          "availability": {
+            "type": "string",
+            "title": "Availability"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source_id",
+          "name",
+          "provider",
+          "instrument",
+          "native_resolution",
+          "temporal_resolution",
+          "availability"
         ],
-        "title": "ProductCategory",
-        "description": "Broad scientific domain used to group products."
-      },
-      "ProductAvailability": {
-        "type": "string",
-        "enum": [
-          "DEMO",
-          "AVAILABLE",
-          "UNAVAILABLE"
-        ],
-        "title": "ProductAvailability",
-        "description": "Lifecycle availability of a product definition."
-      },
-      "ProductValidationStatus": {
-        "type": "string",
-        "enum": [
-          "NOT_VALIDATED",
-          "VALIDATED"
-        ],
-        "title": "ProductValidationStatus",
-        "description": "Scientific validation state explicitly declared by the product owner."
+        "title": "SourceMissionInfo",
+        "description": "Compatible source mission with its declared operational metadata."
       }
     },
     "securitySchemes": {

@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import {
+  geometryAreaKm2,
   geometryBounds,
   geometryToPositions,
   geometryToVertices,
+  geometryToWkt,
   parseCoordinates,
+  pointInBounds,
+  pointInGeometry,
+  positionToWktPoint,
   verticesToPolygon,
+  verticesToWktPolygon,
+  verticesWithinBounds,
 } from '../../src/map/coordinates'
 
 describe('map coordinates', () => {
@@ -159,5 +166,77 @@ describe('map coordinates', () => {
         ],
       }),
     ).toBeNull()
+  })
+})
+
+describe('WKT and selection validation', () => {
+  const BOUNDS = { south: 43.56, west: 1.38, north: 43.66, east: 1.49 }
+  const GEOMETRY = {
+    type: 'Polygon' as const,
+    coordinates: [
+      [
+        [1.38, 43.56],
+        [1.49, 43.56],
+        [1.49, 43.66],
+        [1.38, 43.56],
+      ],
+    ],
+  }
+
+  it('converts points and polygons to explicit WKT', { tags: ['unit'] }, () => {
+    expect(positionToWktPoint({ lat: 43.6045, lng: 1.4442 })).toBe('POINT(1.4442 43.6045)')
+    expect(
+      verticesToWktPolygon([
+        { lat: 43.6, lng: 1.4 },
+        { lat: 43.6, lng: 1.42 },
+        { lat: 43.62, lng: 1.42 },
+      ]),
+    ).toBe('POLYGON((1.4 43.6, 1.42 43.6, 1.42 43.62, 1.4 43.6))')
+    expect(verticesToWktPolygon([{ lat: 0, lng: 0 }])).toBeNull()
+    expect(geometryToWkt(GEOMETRY)).toContain('POLYGON((')
+  })
+
+  it('checks bounds and point-in-geometry containment', { tags: ['unit'] }, () => {
+    expect(pointInBounds({ lat: 43.6, lng: 1.44 }, BOUNDS)).toBe(true)
+    expect(pointInBounds({ lat: 44, lng: 2 }, BOUNDS)).toBe(false)
+    expect(pointInGeometry({ lat: 43.6, lng: 1.44 }, GEOMETRY)).toBe(true)
+    expect(pointInGeometry({ lat: 43.7, lng: 1.44 }, GEOMETRY)).toBe(false)
+    expect(
+      verticesWithinBounds(
+        [
+          { lat: 43.6, lng: 1.4 },
+          { lat: 43.62, lng: 1.42 },
+        ],
+        BOUNDS,
+      ),
+    ).toBe(true)
+  })
+
+  it('approximates area and rejects degenerate rings', { tags: ['unit'] }, () => {
+    expect(geometryAreaKm2(GEOMETRY)).toBeGreaterThan(40)
+    expect(
+      geometryAreaKm2({
+        type: 'Polygon',
+        coordinates: [
+          [
+            [1.4, 43.6],
+            [1.42, 43.6],
+            [1.42, 43.62],
+            [1.4, 43.6],
+          ],
+        ],
+      }),
+    ).toBeGreaterThan(0)
+    expect(
+      geometryAreaKm2({
+        type: 'Polygon',
+        coordinates: [
+          [
+            [1.4, 43.6],
+            [1.4, 43.6],
+          ],
+        ],
+      }),
+    ).toBe(0)
   })
 })

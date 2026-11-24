@@ -31,6 +31,9 @@ vi.mock('react-leaflet', () => ({
     return <output>{JSON.stringify(positions)}</output>
   },
   ImageOverlay: ({ url }: { url: string }) => <img alt="Result map" src={url} />,
+  CircleMarker: ({ center }: { center: [number, number] }) => (
+    <output data-testid="selection-point">{JSON.stringify(center)}</output>
+  ),
   useMap: () => ({
     flyTo: leafletState.flyTo,
     fitBounds: leafletState.fitBounds,
@@ -95,9 +98,22 @@ describe('LeafletMapSurface', () => {
               { lat: 10.35, lng: -85 },
               { lat: 10.5, lng: -84.82 },
             ],
+            requestId: 'request-1',
+            productId: 'ndvi',
+            resultVersion: '1',
+            units: 'unitless',
+            validationStatus: 'NOT_VALIDATED',
+            qualityStatus: 'PARTIAL',
+            qualityNote: 'Synthetic demo quality.',
+            isDemo: true,
           }}
+          resultVisible
+          selectionMode="point"
+          selectionPoint={{ lat: 10.4, lng: -84.9 }}
+          selectionVertices={[]}
           selectedAoiId="aoi-1"
           onMapClick={onMapClick}
+          onResultClick={vi.fn()}
           onAoiSelect={onAoiSelect}
         />,
       )
@@ -115,6 +131,8 @@ describe('LeafletMapSurface', () => {
       expect(onMapClick).toHaveBeenCalledWith({ lat: 10.48, lng: -84.88 })
       act(() => leafletState.polygonClicks[0]?.())
       expect(onAoiSelect).toHaveBeenCalledWith('aoi-1')
+      expect(screen.getByTestId('selection-point')).toHaveTextContent('[10.4,-84.9]')
+      expect(screen.getByRole('img', { name: 'Result map' })).toBeInTheDocument()
     },
   )
 
@@ -128,8 +146,13 @@ describe('LeafletMapSurface', () => {
         focus={null}
         focusRevision={0}
         resultMap={null}
+        resultVisible
+        selectionMode="none"
+        selectionPoint={null}
+        selectionVertices={[]}
         selectedAoiId="another-aoi"
         onMapClick={onMapClick}
+        onResultClick={vi.fn()}
         onAoiSelect={vi.fn()}
       />,
     )
@@ -154,8 +177,13 @@ describe('LeafletMapSurface', () => {
         }}
         focusRevision={2}
         resultMap={null}
+        resultVisible
+        selectionMode="none"
+        selectionPoint={null}
+        selectionVertices={[]}
         selectedAoiId="aoi-1"
         onMapClick={vi.fn()}
+        onResultClick={vi.fn()}
         onAoiSelect={vi.fn()}
       />,
     )

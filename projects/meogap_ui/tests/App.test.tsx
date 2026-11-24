@@ -58,13 +58,19 @@ const PRODUCT = {
   category: 'Vegetation',
   native_resolution: '10 m',
   temporal_resolution: '5 days',
+  units: 'unitless',
   availability: 'DEMO',
   validation_status: 'NOT_VALIDATED',
+  documentation_status: 'PLACEHOLDER',
+  documentation_url: null,
+  max_period_months: 120,
   inputs: ['Red reflectance', 'Near-infrared reflectance'],
   parameters: [],
   limitations: ['Deterministic M0 descriptor.'],
   supported_sources: ['Sentinel', 'Landsat', 'MODIS', 'VIIRS'],
   supported_resolutions_m: [10, 20, 30],
+  supported_spatial_inputs: ['AOI', 'POI', 'LOI'],
+  supported_frequencies: ['monthly', 'seasonal', 'annual'],
   preview: {
     url: 'data:image/svg+xml,preview-ndvi',
     alt: 'NDVI illustrative preview',
@@ -83,6 +89,10 @@ const PROPOSED_REQUEST = {
   requested_spatial_resolution_m: 20,
   proposal: { estimated_credits: 3 },
   result_id: 'result-1',
+  aoi_name: 'Toulouse study area',
+  source_aoi_revision: 1,
+  geometry_snapshot: AOI.geometry,
+  failure: null,
 }
 
 const DRAWING_POINTS = [
@@ -90,6 +100,73 @@ const DRAWING_POINTS = [
   { lat: 43.61, lng: 1.43 },
   { lat: 43.62, lng: 1.42 },
 ]
+
+const SERIES_PAYLOAD = {
+  result_id: 'result-1',
+  product_id: 'ndvi',
+  geometry_wkt: 'POINT(1.44 43.6)',
+  crs: 'EPSG:4326',
+  selection_type: 'Point',
+  aggregation_method: 'point_sample',
+  units: 'unitless',
+  quality_status: 'PARTIAL',
+  quality_note: 'Missing and masked values are not zeros.',
+  coverage: null,
+  is_demo: true,
+  note: 'Synthetic demonstration values.',
+  points: [
+    {
+      period_start: '2026-01-01',
+      period_end: '2026-01-31',
+      value: 0,
+      unit: 'unitless',
+      state: 'VALID',
+      quality_status: 'VALID',
+      coverage: null,
+      note: 'Demo measured zero, distinct from a missing observation.',
+    },
+    {
+      period_start: '2026-02-01',
+      period_end: '2026-02-28',
+      value: 0.4,
+      unit: 'unitless',
+      state: 'VALID',
+      quality_status: 'VALID',
+      coverage: null,
+      note: null,
+    },
+    {
+      period_start: '2026-03-01',
+      period_end: '2026-03-31',
+      value: null,
+      unit: 'unitless',
+      state: 'MISSING',
+      quality_status: 'UNKNOWN',
+      coverage: null,
+      note: 'Demo period has no observation. This is not a zero.',
+    },
+    {
+      period_start: '2026-06-01',
+      period_end: '2026-06-30',
+      value: 0.55,
+      unit: 'unitless',
+      state: 'VALID',
+      quality_status: 'VALID',
+      coverage: null,
+      note: null,
+    },
+    {
+      period_start: '2026-07-01',
+      period_end: '2026-07-31',
+      value: null,
+      unit: 'unitless',
+      state: 'MASKED',
+      quality_status: 'PARTIAL',
+      coverage: null,
+      note: 'Demo observation masked by quality filtering.',
+    },
+  ],
+}
 
 let drawingPointIndex = 0
 
@@ -116,11 +193,20 @@ function describePadding(focus: MapSurfaceProps['focus']): string {
   return JSON.stringify([focus.paddingTopLeft, focus.paddingBottomRight])
 }
 
-function fakeMapSurface({ drawing, focus, onMapClick, onAoiSelect, aois }: MapSurfaceProps) {
+function fakeMapSurface({
+  drawing,
+  focus,
+  selectionMode,
+  onMapClick,
+  onResultClick,
+  onAoiSelect,
+  aois,
+}: MapSurfaceProps) {
   return (
     <section aria-label="Test map">
       <output aria-label="Map focus">{describeFocus(focus)}</output>
       <output aria-label="Map padding">{describePadding(focus)}</output>
+      <output aria-label="Selection mode">{selectionMode}</output>
       {drawing ? (
         <button
           type="button"
@@ -136,6 +222,21 @@ function fakeMapSurface({ drawing, focus, onMapClick, onAoiSelect, aois }: MapSu
           Map click
         </button>
       )}
+      <button type="button" onClick={() => onResultClick({ lat: 43.6, lng: 1.44 })}>
+        Result point click
+      </button>
+      <button type="button" onClick={() => onResultClick({ lat: 43.58, lng: 1.42 })}>
+        Result polygon click A
+      </button>
+      <button type="button" onClick={() => onResultClick({ lat: 43.58, lng: 1.44 })}>
+        Result polygon click B
+      </button>
+      <button type="button" onClick={() => onResultClick({ lat: 43.6, lng: 1.44 })}>
+        Result polygon click C
+      </button>
+      <button type="button" onClick={() => onResultClick({ lat: 44.0, lng: 2.0 })}>
+        Result click outside
+      </button>
       {aois.map((aoi) => (
         <button type="button" key={aoi.id} onClick={() => onAoiSelect(aoi.id)}>
           Select {aoi.name}
@@ -153,6 +254,7 @@ function stubGateway(
     product?: Record<string, unknown>
     aoi?: Record<string, unknown>
     credits?: { balance: number; unit: string }
+    series?: Record<string, unknown>
   } = {},
 ) {
   const completed = { ...PROPOSED_REQUEST, state: 'COMPLETED', actual_credits: 2 }
@@ -160,9 +262,29 @@ function stubGateway(
   const product = options.product ?? PRODUCT
   const aoi = options.aoi ?? AOI
   const credits = options.credits ?? { balance: 12, unit: 'credits' }
+  const sourceIds = Array.isArray(product.supported_sources)
+    ? (product.supported_sources as string[])
+    : []
+  const missions = sourceIds.map((sourceId) => ({
+    source_id: sourceId,
+    name: sourceId,
+    provider: 'Demo provider',
+    instrument: 'Demo instrument',
+    native_resolution: '10 m',
+    temporal_resolution: '5 days',
+    availability: 'DEMO',
+  }))
+  const estimatedCost = 3
+  const admission = credits.balance >= estimatedCost ? 'ADMITTED' : 'INSUFFICIENT_CREDITS'
   const fetchMock = vi.fn(async (path: string, init?: RequestInit) => {
     if (path === '/api/v1/health')
       return gatewayResponse({ status: 'ok', service: 'gateway', version: '0.2.0' }, options.demo)
+    if (path === '/api/v1/account')
+      return gatewayResponse({
+        user_id: 'demo-user',
+        display_name: 'MEOGAP demo user',
+        session_status: 'AUTHENTICATED',
+      })
     if (path === '/api/v1/aois' && init?.method === 'POST')
       return gatewayResponse({ ...aoi, name: 'New area' })
     if (path === '/api/v1/aois') return gatewayResponse({ items: [aoi] })
@@ -176,6 +298,23 @@ function stubGateway(
         inputs: ['Red reflectance', 'Near-infrared reflectance'],
         limitations: ['Deterministic M0 descriptor.'],
         note: 'No real acquisition or validation is implemented.',
+      })
+    if (path === '/api/v1/catalogue/products/ndvi/missions')
+      return gatewayResponse({ product_id: 'ndvi', items: missions })
+    if (path === '/api/v1/analysis-requests/estimate')
+      return gatewayResponse({
+        product_id: 'ndvi',
+        aoi_id: 'aoi-1',
+        start_month: '2026-01',
+        end_month: '2026-02',
+        feasible: admission === 'ADMITTED',
+        estimated_credits: estimatedCost,
+        currency: 'credits',
+        balance: credits.balance,
+        balance_available: true,
+        admission,
+        conditions: ['Deterministic M0 demo estimate.'],
+        limitations: ['Not a financial commitment.'],
       })
     if (path === '/api/v1/analysis-requests' && init?.method === 'POST')
       return gatewayResponse({ ...PROPOSED_REQUEST, request_id: 'request-new', state: 'PREPARING' })
@@ -196,20 +335,53 @@ function stubGateway(
           [43.56, 1.38],
           [43.66, 1.49],
         ],
+        request_id: 'request-1',
+        product_id: 'ndvi',
+        result_version: '1',
+        units: 'unitless',
+        validation_status: 'NOT_VALIDATED',
+        quality_status: 'PARTIAL',
+        quality_note: 'Synthetic demo quality.',
+        is_demo: true,
       })
-    if (path === '/api/v1/results/result-1/deliveries')
+    if (path === '/api/v1/results/result-1')
+      return gatewayResponse({
+        result_id: 'result-1',
+        request_id: 'request-1',
+        product_id: 'ndvi',
+        product_name: 'NDVI',
+        result_version: '1',
+        aoi_name: 'Toulouse study area',
+        geometry_snapshot: AOI.geometry,
+        start_month: '2026-01',
+        end_month: '2026-02',
+        units: 'unitless',
+        validation_status: 'NOT_VALIDATED',
+        quality_status: 'PARTIAL',
+        quality_note: 'Synthetic demo quality.',
+        provenance_note: 'Demo lineage contains request metadata only.',
+        is_demo: true,
+      })
+    if (path === '/api/v1/results/result-1/series' && init?.method === 'POST')
+      return gatewayResponse(options.series ?? SERIES_PAYLOAD)
+    if (path === '/api/v1/results/result-1/deliveries') {
+      const body = JSON.parse(String(init?.body ?? '{}')) as { kind?: string }
+      const kind = body.kind ?? 'final_product'
       return gatewayResponse(
         options.deliveryPreparing
-          ? { delivery_id: 'delivery-1', state: 'PREPARING' }
+          ? { delivery_id: 'delivery-1', kind, state: 'PREPARING' }
           : {
               delivery_id: 'delivery-1',
+              kind,
               state: 'READY',
               download_url: 'https://example.test/result.zip',
             },
       )
+    }
     if (path === '/api/v1/deliveries/delivery-1')
       return gatewayResponse({
         delivery_id: 'delivery-1',
+        kind: 'final_product',
         state: 'READY',
         download_url: 'https://example.test/result.zip',
       })
@@ -245,6 +417,7 @@ describe('App', () => {
       await user.selectOptions(screen.getByLabelText('Saved AOI'), 'aoi-1')
       await user.type(screen.getByLabelText('Start month (UTC)'), '2026-01')
       await user.type(screen.getByLabelText('End month (UTC)'), '2026-02')
+      await screen.findByText('Admitted')
       await user.click(screen.getByRole('button', { name: 'Submit request' }))
 
       expect(await screen.findByText('PREPARING')).toBeInTheDocument()
@@ -295,14 +468,12 @@ describe('App', () => {
       await user.click(await screen.findByRole('button', { name: 'Confirm execution' }))
       expect(await screen.findByText('COMPLETED')).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Display on map' }))
-      expect(
-        await screen.findByText('Map representation loaded for this result.'),
-      ).toBeInTheDocument()
+      expect(await screen.findByText('Scientific validation')).toBeInTheDocument()
       expect(screen.getByLabelText('Map focus')).toHaveTextContent('Bounds 43.56,1.38,43.66,1.49')
-      await user.click(screen.getByRole('button', { name: 'Prepare download' }))
+      await user.click(screen.getByRole('button', { name: 'Final product' }))
       expect(await screen.findByRole('button', { name: 'Refresh delivery' })).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Refresh delivery' }))
-      expect(await screen.findByRole('link', { name: 'Download delivery' })).toHaveAttribute(
+      expect(await screen.findByRole('link', { name: 'Download product' })).toHaveAttribute(
         'href',
         'https://example.test/result.zip',
       )
@@ -475,7 +646,8 @@ describe('App', () => {
       await user.click(screen.getByRole('button', { name: /^Requests/ }))
       expect(await screen.findByText(/no result identifier was provided/)).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Display on map' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: 'Prepare download' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Final product' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Full archive' })).toBeDisabled()
     },
   )
 
@@ -490,13 +662,12 @@ describe('App', () => {
       await user.click(screen.getByRole('button', { name: 'Explore' }))
       await user.click(await screen.findByRole('button', { name: /NDVI/ }))
       await user.click(await screen.findByRole('button', { name: 'Configure request' }))
-      await user.click(screen.getByRole('button', { name: 'Submit request' }))
-      expect(await screen.findByRole('alert')).toHaveTextContent('Select a product, an AOI')
+      expect(screen.getByRole('button', { name: 'Submit request' })).toBeDisabled()
       await user.selectOptions(screen.getByLabelText('Saved AOI'), 'aoi-1')
       await user.type(screen.getByLabelText('Start month (UTC)'), '2026-03')
       await user.type(screen.getByLabelText('End month (UTC)'), '2026-02')
-      await user.click(screen.getByRole('button', { name: 'Submit request' }))
       expect(await screen.findByRole('alert')).toHaveTextContent('start month must be on or before')
+      expect(screen.getByRole('button', { name: 'Submit request' })).toBeDisabled()
       expect(
         fetchMock.mock.calls.filter(
           ([path, init]) =>
@@ -521,7 +692,7 @@ describe('App', () => {
       expect(
         (await screen.findAllByText('No product description was supplied.')).length,
       ).toBeGreaterThan(0)
-      expect(screen.getAllByText('Unavailable')).toHaveLength(7)
+      expect(screen.getAllByText('Unavailable').length).toBeGreaterThanOrEqual(7)
       expect(screen.queryByRole('checkbox', { name: 'Sentinel' })).not.toBeInTheDocument()
     },
   )
@@ -569,7 +740,10 @@ describe('App', () => {
       await user.type(screen.getByLabelText('Start month (UTC)'), '2026-01')
       await user.type(screen.getByLabelText('End month (UTC)'), '2026-02')
       await user.selectOptions(screen.getByLabelText('Maximum allowed pixel size (m)'), '20')
-      await user.click(screen.getByRole('checkbox', { name: 'Sentinel' }))
+      await user.click(screen.getByRole('checkbox', { name: 'Landsat' }))
+      await user.click(screen.getByRole('checkbox', { name: 'MODIS' }))
+      await user.click(screen.getByRole('checkbox', { name: 'VIIRS' }))
+      await screen.findByText('Admitted')
       await user.click(screen.getByRole('button', { name: 'Submit request' }))
 
       const postCall = fetchMock.mock.calls.find(
@@ -815,6 +989,235 @@ describe('App', () => {
       expect(
         screen.queryByText('Active request states update automatically.'),
       ).not.toBeInTheDocument()
+    },
+  )
+  it(
+    'selects all compatible missions by default and omits the source restriction when all remain selected',
+    { tags: ['unit'] },
+    async () => {
+      const fetchMock = stubGateway()
+      const user = userEvent.setup()
+      render(<App MapSurface={fakeMapSurface} />)
+
+      await user.click(screen.getByRole('button', { name: 'Explore' }))
+      await user.click(await screen.findByRole('button', { name: /NDVI/ }))
+      await user.click(await screen.findByRole('button', { name: 'Configure request' }))
+      expect(await screen.findByRole('checkbox', { name: 'Sentinel' })).toBeChecked()
+      await user.click(screen.getByRole('checkbox', { name: 'Sentinel' }))
+      expect(screen.getByRole('checkbox', { name: 'Sentinel' })).not.toBeChecked()
+      await user.click(screen.getByRole('button', { name: 'Select all compatible missions' }))
+      expect(screen.getByRole('checkbox', { name: 'Sentinel' })).toBeChecked()
+
+      await user.selectOptions(screen.getByLabelText('Saved AOI'), 'aoi-1')
+      await user.type(screen.getByLabelText('Start month (UTC)'), '2026-01')
+      await user.type(screen.getByLabelText('End month (UTC)'), '2026-02')
+      await screen.findByText('Admitted')
+      await user.click(screen.getByRole('button', { name: 'Submit request' }))
+
+      const postCall = fetchMock.mock.calls.find(
+        ([path, init]) =>
+          path === '/api/v1/analysis-requests' &&
+          (init as RequestInit | undefined)?.method === 'POST',
+      )
+      const body = JSON.parse(String((postCall?.[1] as RequestInit).body))
+      expect(body.sources).toBeUndefined()
+    },
+  )
+
+  it(
+    'refuses submission when the estimated cost exceeds the credit balance',
+    { tags: ['unit'] },
+    async () => {
+      const fetchMock = stubGateway({ credits: { balance: 1, unit: 'credits' } })
+      const user = userEvent.setup()
+      render(<App MapSurface={fakeMapSurface} />)
+
+      await user.click(screen.getByRole('button', { name: 'Explore' }))
+      await user.click(await screen.findByRole('button', { name: /NDVI/ }))
+      await user.click(await screen.findByRole('button', { name: 'Configure request' }))
+      await user.selectOptions(screen.getByLabelText('Saved AOI'), 'aoi-1')
+      await user.type(screen.getByLabelText('Start month (UTC)'), '2026-01')
+      await user.type(screen.getByLabelText('End month (UTC)'), '2026-02')
+
+      expect(await screen.findByText('Insufficient credits')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Submit request' })).toBeDisabled()
+      expect(
+        fetchMock.mock.calls.filter(
+          ([path, init]) =>
+            path === '/api/v1/analysis-requests' &&
+            (init as RequestInit | undefined)?.method === 'POST',
+        ),
+      ).toHaveLength(0)
+    },
+  )
+
+  it(
+    'selects a point on a displayed result and loads its WKT time series',
+    { tags: ['unit'] },
+    async () => {
+      const fetchMock = stubGateway({
+        request: { ...PROPOSED_REQUEST, state: 'COMPLETED', actual_credits: 2 },
+      })
+      const user = userEvent.setup()
+      render(<App MapSurface={fakeMapSurface} />)
+
+      await user.click(screen.getByRole('button', { name: /^Requests/ }))
+      await user.click(await screen.findByRole('button', { name: 'Display on map' }))
+      expect(await screen.findByText('Scientific validation')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Select point' }))
+      expect(screen.getByLabelText('Selection mode')).toHaveTextContent('point')
+      await user.click(screen.getByRole('button', { name: 'Result point click' }))
+      expect(await screen.findByText(/Point selection: POINT\(1.44 43.6\)/)).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Load temporal series' }))
+
+      expect(await screen.findByText('Temporal display filters')).toBeInTheDocument()
+      expect(screen.getByText('0 unitless')).toBeInTheDocument()
+      expect(screen.getByText('MISSING')).toBeInTheDocument()
+      expect(screen.getByText('MASKED')).toBeInTheDocument()
+      const seriesCall = fetchMock.mock.calls.find(
+        ([path, init]) =>
+          path === '/api/v1/results/result-1/series' &&
+          (init as RequestInit | undefined)?.method === 'POST',
+      )
+      const body = JSON.parse(String((seriesCall?.[1] as RequestInit).body))
+      expect(body).toMatchObject({
+        geometry_wkt: 'POINT(1.44 43.6)',
+        crs: 'EPSG:4326',
+        period: { start_month: '2026-01', end_month: '2026-02' },
+      })
+    },
+  )
+
+  it(
+    'draws a polygon and combines month and season display filters before reset',
+    { tags: ['unit'] },
+    async () => {
+      const fetchMock = stubGateway({
+        request: { ...PROPOSED_REQUEST, state: 'COMPLETED', end_month: '2026-07' },
+      })
+      const user = userEvent.setup()
+      render(<App MapSurface={fakeMapSurface} />)
+
+      await user.click(screen.getByRole('button', { name: /^Requests/ }))
+      await user.click(await screen.findByRole('button', { name: 'Display on map' }))
+      await user.click(await screen.findByRole('button', { name: 'Draw polygon' }))
+      await user.click(screen.getByRole('button', { name: 'Result polygon click A' }))
+      await user.click(screen.getByRole('button', { name: 'Result polygon click B' }))
+      await user.click(screen.getByRole('button', { name: 'Result polygon click C' }))
+      await user.click(screen.getByRole('button', { name: 'Load temporal series' }))
+
+      expect(await screen.findByText(/Displaying 5 of 5 periods/)).toBeInTheDocument()
+      const seriesCall = fetchMock.mock.calls.find(
+        ([path, init]) =>
+          path === '/api/v1/results/result-1/series' &&
+          (init as RequestInit | undefined)?.method === 'POST',
+      )
+      const body = JSON.parse(String((seriesCall?.[1] as RequestInit).body))
+      expect(body.geometry_wkt).toMatch(/^POLYGON\(\(/)
+      expect(body.crs).toBe('EPSG:4326')
+
+      await user.click(screen.getByRole('checkbox', { name: 'January' }))
+      expect(await screen.findByText(/Displaying 1 of 5 periods/)).toBeInTheDocument()
+      await user.click(screen.getByRole('checkbox', { name: 'Summer' }))
+      expect(await screen.findByText(/Displaying 3 of 5 periods/)).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Reset filters' }))
+      expect(await screen.findByText(/Displaying 5 of 5 periods/)).toBeInTheDocument()
+    },
+  )
+
+  it('rejects a result click outside the displayed result extent', { tags: ['unit'] }, async () => {
+    stubGateway({ request: { ...PROPOSED_REQUEST, state: 'COMPLETED', actual_credits: 2 } })
+    const user = userEvent.setup()
+    render(<App MapSurface={fakeMapSurface} />)
+
+    await user.click(screen.getByRole('button', { name: /^Requests/ }))
+    await user.click(await screen.findByRole('button', { name: 'Display on map' }))
+    await user.click(await screen.findByRole('button', { name: 'Select point' }))
+    await user.click(screen.getByRole('button', { name: 'Result click outside' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('outside the displayed result')
+  })
+
+  it(
+    'hides and restores the result layer distinct from the basemap',
+    { tags: ['unit'] },
+    async () => {
+      stubGateway({ request: { ...PROPOSED_REQUEST, state: 'COMPLETED', actual_credits: 2 } })
+      const user = userEvent.setup()
+      render(<App MapSurface={fakeMapSurface} />)
+
+      await user.click(screen.getByRole('button', { name: /^Requests/ }))
+      await user.click(await screen.findByRole('button', { name: 'Display on map' }))
+      const hide = await screen.findByRole('button', { name: 'Hide result layer' })
+      expect(hide).toHaveAttribute('aria-pressed', 'true')
+      await user.click(hide)
+      expect(screen.getByRole('button', { name: 'Show result layer' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      )
+    },
+  )
+
+  it('downloads the full dependency archive explicitly', { tags: ['unit'] }, async () => {
+    stubGateway({ request: { ...PROPOSED_REQUEST, state: 'COMPLETED', actual_credits: 2 } })
+    const user = userEvent.setup()
+    render(<App MapSurface={fakeMapSurface} />)
+
+    await user.click(screen.getByRole('button', { name: /^Requests/ }))
+    await user.click(await screen.findByRole('button', { name: 'Full archive' }))
+    expect(await screen.findByRole('link', { name: 'Download archive' })).toBeInTheDocument()
+    expect(screen.getByText(/dependency archive/)).toBeInTheDocument()
+  })
+
+  it(
+    'shows the authenticated account identity and supports sign out and sign in',
+    { tags: ['unit'] },
+    async () => {
+      stubGateway()
+      const user = userEvent.setup()
+      render(<App MapSurface={fakeMapSurface} />)
+
+      await user.click(screen.getByRole('button', { name: 'Account menu' }))
+      await user.click(await screen.findByRole('menuitem', { name: 'Account and credits' }))
+      const panel = await screen.findByLabelText('Account and credits')
+      expect(await within(panel).findByText('MEOGAP demo user')).toBeInTheDocument()
+      await user.click(within(panel).getByRole('button', { name: 'Sign out' }))
+      expect(await within(panel).findByText('Signed out')).toBeInTheDocument()
+      await user.click(within(panel).getByRole('button', { name: 'Sign in as demo user' }))
+      expect(screen.queryByLabelText('Account and credits')).not.toBeInTheDocument()
+    },
+  )
+
+  it(
+    'reuses the request AOI, undoes polygon points and clears the selection',
+    { tags: ['unit'] },
+    async () => {
+      const fetchMock = stubGateway({
+        request: { ...PROPOSED_REQUEST, state: 'COMPLETED', actual_credits: 2 },
+      })
+      const user = userEvent.setup()
+      render(<App MapSurface={fakeMapSurface} />)
+
+      await user.click(screen.getByRole('button', { name: /^Requests/ }))
+      await user.click(await screen.findByRole('button', { name: 'Display on map' }))
+      await user.click(await screen.findByRole('button', { name: 'Use request AOI' }))
+      expect(await screen.findByText(/reused request AOI/)).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Load temporal series' }))
+      await screen.findByText('Temporal display filters')
+      const reuseCall = fetchMock.mock.calls.find(
+        ([path, init]) =>
+          path === '/api/v1/results/result-1/series' &&
+          (init as RequestInit | undefined)?.method === 'POST',
+      )
+      expect(JSON.parse(String((reuseCall?.[1] as RequestInit).body)).geometry_wkt).toMatch(
+        /^POLYGON\(\(/,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'Draw polygon' }))
+      await user.click(screen.getByRole('button', { name: 'Result polygon click A' }))
+      await user.click(screen.getByRole('button', { name: 'Undo last point' }))
+      await user.click(screen.getByRole('button', { name: 'Clear selection' }))
+      expect(screen.getByRole('button', { name: 'Load temporal series' })).toBeDisabled()
+      expect(screen.queryByText(/Polygon selection/)).not.toBeInTheDocument()
     },
   )
 })

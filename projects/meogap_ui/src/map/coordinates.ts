@@ -1,5 +1,7 @@
 import type { AoiGeometry, Position } from '../api/client'
 
+const MIN_RING_POSITIONS = 4
+
 export type MapBounds = {
   south: number
   west: number
@@ -99,4 +101,105 @@ export function geometryBounds(geometry: AoiGeometry): MapBounds | null {
 
   if (count === 0) return null
   return { south, west, north, east }
+}
+
+export function pointInBounds(position: Position, bounds: MapBounds): boolean {
+  return (
+    position.lat >= bounds.south &&
+    position.lat <= bounds.north &&
+    position.lng >= bounds.west &&
+    position.lng <= bounds.east
+  )
+}
+
+function pointInRing(longitude: number, latitude: number, ring: number[][]): boolean {
+  let inside = false
+  let previousLongitude = ring[ring.length - 1][0]
+  let previousLatitude = ring[ring.length - 1][1]
+  for (const [currentLongitude, currentLatitude] of ring) {
+    const crosses = currentLatitude > latitude !== previousLatitude > latitude
+    if (crosses) {
+      const intersection =
+        ((previousLongitude - currentLongitude) * (latitude - currentLatitude)) /
+          (previousLatitude - currentLatitude) +
+        currentLongitude
+      if (longitude < intersection) inside = !inside
+    }
+    previousLongitude = currentLongitude
+    previousLatitude = currentLatitude
+  }
+  return inside
+}
+
+export function pointInGeometry(position: Position, geometry: AoiGeometry): boolean {
+  const polygons = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates
+  return polygons.some(
+    (polygon) =>
+      polygon.length > 0 && pointInRing(position.lng, position.lat, polygon[0] as number[][]),
+  )
+}
+
+export function verticesWithinBounds(vertices: Position[], bounds: MapBounds): boolean {
+  return vertices.every((vertex) => pointInBounds(vertex, bounds))
+}
+
+function formatCoordinate(value: number): string {
+  return Number.isInteger(value) ? value.toFixed(6).replace(/\.?0+$/, '') : String(value)
+}
+
+export function positionToWktPoint(position: Position): string {
+  return `POINT(${formatCoordinate(position.lng)} ${formatCoordinate(position.lat)})`
+}
+
+function ringToWkt(ring: number[][]): string {
+  const coordinates = ring.map(
+    ([longitude, latitude]) => `${formatCoordinate(longitude)} ${formatCoordinate(latitude)}`,
+  )
+  return `(${coordinates.join(', ')})`
+}
+
+export function verticesToWktPolygon(vertices: Position[]): string | null {
+  if (vertices.length < 3) return null
+  const ring = vertices.map(positionToCoordinates)
+  ring.push([...ring[0]])
+  return `POLYGON((${ring
+    .map(([longitude, latitude]) => `${formatCoordinate(longitude)} ${formatCoordinate(latitude)}`)
+    .join(', ')}))`
+}
+
+export function geometryToWkt(geometry: AoiGeometry): string {
+  if (geometry.type === 'Polygon') {
+    return `POLYGON(${geometry.coordinates.map(ringToWkt).join(', ')})`
+  }
+  return `MULTIPOLYGON(${geometry.coordinates
+    .map((polygon) => `(${polygon.map(ringToWkt).join(', ')})`)
+    .join(', ')})`
+}
+
+export function geometryAreaKm2(geometry: AoiGeometry): number {
+  const rings =
+    geometry.type === 'Polygon'
+      ? geometry.coordinates
+      : geometry.coordinates.flatMap((polygon) => polygon)
+  let total = 0
+  for (const ring of rings) {
+    if (ring.length < MIN_RING_POSITIONS) continue
+    const positions = ring.map(([longitude, latitude]) => ({ longitude, latitude }))
+    const meanLatitude =
+      positions.reduce((sum, position) => sum + position.latitude, 0) / positions.length
+    const longitudeScale = 111_320 * Math.cos((meanLatitude * Math.PI) / 180)
+    const latitudeScale = 110_540
+    const projected = positions.map((position) => [
+      position.longitude * longitudeScale,
+      position.latitude * latitudeScale,
+    ])
+    let area = 0
+    for (let index = 0; index < projected.length - 1; index += 1) {
+      area +=
+        projected[index][0] * projected[index + 1][1] -
+        projected[index + 1][0] * projected[index][1]
+    }
+    total += Math.abs(area) / 2
+  }
+  return total / 1_000_000
 }

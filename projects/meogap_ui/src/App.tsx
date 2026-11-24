@@ -14,42 +14,74 @@ import {
   createAoi,
   createDelivery,
   deleteAoi,
+  estimateAnalysisRequest,
+  getAccount,
   getAnalysisRequest,
   getAoi,
   getCreditBalance,
   getDelivery,
   getProduct,
+  getProductMissions,
   getProductRequirements,
+  getResult,
   getResultMap,
   listAnalysisRequests,
   listAois,
   listProducts,
+  queryResultSeries,
   updateAoi,
+  type Account,
   type AnalysisRequest,
   type AnalysisState,
   type ApiResponse,
   type Aoi,
+  type AoiGeometry,
+  type CostEstimate,
   type CreditBalance,
   type Delivery,
+  type DeliveryKind,
   type Position,
   type Product,
   type ProductRequirements,
+  type ResultDetail,
   type ResultMap,
+  type SeriesResponse,
+  type SourceMissionInfo,
 } from './api/client'
 import { Icon, type IconName } from './components/Icon'
 import { Logo } from './components/Logo'
 import { OverlayPanel } from './components/OverlayPanel'
 import { ProductCard, ProductPreview } from './components/ProductCard'
-import { LeafletMapSurface, type MapSurfaceComponent } from './map/LeafletMapSurface'
+import { TemporalFilters as TemporalFiltersPanel } from './components/TemporalFilters'
+import { TimeSeriesChart } from './components/TimeSeriesChart'
 import {
+  LeafletMapSurface,
+  type MapSurfaceComponent,
+  type SelectionMode,
+} from './map/LeafletMapSurface'
+import {
+  geometryAreaKm2,
   geometryBounds,
   geometryToVertices,
+  geometryToWkt,
   parseCoordinates,
+  pointInBounds,
+  pointInGeometry,
+  positionToWktPoint,
   verticesToPolygon,
+  verticesToWktPolygon,
+  verticesWithinBounds,
   type MapBounds,
   type MapFocus,
 } from './map/coordinates'
 import { searchPlaces } from './map/places'
+import {
+  EMPTY_TEMPORAL_FILTERS,
+  filterSeriesPoints,
+  hemisphereForLatitudes,
+  isTemporalFilterActive,
+  type TemporalFilters,
+} from './temporal'
 
 type Panel = 'catalogue' | 'aois' | 'requests' | 'indicators' | 'account' | 'request' | null
 
@@ -82,6 +114,8 @@ const INSPECTOR_COLLAPSED_RESERVE_PX = 140
 const INSPECTOR_EXPANDED_RESERVE_PX = 210
 const NARROW_LAYOUT_MAX_WIDTH_PX = 1000
 const TERMINAL_STATES: ReadonlySet<AnalysisState> = new Set(['COMPLETED', 'FAILED', 'CANCELLED'])
+const SELECTION_CRS = 'EPSG:4326'
+const MAX_SELECTION_AREA_KM2 = 25_000
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'The request could not be completed.'
@@ -200,7 +234,7 @@ function RequestCard({
   onConfirm: (id: string) => void
   onCancel: (id: string) => void
   onDisplay: (request: AnalysisRequest) => void
-  onDelivery: (request: AnalysisRequest) => void
+  onDelivery: (request: AnalysisRequest, kind: DeliveryKind) => void
 }) {
   const canCancel = !['COMPLETED', 'FAILED', 'CANCELLED'].includes(request.state)
   const hasResult = request.resultId !== null
@@ -256,6 +290,11 @@ function RequestCard({
         ) : null}
       </dl>
       {request.message ? <p className="notice-text">{request.message}</p> : null}
+      {request.state === 'FAILED' ? (
+        <p className="failure-text">
+          Failed{request.failureStage ? ` during ${request.failureStage.toLowerCase()}` : ''}.
+        </p>
+      ) : null}
       {request.state === 'PREPARING' ? <p>Preparing a proposal.</p> : null}
       {request.state === 'PROPOSED' ? (
         <p>Review the estimate, then explicitly confirm execution.</p>
@@ -307,15 +346,26 @@ function RequestCard({
           </button>
         ) : null}
         {request.state === 'COMPLETED' ? (
-          <button
-            type="button"
-            className="button button-secondary"
-            disabled={!hasResult}
-            onClick={() => onDelivery(request)}
-          >
-            <Icon name="download" />
-            Prepare download
-          </button>
+          <>
+            <button
+              type="button"
+              className="button button-secondary"
+              disabled={!hasResult}
+              onClick={() => onDelivery(request, 'final_product')}
+            >
+              <Icon name="download" />
+              Final product
+            </button>
+            <button
+              type="button"
+              className="button button-secondary"
+              disabled={!hasResult}
+              onClick={() => onDelivery(request, 'dependency_archive')}
+            >
+              <Icon name="download" />
+              Full archive
+            </button>
+          </>
         ) : null}
       </div>
     </article>
@@ -380,9 +430,28 @@ export default function App({
   const [startMonth, setStartMonth] = useState(EMPTY_MONTH)
   const [endMonth, setEndMonth] = useState(EMPTY_MONTH)
   const [resultMap, setResultMap] = useState<ResultMap | null>(null)
+  const [resultDetail, setResultDetail] = useState<ResultDetail | null>(null)
   const [displayedRequest, setDisplayedRequest] = useState<AnalysisRequest | null>(null)
   const [delivery, setDelivery] = useState<Delivery | null>(null)
   const [creditBalance, setCreditBalance] = useState<CreditBalance | null>(null)
+  const [account, setAccount] = useState<Account | null>(null)
+  const [sessionActive, setSessionActive] = useState(true)
+  const [missions, setMissions] = useState<SourceMissionInfo[]>([])
+  const [missionsProductId, setMissionsProductId] = useState<string | null>(null)
+  const [missionsLoading, setMissionsLoading] = useState(false)
+  const [missionsError, setMissionsError] = useState<string | null>(null)
+  const [estimate, setEstimate] = useState<CostEstimate | null>(null)
+  const [estimating, setEstimating] = useState(false)
+  const [estimateError, setEstimateError] = useState<string | null>(null)
+  const [resultVisible, setResultVisible] = useState(true)
+  const [selectionMode, setSelectionMode] = useState<SelectionMode>('none')
+  const [selectionPoint, setSelectionPoint] = useState<Position | null>(null)
+  const [selectionVertices, setSelectionVertices] = useState<Position[]>([])
+  const [selectionReuse, setSelectionReuse] = useState<AoiGeometry | null>(null)
+  const [series, setSeries] = useState<SeriesResponse | null>(null)
+  const [seriesLoading, setSeriesLoading] = useState(false)
+  const [seriesError, setSeriesError] = useState<string | null>(null)
+  const [temporalFilters, setTemporalFilters] = useState<TemporalFilters>(EMPTY_TEMPORAL_FILTERS)
   const [isLoading, setIsLoading] = useState<LoadingState>({
     catalogue: true,
     aois: true,
@@ -454,15 +523,25 @@ export default function App({
     }
   }, [receive, showError])
 
+  const loadAccount = useCallback(async (): Promise<void> => {
+    try {
+      setAccount(receive(await getAccount()))
+    } catch (reason) {
+      showError('Account identity could not be loaded', reason)
+    }
+  }, [receive, showError])
+
   useEffect(() => {
+    if (!sessionActive) return
     const timer = window.setTimeout(() => {
       void loadCatalogue()
       void loadAois()
       void loadRequests()
       void refreshBalance()
+      void loadAccount()
     }, 0)
     return () => window.clearTimeout(timer)
-  }, [loadCatalogue, loadAois, loadRequests, refreshBalance])
+  }, [sessionActive, loadCatalogue, loadAois, loadRequests, refreshBalance, loadAccount])
 
   const hasActiveRequests = requests.some((request) => !TERMINAL_STATES.has(request.state))
   const activeRequestCount = requests.filter(
@@ -470,7 +549,7 @@ export default function App({
   ).length
 
   useEffect(() => {
-    if (panel !== 'requests' || !hasActiveRequests) return
+    if (!sessionActive || !hasActiveRequests) return
     let active = true
     const timer = window.setInterval(() => {
       void listAnalysisRequests()
@@ -485,7 +564,58 @@ export default function App({
       active = false
       window.clearInterval(timer)
     }
-  }, [panel, hasActiveRequests, pollIntervalMs, receive, showError])
+  }, [sessionActive, hasActiveRequests, pollIntervalMs, receive, showError])
+
+  useEffect(() => {
+    if (!sessionActive || panel !== 'request') return
+    if (!requestProductId || !requestAoiId || !startMonth || !endMonth || startMonth > endMonth) {
+      return
+    }
+    let active = true
+    const timer = window.setTimeout(() => {
+      if (!active) return
+      setEstimating(true)
+      setEstimateError(null)
+      const allMissionsSelected =
+        missions.length > 0 &&
+        requestSources.length === missions.map((mission) => mission.id).length
+      void estimateAnalysisRequest({
+        productId: requestProductId,
+        aoiId: requestAoiId,
+        startMonth,
+        endMonth,
+        spatialResolutionM: requestResolution ? Number(requestResolution) : null,
+        sources: allMissionsSelected ? [] : requestSources,
+      })
+        .then((response) => {
+          if (active) setEstimate(receive(response))
+        })
+        .catch((reason: unknown) => {
+          if (active) {
+            setEstimate(null)
+            setEstimateError(errorMessage(reason))
+          }
+        })
+        .finally(() => {
+          if (active) setEstimating(false)
+        })
+    }, 0)
+    return () => {
+      active = false
+      window.clearTimeout(timer)
+    }
+  }, [
+    sessionActive,
+    panel,
+    requestProductId,
+    requestAoiId,
+    startMonth,
+    endMonth,
+    requestResolution,
+    requestSources,
+    missions,
+    receive,
+  ])
 
   useEffect(() => {
     if (panel !== 'aois' || !drawing) return
@@ -565,10 +695,32 @@ export default function App({
     })
   }
 
+  async function loadMissions(
+    productId: string,
+    options: { selectAll?: boolean } = {},
+  ): Promise<void> {
+    setMissionsLoading(true)
+    setMissionsError(null)
+    try {
+      const response = receive(await getProductMissions(productId))
+      setMissions(response.items)
+      setMissionsProductId(response.productId)
+      if (options.selectAll) setRequestSources(response.items.map((mission) => mission.id))
+    } catch (reason) {
+      setMissions([])
+      setMissionsProductId(productId)
+      setMissionsError(errorMessage(reason))
+    } finally {
+      setMissionsLoading(false)
+    }
+  }
+
   async function selectProduct(id: string): Promise<void> {
     setSelectedProductId(id)
     setSelectedProduct(null)
     setRequirements(null)
+    setMissions([])
+    setMissionsProductId(null)
     try {
       const [productResult, requirementsResult] = await Promise.all([
         getProduct(id),
@@ -576,6 +728,7 @@ export default function App({
       ])
       setSelectedProduct(receive(productResult))
       setRequirements(receive(requirementsResult))
+      await loadMissions(id)
     } catch (reason) {
       showError('Product details could not be loaded', reason)
     }
@@ -673,6 +826,13 @@ export default function App({
     setRequestAoiId(selectedAoiId ?? '')
     setRequestSources([])
     setRequestResolution('')
+    setEstimate(null)
+    setEstimateError(null)
+    if (productId && missionsProductId !== productId)
+      void loadMissions(productId, { selectAll: true })
+    if (productId && missionsProductId === productId) {
+      setRequestSources(missions.map((mission) => mission.id))
+    }
     setPanel('request')
   }
 
@@ -680,12 +840,23 @@ export default function App({
     setRequestProductId(productId)
     setRequestSources([])
     setRequestResolution('')
+    setEstimate(null)
+    setEstimateError(null)
+    setMissions([])
+    setMissionsProductId(null)
+    if (productId) void loadMissions(productId, { selectAll: true })
   }
 
   function toggleRequestSource(source: string): void {
     setRequestSources((current) =>
       current.includes(source) ? current.filter((item) => item !== source) : [...current, source],
     )
+    setEstimate(null)
+  }
+
+  function selectAllRequestSources(): void {
+    setRequestSources(missions.map((mission) => mission.id))
+    setEstimate(null)
   }
 
   async function submitRequest(): Promise<void> {
@@ -697,7 +868,25 @@ export default function App({
       setError('The start month must be on or before the end month.')
       return
     }
+    if (missions.length > 0 && requestSources.length === 0) {
+      setError('Select at least one compatible source mission.')
+      return
+    }
+    if (!estimate) {
+      setError('Wait for the cost estimate before submitting this request.')
+      return
+    }
+    if (estimate.admission !== 'ADMITTED') {
+      setError(
+        estimate.admission === 'INSUFFICIENT_CREDITS'
+          ? 'The current credit balance cannot admit this request.'
+          : 'The credit balance is unavailable, so admission cannot be decided.',
+      )
+      return
+    }
     const resolution = requestResolution ? Number(requestResolution) : null
+    const allMissionsSelected =
+      missions.length > 0 && requestSources.length === missions.map((mission) => mission.id).length
     try {
       const request = receive(
         await createAnalysisRequest({
@@ -706,10 +895,11 @@ export default function App({
           startMonth,
           endMonth,
           spatialResolutionM: resolution,
-          sources: requestSources,
+          sources: allMissionsSelected ? [] : requestSources,
         }),
       )
       setRequests((current) => replaceById(current, request))
+      setEstimate(null)
       setPanel('requests')
     } catch (reason) {
       showError('Analysis request could not be submitted', reason)
@@ -746,10 +936,15 @@ export default function App({
   async function displayResult(request: AnalysisRequest): Promise<void> {
     if (!request.resultId) return
     try {
-      const representation = receive(await getResultMap(request.resultId))
-      setResultMap(representation)
-      if (representation.bounds) {
-        const [first, second] = representation.bounds
+      const [representation, detail] = await Promise.all([
+        getResultMap(request.resultId),
+        getResult(request.resultId),
+      ])
+      const resultMapResponse = receive(representation)
+      setResultMap(resultMapResponse)
+      setResultDetail(receive(detail))
+      if (resultMapResponse.bounds) {
+        const [first, second] = resultMapResponse.bounds
         focusBounds(
           {
             south: Math.min(first.lat, second.lat),
@@ -761,16 +956,18 @@ export default function App({
         )
       }
       setDisplayedRequest(request)
+      setResultVisible(true)
+      clearSelection()
       setInspectorOpen(true)
     } catch (reason) {
       showError('Map representation could not be loaded', reason)
     }
   }
 
-  async function requestDelivery(request: AnalysisRequest): Promise<void> {
+  async function requestDelivery(request: AnalysisRequest, kind: DeliveryKind): Promise<void> {
     if (!request.resultId) return
     try {
-      const nextDelivery = receive(await createDelivery(request.resultId))
+      const nextDelivery = receive(await createDelivery(request.resultId, kind))
       setDelivery(nextDelivery)
       setDisplayedRequest(request)
       setInspectorOpen(true)
@@ -788,11 +985,169 @@ export default function App({
     }
   }
 
+  function clearSelection(): void {
+    setSelectionMode('none')
+    setSelectionPoint(null)
+    setSelectionVertices([])
+    setSelectionReuse(null)
+    setSeries(null)
+    setSeriesError(null)
+    setTemporalFilters(EMPTY_TEMPORAL_FILTERS)
+  }
+
+  function startPointSelection(): void {
+    setSelectionMode('point')
+    setSelectionVertices([])
+    setSelectionReuse(null)
+    setSeries(null)
+    setSeriesError(null)
+  }
+
+  function startPolygonSelection(): void {
+    setSelectionMode('polygon')
+    setSelectionPoint(null)
+    setSelectionVertices([])
+    setSelectionReuse(null)
+    setSeries(null)
+    setSeriesError(null)
+  }
+
+  function reuseRequestAoi(): void {
+    if (!displayedRequest?.geometrySnapshot) {
+      setError('The displayed request does not expose a reusable AOI geometry.')
+      return
+    }
+    setSelectionMode('none')
+    setSelectionPoint(null)
+    setSelectionReuse(displayedRequest.geometrySnapshot)
+    setSelectionVertices(geometryToVertices(displayedRequest.geometrySnapshot))
+    setSeries(null)
+    setSeriesError(null)
+  }
+
+  function handleResultClick(position: Position): void {
+    if (!resultMap?.bounds) return
+    const [first, second] = resultMap.bounds
+    const resultBounds: MapBounds = {
+      south: Math.min(first.lat, second.lat),
+      west: Math.min(first.lng, second.lng),
+      north: Math.max(first.lat, second.lat),
+      east: Math.max(first.lng, second.lng),
+    }
+    if (!pointInBounds(position, resultBounds)) {
+      setError('The selected position is outside the displayed result.')
+      return
+    }
+    if (resultDetail && !pointInGeometry(position, resultDetail.geometry)) {
+      setError('The selected position is outside the displayed result geometry.')
+      return
+    }
+    setSeries(null)
+    setSeriesError(null)
+    setTemporalFilters(EMPTY_TEMPORAL_FILTERS)
+    if (selectionMode === 'point') {
+      setSelectionPoint(position)
+      setSelectionVertices([])
+      setSelectionReuse(null)
+      setSelectionMode('none')
+      return
+    }
+    if (selectionMode === 'polygon') {
+      if (!verticesWithinBounds([...selectionVertices, position], resultBounds)) {
+        setError('The selected polygon must stay inside the displayed result.')
+        return
+      }
+      setSelectionPoint(null)
+      setSelectionReuse(null)
+      setSelectionVertices((vertices) => [...vertices, position])
+    }
+  }
+
+  async function loadSeries(): Promise<void> {
+    if (!displayedRequest?.resultId || !displayedRequest.startMonth || !displayedRequest.endMonth) {
+      setSeriesError('The displayed result does not declare a supported period.')
+      return
+    }
+    let geometryWkt: string | null = null
+    let selectionGeometry: AoiGeometry | null = null
+    if (selectionPoint) {
+      geometryWkt = positionToWktPoint(selectionPoint)
+    } else if (selectionReuse) {
+      geometryWkt = geometryToWkt(selectionReuse)
+      selectionGeometry = selectionReuse
+    } else if (selectionVertices.length >= 3) {
+      geometryWkt = verticesToWktPolygon(selectionVertices)
+      selectionGeometry = verticesToPolygon(selectionVertices)
+    }
+    if (!geometryWkt) {
+      setSeriesError('Select a point or draw a polygon with at least three vertices.')
+      return
+    }
+    if (resultMap?.bounds) {
+      const [first, second] = resultMap.bounds
+      const resultBounds: MapBounds = {
+        south: Math.min(first.lat, second.lat),
+        west: Math.min(first.lng, second.lng),
+        north: Math.max(first.lat, second.lat),
+        east: Math.max(first.lng, second.lng),
+      }
+      if (selectionPoint && !pointInBounds(selectionPoint, resultBounds)) {
+        setSeriesError('The selected point is outside the displayed result.')
+        return
+      }
+      if (selectionVertices.length > 0 && !verticesWithinBounds(selectionVertices, resultBounds)) {
+        setSeriesError('The selected polygon is outside the displayed result.')
+        return
+      }
+    }
+    if (selectionGeometry && geometryAreaKm2(selectionGeometry) > MAX_SELECTION_AREA_KM2) {
+      setSeriesError(`The selected polygon exceeds ${MAX_SELECTION_AREA_KM2} km².`)
+      return
+    }
+    setSeriesLoading(true)
+    setSeriesError(null)
+    try {
+      const response = receive(
+        await queryResultSeries(displayedRequest.resultId, {
+          geometryWkt,
+          crs: SELECTION_CRS,
+          startMonth: displayedRequest.startMonth,
+          endMonth: displayedRequest.endMonth,
+        }),
+      )
+      setSeries(response)
+      setTemporalFilters(EMPTY_TEMPORAL_FILTERS)
+    } catch (reason) {
+      setSeries(null)
+      setSeriesError(errorMessage(reason))
+    } finally {
+      setSeriesLoading(false)
+    }
+  }
+
   function openAccount(): void {
     setAccountOpen(false)
     setSearchOpen(false)
     setPanel('account')
-    void refreshBalance()
+    if (sessionActive) void refreshBalance()
+  }
+
+  function signOut(): void {
+    setSessionActive(false)
+    setAccount(null)
+    setCreditBalance(null)
+    setProducts([])
+    setAois([])
+    setRequests([])
+    clearSelection()
+    setResultMap(null)
+    setResultDetail(null)
+    setDisplayedRequest(null)
+  }
+
+  function signIn(): void {
+    setSessionActive(true)
+    setPanel(null)
   }
 
   function togglePanel(nextPanel: Panel): void {
@@ -880,6 +1235,29 @@ export default function App({
   const nativeResolutionNote = requestProduct?.nativeResolution
     ? `Declared native resolution: ${requestProduct.nativeResolution}. A request cannot reveal detail finer than the source data.`
     : 'Selecting a pixel size cannot reveal detail finer than the source data.'
+  const selectionLatitudes = (): number[] => {
+    if (selectionPoint) return [selectionPoint.lat]
+    if (selectionReuse) return geometryToVertices(selectionReuse).map((position) => position.lat)
+    return selectionVertices.map((position) => position.lat)
+  }
+  const seriesHemisphere = hemisphereForLatitudes(selectionLatitudes())
+  const filteredSeriesPoints = series
+    ? filterSeriesPoints(series.points, temporalFilters, seriesHemisphere)
+    : []
+  const hasSelection = Boolean(selectionPoint || selectionReuse || selectionVertices.length >= 3)
+  const allMissionsSelected = missions.length > 0 && requestSources.length === missions.length
+  const admissionLabel = estimate
+    ? estimate.admission === 'ADMITTED'
+      ? 'Admitted'
+      : estimate.admission === 'INSUFFICIENT_CREDITS'
+        ? 'Insufficient credits'
+        : 'Balance unavailable'
+    : null
+  const canSubmit =
+    Boolean(requestProductId && requestAoiId && startMonth && endMonth) &&
+    startMonth <= endMonth &&
+    (missions.length === 0 || requestSources.length > 0) &&
+    estimate?.admission === 'ADMITTED'
 
   return (
     <main className={panel ? 'workspace panel-open' : 'workspace'}>
@@ -890,10 +1268,15 @@ export default function App({
         focus={focus}
         focusRevision={focusRevision}
         resultMap={resultMap}
+        resultVisible={resultVisible}
+        selectionMode={selectionMode}
+        selectionPoint={selectionPoint}
+        selectionVertices={selectionVertices}
         selectedAoiId={selectedAoiId}
         onMapClick={(position) =>
           setDraftVertices((vertices) => (drawing ? [...vertices, position] : vertices))
         }
+        onResultClick={handleResultClick}
         onAoiSelect={(id) => void selectAoi(id)}
       />
 
@@ -1048,8 +1431,10 @@ export default function App({
             {accountOpen ? (
               <div className="account-dropdown" role="menu" aria-label="Account">
                 <div className="account-dropdown-header">
-                  <span>Demo account</span>
-                  <strong>{creditSummary}</strong>
+                  <span>
+                    {account?.displayName ?? (sessionActive ? 'Demo account' : 'Signed out')}
+                  </span>
+                  <strong>{sessionActive ? creditSummary : 'No active session'}</strong>
                 </div>
                 <button type="button" role="menuitem" onClick={openAccount}>
                   <Icon name="credit-card" />
@@ -1180,10 +1565,32 @@ export default function App({
                 <dd>{selectedProduct.nativeResolution ?? 'Unavailable'}</dd>
                 <dt>Temporal resolution</dt>
                 <dd>{selectedProduct.temporalResolution ?? 'Unavailable'}</dd>
+                <dt>Units</dt>
+                <dd>{selectedProduct.units ?? 'Unavailable'}</dd>
                 <dt>Availability</dt>
                 <dd>{selectedProduct.availability ?? 'Unavailable'}</dd>
                 <dt>Scientific validation</dt>
                 <dd>{selectedProduct.validationStatus ?? 'Unavailable'}</dd>
+                <dt>Spatial inputs</dt>
+                <dd>
+                  {selectedProduct.supportedSpatialInputs.length
+                    ? selectedProduct.supportedSpatialInputs.join(', ')
+                    : 'Unavailable'}
+                </dd>
+                <dt>Temporal frequencies</dt>
+                <dd>
+                  {selectedProduct.supportedFrequencies.length
+                    ? selectedProduct.supportedFrequencies.join(', ')
+                    : 'Unavailable'}
+                </dd>
+                <dt>Maximum period</dt>
+                <dd>
+                  {selectedProduct.maxPeriodMonths != null
+                    ? `${selectedProduct.maxPeriodMonths} months`
+                    : 'Unavailable'}
+                </dd>
+                <dt>Documentation</dt>
+                <dd>{selectedProduct.documentationStatus ?? 'Unavailable'}</dd>
                 <dt>Supported sources</dt>
                 <dd>
                   {selectedProduct.supportedSources.length
@@ -1191,6 +1598,25 @@ export default function App({
                     : 'Unavailable'}
                 </dd>
               </dl>
+              {missionsProductId === selectedProduct.id ? (
+                <div className="requirements">
+                  <h4>Compatible mission metadata</h4>
+                  {missionsLoading ? <p>Loading compatible missions…</p> : null}
+                  {missionsError ? (
+                    <p className="failure-text">Mission metadata unavailable: {missionsError}</p>
+                  ) : null}
+                  {missions.length ? (
+                    <ul>
+                      {missions.map((mission) => (
+                        <li key={mission.id}>
+                          {mission.name} · {mission.provider} · {mission.instrument} · native{' '}
+                          {mission.nativeResolution}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ) : null}
               {selectedProduct.limitations.length ? (
                 <div className="requirements">
                   <h4>Known limitations</h4>
@@ -1448,7 +1874,11 @@ export default function App({
           <select
             id="request-aoi"
             value={requestAoiId}
-            onChange={(event) => setRequestAoiId(event.target.value)}
+            onChange={(event) => {
+              setRequestAoiId(event.target.value)
+              setEstimate(null)
+              setEstimateError(null)
+            }}
           >
             <option value="">Select a saved AOI</option>
             {aois.map((aoi) => (
@@ -1461,6 +1891,10 @@ export default function App({
             <Icon name="plus" />
             Create a saved AOI
           </button>
+          <p className="field-help">
+            M0 requests use an AOI. POI and LOI request inputs require server-side buffering and are
+            not available in this build.
+          </p>
           <div className="form-row">
             <div>
               <label className="field-label" htmlFor="start-month">
@@ -1470,7 +1904,11 @@ export default function App({
                 id="start-month"
                 type="month"
                 value={startMonth}
-                onChange={(event) => setStartMonth(event.target.value)}
+                onChange={(event) => {
+                  setStartMonth(event.target.value)
+                  setEstimate(null)
+                  setEstimateError(null)
+                }}
               />
             </div>
             <div>
@@ -1481,27 +1919,69 @@ export default function App({
                 id="end-month"
                 type="month"
                 value={endMonth}
-                onChange={(event) => setEndMonth(event.target.value)}
+                onChange={(event) => {
+                  setEndMonth(event.target.value)
+                  setEstimate(null)
+                  setEstimateError(null)
+                }}
               />
             </div>
           </div>
+          {startMonth && endMonth && startMonth > endMonth ? (
+            <p className="failure-text" role="alert">
+              The start month must be on or before the end month.
+            </p>
+          ) : null}
+          {!requestProductId || !requestAoiId || !startMonth || !endMonth ? (
+            <p className="field-help">
+              Select a product, an AOI and an inclusive UTC period before submitting.
+            </p>
+          ) : null}
 
-          {requestProduct && requestProduct.supportedSources.length ? (
+          {missionsLoading ? (
+            <StateNotice icon="refresh">Loading compatible missions…</StateNotice>
+          ) : null}
+          {!missionsLoading && missionsError ? (
+            <StateNotice icon="alert" tone="error">
+              Compatible missions are unavailable: {missionsError}
+            </StateNotice>
+          ) : null}
+          {!missionsLoading && !missionsError && missions.length === 0 ? (
+            <StateNotice icon="info">
+              No source mission is compatible with this product. Submission is disabled.
+            </StateNotice>
+          ) : null}
+          {missions.length ? (
             <fieldset className="choice-group">
               <legend>Source missions</legend>
               <p className="field-help">
-                A mission selection is a request, not a guarantee that usable acquisitions exist for
-                this AOI or period.
+                All compatible missions are selected by default. Removing every restriction sends no
+                source filter; usable acquisitions are never guaranteed.
               </p>
+              <div className="inline-actions">
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  onClick={selectAllRequestSources}
+                  disabled={allMissionsSelected}
+                >
+                  <Icon name="check" />
+                  Select all compatible missions
+                </button>
+              </div>
               <div className="checkbox-grid">
-                {requestProduct.supportedSources.map((source) => (
-                  <label className="checkbox" key={source}>
+                {missions.map((mission) => (
+                  <label
+                    className="checkbox"
+                    key={mission.id}
+                    title={`${mission.provider} · ${mission.instrument}`}
+                  >
                     <input
                       type="checkbox"
-                      checked={requestSources.includes(source)}
-                      onChange={() => toggleRequestSource(source)}
+                      checked={requestSources.includes(mission.id)}
+                      onChange={() => toggleRequestSource(mission.id)}
                     />
-                    <span>{source}</span>
+                    <span>{mission.name}</span>
                   </label>
                 ))}
               </div>
@@ -1516,7 +1996,11 @@ export default function App({
               <select
                 id="request-resolution"
                 value={requestResolution}
-                onChange={(event) => setRequestResolution(event.target.value)}
+                onChange={(event) => {
+                  setRequestResolution(event.target.value)
+                  setEstimate(null)
+                  setEstimateError(null)
+                }}
               >
                 <option value="">No maximum (use native resolution)</option>
                 {requestProduct.supportedResolutionsM.map((resolution) => (
@@ -1539,14 +2023,56 @@ export default function App({
                   ? `Native ${requestProduct.nativeResolution}`
                   : 'Native resolution unavailable'}
               </span>
+              <span>
+                Inputs:{' '}
+                {requestProduct.supportedSpatialInputs.length
+                  ? requestProduct.supportedSpatialInputs.join(', ')
+                  : 'Unavailable'}
+                {' · '}Max period:{' '}
+                {requestProduct.maxPeriodMonths != null
+                  ? `${requestProduct.maxPeriodMonths} months`
+                  : 'Unavailable'}
+              </span>
             </div>
           ) : null}
+
+          <div className="cost-estimate" aria-label="Cost estimate">
+            <h4>Cost and admission</h4>
+            {estimating ? <p role="status">Estimating cost…</p> : null}
+            {estimateError ? (
+              <p className="failure-text">Estimate unavailable: {estimateError}</p>
+            ) : null}
+            {estimate ? (
+              <dl className="metadata-grid">
+                <dt>Estimated cost</dt>
+                <dd>
+                  {estimate.estimatedCredits} {estimate.currency}
+                </dd>
+                <dt>Current balance</dt>
+                <dd>
+                  {estimate.balanceAvailable && estimate.balance !== null
+                    ? `${estimate.balance} ${estimate.currency}`
+                    : 'Unavailable'}
+                </dd>
+                <dt>Admission</dt>
+                <dd className={`admission admission-${estimate.admission.toLowerCase()}`}>
+                  {admissionLabel}
+                </dd>
+              </dl>
+            ) : null}
+            {!estimate && !estimating && !estimateError ? (
+              <p className="field-help">
+                Complete the product, AOI and UTC period to display the cost and admission decision.
+              </p>
+            ) : null}
+          </div>
 
           <div className="panel-footer">
             <button
               type="button"
               className="button button-primary button-wide"
               onClick={() => void submitRequest()}
+              disabled={!canSubmit}
             >
               <Icon name="check" />
               Submit request
@@ -1566,10 +2092,20 @@ export default function App({
               Request state is retrieved from REST. Completed does not imply scientific validation
               or complete observations.
             </p>
-            <button type="button" className="button button-primary" onClick={() => openRequest()}>
-              <Icon name="plus" />
-              New request
-            </button>
+            <div className="inline-actions">
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() => void loadRequests()}
+              >
+                <Icon name="refresh" />
+                Refresh requests
+              </button>
+              <button type="button" className="button button-primary" onClick={() => openRequest()}>
+                <Icon name="plus" />
+                New request
+              </button>
+            </div>
           </div>
           {hasActiveRequests ? (
             <p className="polling-note" role="status">
@@ -1604,7 +2140,7 @@ export default function App({
                 onConfirm={(id) => void confirmRequest(id)}
                 onCancel={(id) => void cancelRequest(id)}
                 onDisplay={(nextRequest) => void displayResult(nextRequest)}
-                onDelivery={(nextRequest) => void requestDelivery(nextRequest)}
+                onDelivery={(nextRequest, kind) => void requestDelivery(nextRequest, kind)}
               />
             ))}
           </div>
@@ -1637,31 +2173,54 @@ export default function App({
           onClose={() => setPanel(null)}
         >
           <p className="panel-intro">
-            Credit balances are supplied by the server and are shown before confirming a proposal
-            when available.
+            Identity and credit balances are supplied by the server. This demonstration does not
+            implement production authentication.
           </p>
-          {isLoading.balance ? (
-            <StateNotice icon="refresh">Loading credit balance…</StateNotice>
-          ) : null}
-          {!isLoading.balance && creditBalance ? (
-            <div className="credit-card">
-              <span>Available balance</span>
-              <strong>
-                {creditBalance.balance} {creditBalance.unit ?? 'credits'}
-              </strong>
+          {!sessionActive ? (
+            <div className="empty-state">
+              <h3>Signed out</h3>
+              <p>Requests, AOIs and results are hidden until a demo session is resumed.</p>
+              <button type="button" className="button button-primary" onClick={signIn}>
+                Sign in as demo user
+              </button>
             </div>
-          ) : null}
-          {!isLoading.balance && !creditBalance ? (
-            <StateNotice icon="info">Credit balance is unavailable.</StateNotice>
-          ) : null}
-          <button
-            type="button"
-            className="button button-secondary"
-            onClick={() => void refreshBalance()}
-          >
-            <Icon name="refresh" />
-            Refresh balance
-          </button>
+          ) : (
+            <>
+              <div className="credit-card">
+                <span>Signed in as</span>
+                <strong>{account?.displayName ?? 'Demo account'}</strong>
+                {account ? <span>User {account.userId}</span> : null}
+              </div>
+              {isLoading.balance ? (
+                <StateNotice icon="refresh">Loading credit balance…</StateNotice>
+              ) : null}
+              {!isLoading.balance && creditBalance ? (
+                <div className="credit-card">
+                  <span>Available balance</span>
+                  <strong>
+                    {creditBalance.balance} {creditBalance.unit ?? 'credits'}
+                  </strong>
+                </div>
+              ) : null}
+              {!isLoading.balance && !creditBalance ? (
+                <StateNotice icon="info">Credit balance is unavailable.</StateNotice>
+              ) : null}
+              <div className="inline-actions">
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  onClick={() => void refreshBalance()}
+                >
+                  <Icon name="refresh" />
+                  Refresh balance
+                </button>
+                <button type="button" className="button button-danger" onClick={signOut}>
+                  <Icon name="close" />
+                  Sign out
+                </button>
+              </div>
+            </>
+          )}
         </OverlayPanel>
       ) : null}
 
@@ -1681,35 +2240,217 @@ export default function App({
         {inspectorOpen ? (
           <div className="inspector-content">
             <div className="inspector-summary">
-              <span className="eyebrow">Result representation</span>
+              <span className="eyebrow">Result inspector</span>
               {displayedRequest?.resultId ? (
-                <p>
-                  Result <strong>{displayedRequest.resultId}</strong> from request{' '}
-                  {displayedRequest.id}
-                </p>
+                <>
+                  <p>
+                    Result <strong>{displayedRequest.resultId}</strong> from request{' '}
+                    {displayedRequest.id}
+                    {resultDetail ? ` · version ${resultDetail.resultVersion}` : ''}
+                  </p>
+                  <dl className="metadata-grid inspector-metadata">
+                    <dt>Product</dt>
+                    <dd>
+                      {resultDetail?.productName ?? displayedRequest.productId ?? 'Unavailable'}
+                    </dd>
+                    <dt>Period</dt>
+                    <dd>
+                      {displayedRequest.startMonth && displayedRequest.endMonth
+                        ? `${displayedRequest.startMonth} to ${displayedRequest.endMonth} UTC`
+                        : 'Unavailable'}
+                    </dd>
+                    <dt>Units</dt>
+                    <dd>{resultDetail?.units ?? resultMap?.units ?? 'Unavailable'}</dd>
+                    <dt>Quality</dt>
+                    <dd>
+                      {resultDetail?.qualityStatus ?? resultMap?.qualityStatus ?? 'Unavailable'}
+                    </dd>
+                    <dt>Scientific validation</dt>
+                    <dd>
+                      {resultDetail?.validationStatus ??
+                        resultMap?.validationStatus ??
+                        'Unavailable'}
+                    </dd>
+                    <dt>Provenance</dt>
+                    <dd>
+                      {resultDetail?.provenanceNote ??
+                        resultMap?.qualityNote ??
+                        'No provenance is available for this demo result.'}
+                    </dd>
+                  </dl>
+                </>
               ) : (
                 <p>No result representation selected.</p>
               )}
               {resultMap ? (
-                <p>Map representation loaded for this result.</p>
+                <div className="inline-actions">
+                  <button
+                    type="button"
+                    className="button button-secondary"
+                    onClick={() => setResultVisible((visible) => !visible)}
+                    aria-pressed={resultVisible}
+                  >
+                    <Icon name="layers" />
+                    {resultVisible ? 'Hide result layer' : 'Show result layer'}
+                  </button>
+                </div>
               ) : (
                 <p>Select “Display on map” for a completed request to load a representation.</p>
               )}
               <p className="muted">
-                Display layers are synthetic/demo representations and remain distinct from validated
-                scientific results.
+                Result layers are synthetic/demo representations, distinct from the satellite
+                basemap and from scientifically validated products.
               </p>
             </div>
+
+            {resultMap ? (
+              <section className="inspector-selection" aria-label="Spatial selection">
+                <h3>Explore this result</h3>
+                <p className="field-help">
+                  Selection is independent from the request geometry. Coordinates are sent as WKT
+                  with an explicit {SELECTION_CRS} CRS.
+                </p>
+                <div className="inline-actions">
+                  <button
+                    type="button"
+                    className="button button-secondary"
+                    aria-pressed={selectionMode === 'point'}
+                    onClick={startPointSelection}
+                  >
+                    <Icon name="map-pin" />
+                    Select point
+                  </button>
+                  <button
+                    type="button"
+                    className="button button-secondary"
+                    aria-pressed={selectionMode === 'polygon'}
+                    onClick={startPolygonSelection}
+                  >
+                    <Icon name="pencil" />
+                    Draw polygon
+                  </button>
+                  <button
+                    type="button"
+                    className="button button-secondary"
+                    onClick={reuseRequestAoi}
+                    disabled={!displayedRequest?.geometrySnapshot}
+                  >
+                    <Icon name="layers" />
+                    Use request AOI
+                  </button>
+                  <button
+                    type="button"
+                    className="button button-secondary"
+                    onClick={clearSelection}
+                  >
+                    <Icon name="close" />
+                    Clear selection
+                  </button>
+                </div>
+                {selectionMode !== 'none' ? (
+                  <p className="polling-note" role="status">
+                    <Icon name="info" />
+                    {selectionMode === 'point'
+                      ? 'Click inside the displayed result to select a point.'
+                      : `Click inside the displayed result to add polygon vertices (${selectionVertices.length} added).`}
+                  </p>
+                ) : null}
+                {selectionPoint ? (
+                  <p>
+                    Point selection: {positionToWktPoint(selectionPoint)} ({SELECTION_CRS})
+                  </p>
+                ) : null}
+                {selectionVertices.length ? (
+                  <div>
+                    <p>
+                      Polygon selection: {selectionVertices.length} vertices
+                      {selectionReuse ? ' (reused request AOI)' : ''}.
+                    </p>
+                    <div className="inline-actions">
+                      <button
+                        type="button"
+                        className="button button-secondary"
+                        onClick={() => setSelectionVertices((vertices) => vertices.slice(0, -1))}
+                        disabled={selectionVertices.length === 0}
+                      >
+                        <Icon name="undo" />
+                        Undo last point
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  className="button button-primary"
+                  onClick={() => void loadSeries()}
+                  disabled={!hasSelection || seriesLoading}
+                >
+                  <Icon name="activity" />
+                  Load temporal series
+                </button>
+              </section>
+            ) : null}
+
+            {seriesLoading ? (
+              <StateNotice icon="refresh">Loading temporal series…</StateNotice>
+            ) : null}
+            {!seriesLoading && seriesError ? (
+              <StateNotice icon="alert" tone="error">
+                {seriesError}
+              </StateNotice>
+            ) : null}
+            {series ? (
+              <section className="series-section" aria-label="Temporal series">
+                <p className="field-help">
+                  Global result period: {displayedRequest?.startMonth} to{' '}
+                  {displayedRequest?.endMonth} UTC. Displaying {filteredSeriesPoints.length} of{' '}
+                  {series.points.length} periods
+                  {isTemporalFilterActive(temporalFilters) ? ' after display filters' : ''}.
+                </p>
+                <TemporalFiltersPanel
+                  points={series.points}
+                  filters={temporalFilters}
+                  hemisphere={seriesHemisphere}
+                  onChange={setTemporalFilters}
+                  onReset={() => setTemporalFilters(EMPTY_TEMPORAL_FILTERS)}
+                />
+                <TimeSeriesChart
+                  points={filteredSeriesPoints}
+                  units={series.units}
+                  qualityStatus={series.qualityStatus}
+                  coverage={series.coverage}
+                  emptyMessage="No observation matches the selected temporal display filters."
+                />
+                <p className="muted">
+                  {series.note} Aggregation: {series.aggregationMethod}. {series.qualityNote}
+                </p>
+              </section>
+            ) : !seriesLoading && resultMap ? (
+              <StateNotice icon="activity">
+                Select a point or polygon, then load its temporal series. A period without
+                observation will remain a gap, never a zero.
+              </StateNotice>
+            ) : null}
+
             {delivery ? (
               <div className="delivery-status">
                 <strong>
-                  Delivery <StatusPill state={delivery.state} />
+                  Delivery {delivery.kind ? `(${delivery.kind.replaceAll('_', ' ')})` : ''}{' '}
+                  <StatusPill state={delivery.state} />
                 </strong>
                 {delivery.message ? <p>{delivery.message}</p> : null}
                 {delivery.state === 'READY' && delivery.downloadUrl ? (
-                  <a className="button button-primary" href={delivery.downloadUrl}>
+                  <a
+                    className="button button-primary"
+                    href={delivery.downloadUrl}
+                    download={
+                      delivery.kind === 'dependency_archive'
+                        ? 'meogap-archive.geojson'
+                        : 'meogap-product.geojson'
+                    }
+                  >
                     <Icon name="download" />
-                    Download delivery
+                    Download {delivery.kind === 'dependency_archive' ? 'archive' : 'product'}
                   </a>
                 ) : null}
                 {delivery.state !== 'READY' ? (

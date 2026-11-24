@@ -64,6 +64,7 @@ def test_all_public_demo_routes_complete_the_documented_happy_path() -> None:
     products = client.get('/api/v1/catalogue/products', headers=AUTH_HEADERS)
     product = client.get('/api/v1/catalogue/products/ndvi', headers=AUTH_HEADERS)
     requirements = client.get('/api/v1/catalogue/products/ndvi/input-requirements', headers=AUTH_HEADERS)
+    missions = client.get('/api/v1/catalogue/products/ndvi/missions', headers=AUTH_HEADERS)
     aois = client.get('/api/v1/aois', headers=AUTH_HEADERS)
     created_aoi = client.post(
         '/api/v1/aois',
@@ -77,6 +78,11 @@ def test_all_public_demo_routes_complete_the_documented_happy_path() -> None:
         headers=AUTH_HEADERS,
         json={'description': 'Updated deterministic AOI.'},
     )
+    estimate = client.post(
+        '/api/v1/analysis-requests/estimate',
+        headers=AUTH_HEADERS,
+        json={'product_id': 'ndvi', 'aoi_id': aoi_id, 'period': {'start_month': '2026-01', 'end_month': '2026-02'}},
+    )
     created_request = client.post(
         '/api/v1/analysis-requests',
         headers=AUTH_HEADERS,
@@ -89,34 +95,62 @@ def test_all_public_demo_routes_complete_the_documented_happy_path() -> None:
     completed = client.get(f'/api/v1/analysis-requests/{request_id}', headers=AUTH_HEADERS)
     result_id = completed.json()['result_id']
     result_map = client.get(f'/api/v1/results/{result_id}/map', headers=AUTH_HEADERS)
+    result_detail = client.get(f'/api/v1/results/{result_id}', headers=AUTH_HEADERS)
     series = client.get(f'/api/v1/results/{result_id}/series', headers=AUTH_HEADERS)
+    series_query = client.post(
+        f'/api/v1/results/{result_id}/series',
+        headers=AUTH_HEADERS,
+        json={
+            'geometry_wkt': 'POINT(1.44 43.60)',
+            'crs': 'EPSG:4326',
+            'period': {'start_month': '2026-01', 'end_month': '2026-02'},
+        },
+    )
     lineage = client.get(f'/api/v1/results/{result_id}/lineage', headers=AUTH_HEADERS)
     delivery = client.post(
         f'/api/v1/results/{result_id}/deliveries',
         headers=AUTH_HEADERS,
         json={'kind': 'final_product'},
     )
+    archive = client.post(
+        f'/api/v1/results/{result_id}/deliveries',
+        headers=AUTH_HEADERS,
+        json={'kind': 'dependency_archive'},
+    )
     ready_delivery = client.get(f'/api/v1/deliveries/{delivery.json()["delivery_id"]}', headers=AUTH_HEADERS)
+    ready_archive = client.get(f'/api/v1/deliveries/{archive.json()["delivery_id"]}', headers=AUTH_HEADERS)
+    account = client.get('/api/v1/account', headers=AUTH_HEADERS)
     balance = client.get('/api/v1/credits/balance', headers=AUTH_HEADERS)
     deleted_aoi = client.delete(f'/api/v1/aois/{aoi_id}', headers=AUTH_HEADERS)
     # Assert
     assert products.status_code == status.HTTP_200_OK
     assert product.status_code == status.HTTP_200_OK
     assert requirements.status_code == status.HTTP_200_OK
+    assert missions.json()['items'][0]['source_id'] == 'Sentinel'
     assert len(aois.json()['items']) == SEEDED_AOI_COUNT
     assert created_aoi.status_code == status.HTTP_201_CREATED
     assert retrieved_aoi.status_code == status.HTTP_200_OK
     assert updated_aoi.json()['revision'] == UPDATED_AOI_REVISION
+    assert estimate.json()['admission'] == 'ADMITTED'
     assert created_request.status_code == status.HTTP_201_CREATED
     assert requests.status_code == status.HTTP_200_OK
     assert proposed.json()['state'] == 'PROPOSED'
     assert executing.json()['state'] == 'IN_EXECUTION'
     assert completed.json()['state'] == 'COMPLETED'
     assert result_map.json()['kind'] == 'DEMO_PLACEHOLDER'
+    assert result_map.json()['is_demo'] is True
+    assert result_detail.json()['result_id'] == result_id
     assert series.json()['points'] == []
+    assert series_query.status_code == status.HTTP_200_OK
+    assert series_query.json()['selection_type'] == 'Point'
+    assert series_query.json()['crs'] == 'EPSG:4326'
+    assert series_query.json()['points'][0]['state'] in {'VALID', 'MISSING', 'MASKED'}
     assert lineage.json()['request_id'] == request_id
     assert delivery.status_code == status.HTTP_202_ACCEPTED
     assert ready_delivery.json()['state'] == 'READY'
+    assert ready_delivery.json()['kind'] == 'final_product'
+    assert ready_archive.json()['kind'] == 'dependency_archive'
+    assert account.json()['user_id'] == 'demo-user'
     assert balance.json()['unit'] == 'credits'
     assert deleted_aoi.status_code == status.HTTP_204_NO_CONTENT
 

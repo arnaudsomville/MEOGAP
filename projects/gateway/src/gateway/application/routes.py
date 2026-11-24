@@ -16,7 +16,7 @@ from meogap.scientific.products import (
 )
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from gateway.core.demo import DEMO_OWNER_ID, DemoStore
+from gateway.core.demo import DemoStore, account_identity, owner_for_token
 
 API_TAG = 'gateway'
 DESCRIPTION_MAX_LENGTH = 1000
@@ -113,6 +113,7 @@ class ProductResponse(BaseModel):
     category: ProductCategory
     native_resolution: str
     temporal_resolution: str
+    units: str
     availability: ProductAvailability
     validation_status: ProductValidationStatus
     inputs: list[str]
@@ -120,6 +121,11 @@ class ProductResponse(BaseModel):
     limitations: list[str]
     supported_sources: list[SourceMission]
     supported_resolutions_m: list[int]
+    supported_spatial_inputs: list[Literal['AOI', 'POI', 'LOI']]
+    supported_frequencies: list[Literal['monthly', 'seasonal', 'annual']]
+    max_period_months: int
+    documentation_status: str
+    documentation_url: str | None
     preview: ProductPreview | None
 
 
@@ -140,6 +146,48 @@ class ProductRequirementsResponse(BaseModel):
     inputs: list[str]
     limitations: list[str]
     note: str
+
+
+class SourceMissionInfo(BaseModel):
+    """Compatible source mission with its declared operational metadata."""
+
+    model_config = ConfigDict(extra='forbid')
+
+    source_id: SourceMission
+    name: str
+    provider: str
+    instrument: str
+    native_resolution: str
+    temporal_resolution: str
+    availability: str
+
+
+class ProductMissionsResponse(BaseModel):
+    """Compatible source missions for one product."""
+
+    model_config = ConfigDict(extra='forbid')
+
+    product_id: str
+    items: list[SourceMissionInfo]
+
+
+class CostEstimateResponse(BaseModel):
+    """Deterministic cost estimate and admission decision."""
+
+    model_config = ConfigDict(extra='forbid')
+
+    product_id: str
+    aoi_id: str
+    start_month: str
+    end_month: str
+    feasible: bool
+    estimated_credits: int
+    currency: str
+    balance: int | None
+    balance_available: bool
+    admission: str
+    conditions: list[str]
+    limitations: list[str]
 
 
 class AnalysisPeriodRequest(BaseModel):
@@ -237,16 +285,92 @@ class ResultMapResponse(BaseModel):
     kind: str
     note: str
     result_id: str
+    request_id: str
+    product_id: str
+    result_version: str
+    units: str
+    validation_status: ProductValidationStatus
+    quality_status: str
+    quality_note: str
+    is_demo: bool
+
+
+class ResultDetailResponse(BaseModel):
+    """Explicit result metadata and retained scope."""
+
+    model_config = ConfigDict(extra='forbid')
+
+    result_id: str
+    request_id: str
+    product_id: str
+    product_name: str
+    result_version: str
+    aoi_name: str
+    geometry_snapshot: AoiGeometry
+    start_month: str
+    end_month: str
+    units: str
+    validation_status: ProductValidationStatus
+    quality_status: str
+    quality_note: str
+    provenance_note: str
+    is_demo: bool
+
+
+class ResultSeriesQueryRequest(BaseModel):
+    """Bounded spatial/temporal series request for one result."""
+
+    model_config = ConfigDict(extra='forbid')
+
+    geometry_wkt: str = Field(min_length=1)
+    crs: str = Field(min_length=1)
+    period: AnalysisPeriodRequest
+    parameters: list[str] | None = None
+
+
+class ResultSeriesPoint(BaseModel):
+    """One explicit period value, gap, mask or invalid observation."""
+
+    model_config = ConfigDict(extra='forbid')
+
+    period_start: str
+    period_end: str
+    value: float | None
+    unit: str
+    state: str
+    quality_status: str
+    coverage: float | None
+    note: str | None
 
 
 class ResultSeriesResponse(BaseModel):
-    """Series response that avoids fabricating scientific observations."""
+    """Legacy empty series placeholder retained for compatibility."""
 
     model_config = ConfigDict(extra='forbid')
 
     result_id: str
     points: list[Any]
     note: str
+
+
+class ResultSeriesQueryResponse(BaseModel):
+    """Structured deterministic series explicitly marked as demonstration data."""
+
+    model_config = ConfigDict(extra='forbid')
+
+    result_id: str
+    product_id: str
+    geometry_wkt: str
+    crs: str
+    selection_type: str
+    aggregation_method: str
+    units: str
+    quality_status: str
+    quality_note: str
+    coverage: float | None
+    is_demo: bool
+    note: str
+    points: list[ResultSeriesPoint]
 
 
 class ResultLineageResponse(BaseModel):
@@ -276,11 +400,22 @@ class DeliveryResponse(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
     delivery_id: str
+    kind: str
     state: str
     download_url: str | None
     message: str | None
     created_at: str
     updated_at: str
+
+
+class AccountResponse(BaseModel):
+    """Deterministic demo account identity."""
+
+    model_config = ConfigDict(extra='forbid')
+
+    user_id: str
+    display_name: str
+    session_status: str
 
 
 ResponseDefinitions: TypeAlias = dict[int | str, dict[str, Any]]
@@ -307,19 +442,19 @@ BALANCE_ERRORS: ResponseDefinitions = {
 DEMO_OWNER_DEPENDENCY = Depends(get_identity)
 
 
-def _demo_owner(_: Identity = DEMO_OWNER_DEPENDENCY) -> str:
-    """Return the single deterministic owner after transport authentication.
+def _demo_owner(identity: Identity = DEMO_OWNER_DEPENDENCY) -> str:
+    """Derive the deterministic owner from the authenticated bearer token.
 
     Args:
     ----
-        _(Identity): syntactically validated M0 bearer credential.
+        identity(Identity): syntactically validated M0 bearer credential.
 
     Returns:
     -------
         str: deterministic demo owner identifier.
 
     """
-    return DEMO_OWNER_ID
+    return owner_for_token(identity.token)
 
 
 def build_demo_router(store: DemoStore) -> APIRouter:  # noqa: C901
@@ -397,6 +532,27 @@ def build_demo_router(store: DemoStore) -> APIRouter:  # noqa: C901
 
         """
         return store.get_product_requirements(product_id)
+
+    @router.get(
+        '/api/v1/catalogue/products/{product_id}/missions',
+        operation_id='gateway_list_product_missions',
+        summary='List compatible source missions for a product.',
+        response_model=ProductMissionsResponse,
+        responses=NOT_FOUND_ERRORS,
+    )
+    def list_product_missions(product_id: str) -> dict[str, Any]:
+        """Return product-compatible missions and their declared metadata.
+
+        Args:
+        ----
+            product_id(str): requested product identifier.
+
+        Returns:
+        -------
+            dict[str, Any]: compatible mission descriptors.
+
+        """
+        return store.list_product_missions(product_id)
 
     @router.get(
         '/api/v1/aois',
@@ -522,6 +678,39 @@ def build_demo_router(store: DemoStore) -> APIRouter:  # noqa: C901
         """
         store.delete_aoi(owner_id, aoi_id)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    @router.post(
+        '/api/v1/analysis-requests/estimate',
+        operation_id='gateway_estimate_analysis_request',
+        summary='Estimate cost and admission for an analysis request.',
+        response_model=CostEstimateResponse,
+        responses=NOT_FOUND_ERRORS,
+    )
+    def estimate_analysis_request(
+        payload: AnalysisRequestCreateRequest,
+        owner_id: str = Depends(_demo_owner),
+    ) -> dict[str, Any]:
+        """Return the deterministic estimate and admission decision.
+
+        Args:
+        ----
+            payload(AnalysisRequestCreateRequest): candidate request constraints.
+            owner_id(str): deterministic authenticated owner.
+
+        Returns:
+        -------
+            dict[str, Any]: estimate, balance and admission decision.
+
+        """
+        return store.estimate_request(
+            owner_id,
+            payload.product_id,
+            payload.aoi_id,
+            payload.period.start_month,
+            payload.period.end_month,
+            spatial_resolution_m=payload.spatial_resolution_m,
+            sources=payload.sources,
+        )
 
     @router.post(
         '/api/v1/analysis-requests',
@@ -668,6 +857,28 @@ def build_demo_router(store: DemoStore) -> APIRouter:  # noqa: C901
         return store.get_result_map(owner_id, result_id)
 
     @router.get(
+        '/api/v1/results/{result_id}',
+        operation_id='gateway_get_result',
+        summary='Retrieve result metadata and retained scope.',
+        response_model=ResultDetailResponse,
+        responses=NOT_FOUND_ERRORS,
+    )
+    def get_result(result_id: str, owner_id: str = Depends(_demo_owner)) -> dict[str, Any]:
+        """Return explicit metadata for one completed result.
+
+        Args:
+        ----
+            result_id(str): result identifier.
+            owner_id(str): deterministic authenticated owner.
+
+        Returns:
+        -------
+            dict[str, Any]: result metadata and retained scope.
+
+        """
+        return store.get_result(owner_id, result_id)
+
+    @router.get(
         '/api/v1/results/{result_id}/series',
         operation_id='gateway_get_result_series',
         summary='Request an analytical series.',
@@ -688,6 +899,40 @@ def build_demo_router(store: DemoStore) -> APIRouter:  # noqa: C901
 
         """
         return store.get_result_series(owner_id, result_id)
+
+    @router.post(
+        '/api/v1/results/{result_id}/series',
+        operation_id='gateway_query_result_series',
+        summary='Query a bounded spatial and temporal series.',
+        response_model=ResultSeriesQueryResponse,
+        responses=NOT_FOUND_ERRORS,
+    )
+    def query_result_series(
+        result_id: str,
+        payload: ResultSeriesQueryRequest,
+        owner_id: str = Depends(_demo_owner),
+    ) -> dict[str, Any]:
+        """Return a deterministic series for one explicit selection.
+
+        Args:
+        ----
+            result_id(str): result identifier.
+            payload(ResultSeriesQueryRequest): WKT selection, CRS and period.
+            owner_id(str): deterministic authenticated owner.
+
+        Returns:
+        -------
+            dict[str, Any]: structured demonstration series.
+
+        """
+        return store.query_result_series(
+            owner_id,
+            result_id,
+            payload.geometry_wkt,
+            payload.crs,
+            payload.period.start_month,
+            payload.period.end_month,
+        )
 
     @router.get(
         '/api/v1/results/{result_id}/lineage',
@@ -721,7 +966,7 @@ def build_demo_router(store: DemoStore) -> APIRouter:  # noqa: C901
     )
     def create_delivery(
         result_id: str,
-        _: DeliveryCreateRequest,
+        payload: DeliveryCreateRequest,
         owner_id: str = Depends(_demo_owner),
     ) -> dict[str, Any]:
         """Start deterministic delivery preparation.
@@ -729,7 +974,7 @@ def build_demo_router(store: DemoStore) -> APIRouter:  # noqa: C901
         Args:
         ----
             result_id(str): completed result identifier.
-            _(DeliveryCreateRequest): requested delivery kind.
+            payload(DeliveryCreateRequest): requested delivery kind.
             owner_id(str): deterministic authenticated owner.
 
         Returns:
@@ -737,7 +982,7 @@ def build_demo_router(store: DemoStore) -> APIRouter:  # noqa: C901
             dict[str, Any]: newly preparing delivery.
 
         """
-        return store.serialize_delivery(store.create_delivery(owner_id, result_id))
+        return store.serialize_delivery(store.create_delivery(owner_id, result_id, payload.kind))
 
     @router.get(
         '/api/v1/deliveries/{delivery_id}',
@@ -760,6 +1005,27 @@ def build_demo_router(store: DemoStore) -> APIRouter:  # noqa: C901
 
         """
         return store.serialize_delivery(store.get_delivery(owner_id, delivery_id))
+
+    @router.get(
+        '/api/v1/account',
+        operation_id='gateway_get_account',
+        summary='Retrieve the authenticated demo account identity.',
+        response_model=AccountResponse,
+        responses=COMMON_UNAUTHORIZED,
+    )
+    def get_account(owner_id: str = Depends(_demo_owner)) -> dict[str, Any]:
+        """Return the deterministic demo account identity.
+
+        Args:
+        ----
+            owner_id(str): deterministic authenticated owner.
+
+        Returns:
+        -------
+            dict[str, Any]: public account identity.
+
+        """
+        return account_identity(owner_id)
 
     @router.get(
         '/api/v1/credits/balance',

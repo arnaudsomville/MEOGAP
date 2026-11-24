@@ -30,8 +30,27 @@ const validateProduct = ajv.getSchema('gateway#/components/schemas/ProductRespon
 const validateCreateRequest = ajv.getSchema(
   'gateway#/components/schemas/AnalysisRequestCreateRequest',
 )
+const validateMissions = ajv.getSchema('gateway#/components/schemas/ProductMissionsResponse')
+const validateEstimate = ajv.getSchema('gateway#/components/schemas/CostEstimateResponse')
+const validateSeriesRequest = ajv.getSchema('gateway#/components/schemas/ResultSeriesQueryRequest')
+const validateSeries = ajv.getSchema('gateway#/components/schemas/ResultSeriesQueryResponse')
+const validateResult = ajv.getSchema('gateway#/components/schemas/ResultDetailResponse')
+const validateAccount = ajv.getSchema('gateway#/components/schemas/AccountResponse')
+const validateDelivery = ajv.getSchema('gateway#/components/schemas/DeliveryResponse')
 
-if (!validateHealth || !validateError || !validateProduct || !validateCreateRequest) {
+if (
+  !validateHealth ||
+  !validateError ||
+  !validateProduct ||
+  !validateCreateRequest ||
+  !validateMissions ||
+  !validateEstimate ||
+  !validateSeriesRequest ||
+  !validateSeries ||
+  !validateResult ||
+  !validateAccount ||
+  !validateDelivery
+) {
   throw new Error('The reference contract is missing a shared schema.')
 }
 
@@ -132,6 +151,7 @@ describe('REST reference contract', () => {
       category: 'Vegetation',
       native_resolution: '10 m',
       temporal_resolution: '5 days',
+      units: 'unitless',
       availability: 'DEMO',
       validation_status: 'NOT_VALIDATED',
       inputs: ['Red reflectance'],
@@ -139,6 +159,11 @@ describe('REST reference contract', () => {
       limitations: ['Deterministic M0 descriptor.'],
       supported_sources: ['Sentinel', 'Landsat'],
       supported_resolutions_m: [10, 20],
+      supported_spatial_inputs: ['AOI', 'POI', 'LOI'],
+      supported_frequencies: ['monthly', 'seasonal', 'annual'],
+      max_period_months: 120,
+      documentation_status: 'PLACEHOLDER',
+      documentation_url: null,
       preview: {
         url: 'data:image/svg+xml,preview',
         alt: 'NDVI illustrative preview',
@@ -177,6 +202,150 @@ describe('REST reference contract', () => {
         })),
       )
       await expect(getHealth()).rejects.toThrow('Invalid payload: version must be a string')
+    },
+  )
+  it(
+    'accepts extended scientific metadata, series and archive schemas',
+    { tags: ['contract'] },
+    () => {
+      expect(
+        validateMissions({
+          product_id: 'ndvi',
+          items: [
+            {
+              source_id: 'Sentinel',
+              name: 'Sentinel',
+              provider: 'ESA',
+              instrument: 'MSI',
+              native_resolution: '10 m',
+              temporal_resolution: '5 days',
+              availability: 'DEMO',
+            },
+          ],
+        }),
+      ).toBe(true)
+      expect(
+        validateEstimate({
+          product_id: 'ndvi',
+          aoi_id: 'aoi-1',
+          start_month: '2026-01',
+          end_month: '2026-02',
+          feasible: true,
+          estimated_credits: 3,
+          currency: 'credits',
+          balance: 12,
+          balance_available: true,
+          admission: 'ADMITTED',
+          conditions: [],
+          limitations: [],
+        }),
+      ).toBe(true)
+      expect(
+        validateSeriesRequest({
+          geometry_wkt: 'POINT(1.44 43.6)',
+          crs: 'EPSG:4326',
+          period: { start_month: '2026-01', end_month: '2026-02' },
+        }),
+      ).toBe(true)
+      expect(
+        validateSeries({
+          result_id: 'result-1',
+          product_id: 'ndvi',
+          geometry_wkt: 'POINT(1.44 43.6)',
+          crs: 'EPSG:4326',
+          selection_type: 'Point',
+          aggregation_method: 'point_sample',
+          units: 'unitless',
+          quality_status: 'PARTIAL',
+          quality_note: 'Demo.',
+          coverage: null,
+          is_demo: true,
+          note: 'Demo.',
+          points: [
+            {
+              period_start: '2026-01-01',
+              period_end: '2026-01-31',
+              value: 0,
+              unit: 'unitless',
+              state: 'VALID',
+              quality_status: 'VALID',
+              coverage: null,
+              note: null,
+            },
+          ],
+        }),
+      ).toBe(true)
+      expect(
+        validateResult({
+          result_id: 'result-1',
+          request_id: 'request-1',
+          product_id: 'ndvi',
+          product_name: 'NDVI',
+          result_version: '1',
+          aoi_name: 'Toulouse',
+          geometry_snapshot: {
+            type: 'Polygon',
+            coordinates: [
+              [
+                [1.38, 43.56],
+                [1.49, 43.56],
+                [1.49, 43.66],
+                [1.38, 43.56],
+              ],
+            ],
+          },
+          start_month: '2026-01',
+          end_month: '2026-02',
+          units: 'unitless',
+          validation_status: 'NOT_VALIDATED',
+          quality_status: 'PARTIAL',
+          quality_note: 'Demo.',
+          provenance_note: 'Demo.',
+          is_demo: true,
+        }),
+      ).toBe(true)
+      expect(
+        validateAccount({
+          user_id: 'demo-user',
+          display_name: 'MEOGAP demo user',
+          session_status: 'AUTHENTICATED',
+        }),
+      ).toBe(true)
+      expect(
+        validateDelivery({
+          delivery_id: 'delivery-1',
+          kind: 'dependency_archive',
+          state: 'READY',
+          download_url: 'data:application/geo+json;base64,abc',
+          message: null,
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z',
+        }),
+      ).toBe(true)
+    },
+  )
+
+  it(
+    'rejects unsupported CRS and selection schemas through the contract',
+    { tags: ['contract'] },
+    () => {
+      expect(
+        validateSeriesRequest({
+          geometry_wkt: 'POINT(1.44 43.6)',
+          crs: '',
+          period: { start_month: '2026-01', end_month: '2026-02' },
+        }),
+      ).toBe(false)
+      expect(
+        validateDelivery({
+          delivery_id: 'delivery-1',
+          state: 'READY',
+          download_url: null,
+          message: null,
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z',
+        }),
+      ).toBe(false)
     },
   )
 })

@@ -55,6 +55,9 @@ export type ProductPreview = {
   attribution: string | null
 }
 
+export type SpatialInputType = 'AOI' | 'POI' | 'LOI'
+export type TemporalFrequency = 'monthly' | 'seasonal' | 'annual'
+
 export type Product = {
   id: string
   name: string
@@ -63,14 +66,35 @@ export type Product = {
   category: string | null
   nativeResolution: string | null
   temporalResolution: string | null
+  units: string | null
   availability: string | null
   validationStatus: string | null
+  documentationStatus: string | null
+  documentationUrl: string | null
+  maxPeriodMonths: number | null
   inputs: string[]
   parameters: string[]
   limitations: string[]
   supportedSources: string[]
   supportedResolutionsM: number[]
+  supportedSpatialInputs: SpatialInputType[]
+  supportedFrequencies: TemporalFrequency[]
   preview: ProductPreview | null
+}
+
+export type SourceMissionInfo = {
+  id: string
+  name: string
+  provider: string
+  instrument: string
+  nativeResolution: string
+  temporalResolution: string
+  availability: string
+}
+
+export type ProductMissions = {
+  productId: string
+  items: SourceMissionInfo[]
 }
 
 export type ProductRequirements = {
@@ -96,6 +120,9 @@ export type AnalysisRequest = {
   state: AnalysisState
   productId: string | null
   aoiId: string | null
+  aoiName: string | null
+  sourceAoiRevision: number | null
+  geometrySnapshot: AoiGeometry | null
   startMonth: string | null
   endMonth: string | null
   requestedSources: string[]
@@ -104,6 +131,7 @@ export type AnalysisRequest = {
   actualCredits: number | null
   resultId: string | null
   message: string | null
+  failureStage: string | null
 }
 
 export type AnalysisRequestInput = {
@@ -115,17 +143,104 @@ export type AnalysisRequestInput = {
   sources?: string[]
 }
 
+export type CostAdmission = 'ADMITTED' | 'INSUFFICIENT_CREDITS' | 'UNAVAILABLE'
+
+export type CostEstimate = {
+  productId: string
+  aoiId: string
+  startMonth: string
+  endMonth: string
+  feasible: boolean
+  estimatedCredits: number
+  currency: string
+  balance: number | null
+  balanceAvailable: boolean
+  admission: CostAdmission
+  conditions: string[]
+  limitations: string[]
+}
+
 export type ResultMap = {
   url: string
   bounds: [Position, Position] | null
+  requestId: string | null
+  productId: string | null
+  resultVersion: string | null
+  units: string | null
+  validationStatus: string | null
+  qualityStatus: string | null
+  qualityNote: string | null
+  isDemo: boolean
+}
+
+export type ResultDetail = {
+  id: string
+  requestId: string
+  productId: string
+  productName: string
+  resultVersion: string
+  aoiName: string
+  geometry: AoiGeometry
+  startMonth: string
+  endMonth: string
+  units: string
+  validationStatus: string
+  qualityStatus: string
+  qualityNote: string
+  provenanceNote: string
+  isDemo: boolean
+}
+
+export const SERIES_STATES = ['VALID', 'MISSING', 'MASKED', 'INVALID'] as const
+
+export type SeriesState = (typeof SERIES_STATES)[number]
+
+export type SeriesPoint = {
+  periodStart: string
+  periodEnd: string
+  value: number | null
+  unit: string
+  state: SeriesState
+  qualityStatus: string
+  coverage: number | null
+  note: string | null
+}
+
+export type SeriesSelectionType = 'Point' | 'Polygon'
+
+export type SeriesResponse = {
+  resultId: string
+  productId: string
+  geometryWkt: string
+  crs: string
+  selectionType: SeriesSelectionType
+  aggregationMethod: string
+  units: string
+  qualityStatus: string
+  qualityNote: string
+  coverage: number | null
+  isDemo: boolean
+  note: string
+  points: SeriesPoint[]
+}
+
+export type SeriesRequestInput = {
+  geometryWkt: string
+  crs: string
+  startMonth: string
+  endMonth: string
+  parameters?: string[]
 }
 
 export const DELIVERY_STATES = ['PREPARING', 'READY', 'FAILED'] as const
 
 export type DeliveryState = (typeof DELIVERY_STATES)[number]
 
+export type DeliveryKind = 'final_product' | 'dependency_archive'
+
 export type Delivery = {
   id: string
+  kind: DeliveryKind | null
   state: DeliveryState
   downloadUrl: string | null
   message: string | null
@@ -134,6 +249,12 @@ export type Delivery = {
 export type CreditBalance = {
   balance: number
   unit: string | null
+}
+
+export type Account = {
+  userId: string
+  displayName: string
+  sessionStatus: string
 }
 
 const API_PREFIX = '/api/v1'
@@ -386,6 +507,21 @@ export function parseAoiList(payload: unknown): Aoi[] {
   return parseEnvelopeList(payload, ['items', 'aois']).map(parseAoi)
 }
 
+const SPATIAL_INPUT_TYPES: readonly SpatialInputType[] = ['AOI', 'POI', 'LOI']
+const TEMPORAL_FREQUENCIES: readonly TemporalFrequency[] = ['monthly', 'seasonal', 'annual']
+
+function optionalSpatialInputList(value: Record<string, unknown>, key: string): SpatialInputType[] {
+  return optionalStringListFrom(value, [key]).filter((item): item is SpatialInputType =>
+    SPATIAL_INPUT_TYPES.includes(item as SpatialInputType),
+  )
+}
+
+function optionalFrequencyList(value: Record<string, unknown>, key: string): TemporalFrequency[] {
+  return optionalStringListFrom(value, [key]).filter((item): item is TemporalFrequency =>
+    TEMPORAL_FREQUENCIES.includes(item as TemporalFrequency),
+  )
+}
+
 export function parseProduct(payload: unknown): Product {
   const product = requireRecord(payload, 'product must be an object')
   return {
@@ -396,17 +532,43 @@ export function parseProduct(payload: unknown): Product {
     category: optionalStringFrom(product, ['category']),
     nativeResolution: optionalStringFrom(product, ['native_resolution']),
     temporalResolution: optionalStringFrom(product, ['temporal_resolution']),
+    units: optionalStringFrom(product, ['units']),
     availability: optionalStringFrom(product, ['availability']),
     validationStatus: optionalStringFrom(product, [
       'validation_status',
       'scientific_validation_status',
     ]),
+    documentationStatus: optionalStringFrom(product, ['documentation_status']),
+    documentationUrl: optionalStringFrom(product, ['documentation_url']),
+    maxPeriodMonths: optionalNumberFrom(product, ['max_period_months']),
     inputs: optionalStringListFrom(product, ['inputs']),
     parameters: optionalStringListFrom(product, ['parameters']),
     limitations: optionalStringListFrom(product, ['limitations']),
     supportedSources: optionalStringListFrom(product, ['supported_sources']),
     supportedResolutionsM: optionalIntegerListFrom(product, ['supported_resolutions_m']),
+    supportedSpatialInputs: optionalSpatialInputList(product, 'supported_spatial_inputs'),
+    supportedFrequencies: optionalFrequencyList(product, 'supported_frequencies'),
     preview: parseProductPreview(product.preview),
+  }
+}
+
+export function parseProductMissions(payload: unknown): ProductMissions {
+  const record = requireRecord(payload, 'product missions must be an object')
+  const items = parseEnvelopeList(payload, ['items']).map((item) => {
+    const mission = requireRecord(item, 'mission must be an object')
+    return {
+      id: requireStringFrom(mission, ['source_id', 'id']),
+      name: requireString(mission, 'name'),
+      provider: requireString(mission, 'provider'),
+      instrument: requireString(mission, 'instrument'),
+      nativeResolution: requireString(mission, 'native_resolution'),
+      temporalResolution: requireString(mission, 'temporal_resolution'),
+      availability: requireString(mission, 'availability'),
+    }
+  })
+  return {
+    productId: requireStringFrom(record, ['product_id', 'id']),
+    items,
   }
 }
 
@@ -431,11 +593,16 @@ export function parseAnalysisRequest(payload: unknown): AnalysisRequest {
     throw new Error(`Invalid payload: unsupported analysis request state ${state}`)
   }
   const proposal = isRecord(request.proposal) ? request.proposal : request
+  const failure = isRecord(request.failure) ? request.failure : null
+  const geometry = request.geometry_snapshot
   return {
     id: requireStringFrom(request, ['request_id', 'id']),
     state: state as AnalysisState,
     productId: optionalStringFrom(request, ['product_id', 'productId']),
     aoiId: optionalStringFrom(request, ['aoi_id', 'aoiId']),
+    aoiName: optionalStringFrom(request, ['aoi_name']),
+    sourceAoiRevision: optionalNumberFrom(request, ['source_aoi_revision']),
+    geometrySnapshot: geometry == null ? null : parseAoiGeometry(geometry),
     startMonth: optionalStringFrom(request, ['start_month', 'period_start']),
     endMonth: optionalStringFrom(request, ['end_month', 'period_end']),
     requestedSources: optionalStringListFrom(request, ['requested_sources', 'sources']),
@@ -447,6 +614,7 @@ export function parseAnalysisRequest(payload: unknown): AnalysisRequest {
     actualCredits: optionalNumberFrom(request, ['actual_credits', 'actual_cost']),
     resultId: optionalStringFrom(request, ['result_id']),
     message: optionalStringFrom(request, ['message', 'reason']),
+    failureStage: failure ? optionalStringFrom(failure, ['stage']) : null,
   }
 }
 
@@ -469,6 +637,101 @@ export function parseResultMap(payload: unknown): ResultMap {
   return {
     url: requireStringFrom(resultMap, ['url', 'map_url', 'image_url']),
     bounds: parseBounds(resultMap.bounds),
+    requestId: optionalStringFrom(resultMap, ['request_id']),
+    productId: optionalStringFrom(resultMap, ['product_id']),
+    resultVersion: optionalStringFrom(resultMap, ['result_version']),
+    units: optionalStringFrom(resultMap, ['units']),
+    validationStatus: optionalStringFrom(resultMap, ['validation_status']),
+    qualityStatus: optionalStringFrom(resultMap, ['quality_status']),
+    qualityNote: optionalStringFrom(resultMap, ['quality_note']),
+    isDemo: resultMap.is_demo === true,
+  }
+}
+
+export function parseResultDetail(payload: unknown): ResultDetail {
+  const result = requireRecord(payload, 'result must be an object')
+  return {
+    id: requireStringFrom(result, ['result_id', 'id']),
+    requestId: requireString(result, 'request_id'),
+    productId: requireString(result, 'product_id'),
+    productName: requireString(result, 'product_name'),
+    resultVersion: requireString(result, 'result_version'),
+    aoiName: requireString(result, 'aoi_name'),
+    geometry: parseAoiGeometry(result.geometry_snapshot),
+    startMonth: requireString(result, 'start_month'),
+    endMonth: requireString(result, 'end_month'),
+    units: requireString(result, 'units'),
+    validationStatus: requireString(result, 'validation_status'),
+    qualityStatus: requireString(result, 'quality_status'),
+    qualityNote: requireString(result, 'quality_note'),
+    provenanceNote: requireString(result, 'provenance_note'),
+    isDemo: result.is_demo === true,
+  }
+}
+
+export function parseSeries(payload: unknown): SeriesResponse {
+  const series = requireRecord(payload, 'series must be an object')
+  const selectionType = requireString(series, 'selection_type')
+  if (selectionType !== 'Point' && selectionType !== 'Polygon') {
+    throw new Error('Invalid payload: series selection_type must be Point or Polygon')
+  }
+  const points = parseEnvelopeList(series.points, ['items']).map((item) => {
+    const point = requireRecord(item, 'series point must be an object')
+    const state = requireString(point, 'state')
+    if (!SERIES_STATES.includes(state as SeriesState)) {
+      throw new Error(`Invalid payload: unsupported series state ${state}`)
+    }
+    return {
+      periodStart: requireString(point, 'period_start'),
+      periodEnd: requireString(point, 'period_end'),
+      value: optionalNumberFrom(point, ['value']),
+      unit: requireString(point, 'unit'),
+      state: state as SeriesState,
+      qualityStatus: requireString(point, 'quality_status'),
+      coverage: optionalNumberFrom(point, ['coverage']),
+      note: optionalStringFrom(point, ['note']),
+    }
+  })
+  return {
+    resultId: requireString(series, 'result_id'),
+    productId: requireString(series, 'product_id'),
+    geometryWkt: requireString(series, 'geometry_wkt'),
+    crs: requireString(series, 'crs'),
+    selectionType,
+    aggregationMethod: requireString(series, 'aggregation_method'),
+    units: requireString(series, 'units'),
+    qualityStatus: requireString(series, 'quality_status'),
+    qualityNote: requireString(series, 'quality_note'),
+    coverage: optionalNumberFrom(series, ['coverage']),
+    isDemo: series.is_demo === true,
+    note: requireString(series, 'note'),
+    points,
+  }
+}
+
+export function parseCostEstimate(payload: unknown): CostEstimate {
+  const estimate = requireRecord(payload, 'cost estimate must be an object')
+  const admission = requireString(estimate, 'admission')
+  const estimatedCredits = optionalNumberFrom(estimate, ['estimated_credits'])
+  if (estimatedCredits === null) {
+    throw new Error('Invalid payload: estimated_credits must be a finite number')
+  }
+  if (!['ADMITTED', 'INSUFFICIENT_CREDITS', 'UNAVAILABLE'].includes(admission)) {
+    throw new Error(`Invalid payload: unsupported admission ${admission}`)
+  }
+  return {
+    productId: requireString(estimate, 'product_id'),
+    aoiId: requireString(estimate, 'aoi_id'),
+    startMonth: requireString(estimate, 'start_month'),
+    endMonth: requireString(estimate, 'end_month'),
+    feasible: estimate.feasible === true,
+    estimatedCredits,
+    currency: requireString(estimate, 'currency'),
+    balance: optionalNumberFrom(estimate, ['balance']),
+    balanceAvailable: estimate.balance_available === true,
+    admission: admission as CostAdmission,
+    conditions: optionalStringListFrom(estimate, ['conditions']),
+    limitations: optionalStringListFrom(estimate, ['limitations']),
   }
 }
 
@@ -478,11 +741,22 @@ export function parseDelivery(payload: unknown): Delivery {
   if (!DELIVERY_STATES.includes(state as DeliveryState)) {
     throw new Error(`Invalid payload: unsupported delivery state ${state}`)
   }
+  const kind = optionalStringFrom(delivery, ['kind'])
   return {
     id: requireStringFrom(delivery, ['delivery_id', 'id']),
+    kind: kind === 'final_product' || kind === 'dependency_archive' ? kind : null,
     state: state as DeliveryState,
     downloadUrl: optionalStringFrom(delivery, ['download_url', 'url']),
     message: optionalStringFrom(delivery, ['message', 'reason']),
+  }
+}
+
+export function parseAccount(payload: unknown): Account {
+  const account = requireRecord(payload, 'account must be an object')
+  return {
+    userId: requireStringFrom(account, ['user_id', 'id']),
+    displayName: requireStringFrom(account, ['display_name', 'name']),
+    sessionStatus: requireString(account, 'session_status'),
   }
 }
 
@@ -559,6 +833,13 @@ export function getProductRequirements(id: string): Promise<ApiResponse<ProductR
   )
 }
 
+export function getProductMissions(id: string): Promise<ApiResponse<ProductMissions>> {
+  return requestJson(
+    `${API_PREFIX}/catalogue/products/${idPathSegment(id)}/missions`,
+    parseProductMissions,
+  )
+}
+
 export function listAnalysisRequests(): Promise<ApiResponse<AnalysisRequest[]>> {
   return requestJson(`${API_PREFIX}/analysis-requests`, parseAnalysisRequestList)
 }
@@ -573,6 +854,24 @@ export function createAnalysisRequest(
   return requestJson(
     `${API_PREFIX}/analysis-requests`,
     parseAnalysisRequest,
+    jsonRequest('POST', {
+      product_id: input.productId,
+      aoi_id: input.aoiId,
+      period: { start_month: input.startMonth, end_month: input.endMonth },
+      ...(input.spatialResolutionM != null
+        ? { spatial_resolution_m: input.spatialResolutionM }
+        : {}),
+      ...(input.sources && input.sources.length > 0 ? { sources: input.sources } : {}),
+    }),
+  )
+}
+
+export function estimateAnalysisRequest(
+  input: AnalysisRequestInput,
+): Promise<ApiResponse<CostEstimate>> {
+  return requestJson(
+    `${API_PREFIX}/analysis-requests/estimate`,
+    parseCostEstimate,
     jsonRequest('POST', {
       product_id: input.productId,
       aoi_id: input.aoiId,
@@ -609,12 +908,39 @@ export function getResultMap(id: string): Promise<ApiResponse<ResultMap>> {
   return requestJson(`${API_PREFIX}/results/${idPathSegment(id)}/map`, parseResultMap)
 }
 
-export function createDelivery(id: string): Promise<ApiResponse<Delivery>> {
+export function getResult(id: string): Promise<ApiResponse<ResultDetail>> {
+  return requestJson(`${API_PREFIX}/results/${idPathSegment(id)}`, parseResultDetail)
+}
+
+export function queryResultSeries(
+  resultId: string,
+  input: SeriesRequestInput,
+): Promise<ApiResponse<SeriesResponse>> {
+  return requestJson(
+    `${API_PREFIX}/results/${idPathSegment(resultId)}/series`,
+    parseSeries,
+    jsonRequest('POST', {
+      geometry_wkt: input.geometryWkt,
+      crs: input.crs,
+      period: { start_month: input.startMonth, end_month: input.endMonth },
+      ...(input.parameters && input.parameters.length > 0 ? { parameters: input.parameters } : {}),
+    }),
+  )
+}
+
+export function createDelivery(
+  id: string,
+  kind: DeliveryKind = 'final_product',
+): Promise<ApiResponse<Delivery>> {
   return requestJson(
     `${API_PREFIX}/results/${idPathSegment(id)}/deliveries`,
     parseDelivery,
-    jsonRequest('POST', { kind: 'final_product' }),
+    jsonRequest('POST', { kind }),
   )
+}
+
+export function getAccount(): Promise<ApiResponse<Account>> {
+  return requestJson(`${API_PREFIX}/account`, parseAccount)
 }
 
 export function getDelivery(id: string): Promise<ApiResponse<Delivery>> {

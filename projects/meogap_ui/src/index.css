@@ -1663,3 +1663,144 @@ textarea {
     min-width: 0;
   }
 }
+
+/* Result exploration, temporal series and cost controls */
+.cost-estimate,
+.inspector-selection,
+.series-section,
+.temporal-filters {
+  border: 1px solid rgb(85 227 209 / 20%);
+  border-radius: 10px;
+  margin-top: 16px;
+  padding: 14px;
+}
+
+.cost-estimate h4,
+.inspector-selection h3,
+.temporal-filters h4 {
+  margin: 0 0 8px;
+}
+
+.admission-admitted {
+  color: #7ce38b;
+}
+
+.admission-insufficient_credits,
+.admission-unavailable,
+.failure-text {
+  color: #ff9b8f;
+}
+
+.inspector-metadata {
+  grid-template-columns: minmax(120px, 0.45fr) 1fr;
+  margin: 10px 0;
+}
+
+.inspector-content {
+  gap: 18px;
+}
+
+.inspector-selection .button {
+  flex: 0 1 auto;
+}
+
+.series-figure {
+  margin: 12px 0 0;
+}
+
+.series-figure figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+
+.series-chart {
+  background: rgb(4 20 29 / 42%);
+  border-radius: 8px;
+  display: block;
+  height: auto;
+  width: 100%;
+}
+
+.series-grid {
+  stroke: rgb(255 255 255 / 9%);
+  stroke-width: 1;
+}
+
+.series-zero-line {
+  stroke: rgb(255 255 255 / 28%);
+  stroke-dasharray: 4 4;
+  stroke-width: 1;
+}
+
+.series-axis-label {
+  fill: rgb(234 242 242 / 68%);
+  font-size: 10px;
+}
+
+.series-line {
+  fill: none;
+  stroke: #55e3d1;
+  stroke-width: 2;
+}
+
+.series-point {
+  fill: #55e3d1;
+}
+
+.series-point-zero {
+  fill: #ffd166;
+}
+
+.series-table {
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-top: 10px;
+  width: 100%;
+}
+
+.series-table caption {
+  caption-side: top;
+  text-align: left;
+  padding-bottom: 4px;
+}
+
+.series-table th,
+.series-table td {
+  border-bottom: 1px solid rgb(255 255 255 / 8%);
+  padding: 4px 6px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.series-table thead th {
+  color: rgb(234 242 242 / 68%);
+  font-weight: 600;
+}
+
+.temporal-filters header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.temporal-filters .choice-group {
+  margin-top: 10px;
+}
+
+.temporal-filters .checkbox-grid {
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+@media (max-width: 1000px) {
+  .inspector-metadata {
+    grid-template-columns: 1fr;
+  }
+
+  .series-table {
+    display: block;
+    overflow-x: auto;
+  }
+}
