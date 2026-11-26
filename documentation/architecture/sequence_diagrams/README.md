@@ -4,6 +4,8 @@ These diagrams describe end-to-end logical flows across MEOGAP components. They 
 
 They are design artifacts, not API contracts. They do not prescribe REST routes, payload schemas, message topics, worker topology or storage formats.
 
+> **M0 implementation note.** CON and SCI are not integrated in M0. The Gateway mock uses the simplified lifecycle `queued → processing → succeeded` without manual confirmation ([ADR-0005](../adr/ADR-0005-m0-asynchronous-request-lifecycle.md)). The diagrams below describe the target architecture.
+
 ## Scenarios
 
 | Scenario | Document | Coverage | Review status |

@@ -405,3 +405,45 @@ reported as **non-blocking warnings**, mirroring the Python heuristic.
 detected from the project manifest. To introduce a language (for example Rust), add a detection branch and the
 corresponding targets. Each language adapter is responsible for applying `MIN_TEST_COVERAGE` with its own
 toolchain and producing a per-project coverage artifact.
+
+## 19) Test tags
+
+Every test MUST declare at least one tag. Tags make suites filterable and keep the category of each test
+explicit. Allowed tags are:
+
+| Tag | Meaning |
+| --- | --- |
+| `unit` | Isolated logic, exceptions and edge cases. |
+| `contract` | Component boundaries against committed contracts. |
+| `functional` | Complete user-visible behavior. |
+| `integration` | Interactions with real infrastructure. |
+| `validation` | Comparison with external reference data. |
+| `benchmark` | Performance or resource measurements. |
+| `regression` | Behavior frozen against stored references. |
+
+### Python
+
+Set the module-level marker once per test module:
+
+```python
+import pytest
+
+pytestmark = pytest.mark.unit
+```
+
+Use `pytestmark = pytest.mark.contract` for contract tests. A module or test may declare several tags with a
+list. The shared `meogap.test_utilities.pytest_plugin` plugin is enabled through `addopts` in every Python
+project and fails collection when a test has no allowed tag.
+
+### TypeScript / React
+
+Pass the tag as test options:
+
+```ts
+it('returns the health payload', { tags: ['unit'] }, async () => {
+  // ...
+})
+```
+
+Tags are declared in `projects/meogap_ui/vite.config.ts`; `strictTags` rejects unknown tag names. Use
+`{ tags: ['contract'] }` for tests that validate local objects against the reference contract.

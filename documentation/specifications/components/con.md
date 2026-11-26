@@ -51,3 +51,7 @@ These interfaces remain proposed and should be refined as the component contract
 3. Should credit admission remain within CON or become a separate accounting responsibility as the credit model grows?
 4. What exact versioned interface should SCI expose to CON for feasibility, complexity estimation, plan acceptance and execution outcomes?
 4. Which identity transport contract should M0 use (e.g. bearer token), and how will service-to-service identity be represented without allowing clients to assert ownership?
+
+## M0 implementation notes
+
+- CON is not integrated in M0. The Gateway mock implements a simplified asynchronous request lifecycle `queued → processing → succeeded` with explicit `failed` and `cancelled` states and no manual proposal confirmation. This is an M0 contract decision recorded in `documentation/architecture/adr/ADR-0005-m0-asynchronous-request-lifecycle.md`; the proposal/preparation target lifecycle remains valid for the CON/SCI integration milestone.

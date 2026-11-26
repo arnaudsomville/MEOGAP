@@ -1,1 +1,0 @@
-"""MEOGAP REST backend package."""

@@ -1,0 +1,3248 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "description": "Public REST gateway for the MEOGAP platform.",
+    "version": "0.1.0",
+    "title": "MEOGAP Gateway"
+  },
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Report service liveness.",
+        "description": "Return the service liveness payload.\n\nArgs:\n----\n    None\n\nReturns:\n-------\n    HealthResponse: status, service name and version.",
+        "operationId": "gateway_health",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/catalogue/products": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Browse the scientific product catalogue.",
+        "description": "Return deterministic public product descriptors.",
+        "operationId": "gateway_list_products",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/catalogue/products/{product_id}": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Retrieve a product definition.",
+        "description": "Return one deterministic public product descriptor.",
+        "operationId": "gateway_get_product",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/catalogue/products/{product_id}/input-requirements": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Inspect abstract scientific input requirements.",
+        "description": "Return one deterministic product requirement descriptor.",
+        "operationId": "gateway_get_product_input_requirements",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductRequirementsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/catalogue/products/{product_id}/missions": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "List compatible source missions for a product.",
+        "description": "Return product-compatible missions and their declared metadata.",
+        "operationId": "gateway_list_product_missions",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductMissionsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/aois": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "List AOIs owned by the authenticated user.",
+        "description": "Return all caller-owned saved AOIs.",
+        "operationId": "gateway_list_user_aois",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AoiListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Create an AOI owned by the authenticated user.",
+        "description": "Create one caller-owned AOI.",
+        "operationId": "gateway_create_user_aoi",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AoiCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AoiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/aois/{aoi_id}": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Retrieve an AOI owned by the authenticated user.",
+        "description": "Return one caller-owned AOI.",
+        "operationId": "gateway_get_user_aoi",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "aoi_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AoiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Update an owned AOI and increment its revision.",
+        "description": "Update one caller-owned AOI.",
+        "operationId": "gateway_update_user_aoi",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "aoi_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AoiUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AoiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Delete an owned AOI. Existing request snapshots are unaffected.",
+        "description": "Delete one caller-owned AOI.",
+        "operationId": "gateway_delete_user_aoi",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "aoi_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis-requests/estimate": {
+      "post": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Estimate cost and admission for an analysis request.",
+        "description": "Return the deterministic estimate and admission decision.",
+        "operationId": "gateway_estimate_analysis_request",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalysisRequestCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostEstimateResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/analysis-requests": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "List analysis requests.",
+        "description": "Return all caller-owned analysis requests in their current state.",
+        "operationId": "gateway_list_analysis_requests",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisRequestListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Submit an analysis request and return its queued state.",
+        "description": "Create a queued request immediately; no manual confirmation is required.",
+        "operationId": "gateway_create_analysis_request",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalysisRequestCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisRequestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/analysis-requests/{request_id}": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Retrieve the authoritative request state.",
+        "description": "Return the authoritative lifecycle state for one request.",
+        "operationId": "gateway_get_analysis_request",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisRequestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis-requests/{request_id}/cancel": {
+      "post": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Request analysis cancellation.",
+        "description": "Cancel a queued or processing request.",
+        "operationId": "gateway_cancel_analysis_request",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisRequestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Request state prevents this operation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/places/suggestions": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Search populated places or recommend places near a map position.",
+        "description": "Return matching places, nearby places or popular places.",
+        "operationId": "gateway_list_place_suggestions",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 120
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Place name, country or region."
+            },
+            "description": "Place name, country or region."
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "maximum": 90,
+                  "minimum": -90
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Map centre latitude."
+            },
+            "description": "Map centre latitude."
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "maximum": 180,
+                  "minimum": -180
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Map centre longitude."
+            },
+            "description": "Map centre longitude."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceSuggestionListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/results/{result_id}/map": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Request a map representation.",
+        "description": "Return an explicit synthetic map representation with mock display frames.",
+        "operationId": "gateway_get_result_map",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "result_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "frames",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 120,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional mock frame count."
+            },
+            "description": "Optional mock frame count."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultMapResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/results/{result_id}": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Retrieve result metadata and retained scope.",
+        "description": "Return explicit metadata for one completed result.",
+        "operationId": "gateway_get_result",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "result_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/results/{result_id}/series": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Request an analytical series.",
+        "description": "Return the non-fabricated legacy series placeholder.",
+        "operationId": "gateway_get_result_series",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "result_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultSeriesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Query a bounded spatial and temporal series.",
+        "description": "Return a deterministic series for one explicit selection and CRS.",
+        "operationId": "gateway_query_result_series",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "result_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResultSeriesQueryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultSeriesQueryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/results/{result_id}/lineage": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Inspect result lineage.",
+        "description": "Return retained synthetic request provenance.",
+        "operationId": "gateway_get_result_lineage",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "result_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultLineageResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/results/{result_id}/deliveries": {
+      "post": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Request final-product or dependency-archive delivery.",
+        "description": "Start deterministic delivery preparation.",
+        "operationId": "gateway_create_delivery",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "result_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliveryCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliveryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/deliveries/{delivery_id}": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Retrieve delivery state and access.",
+        "description": "Return the current delivery state and access URL when ready.",
+        "operationId": "gateway_get_delivery",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "delivery_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeliveryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request payload was invalid.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Retrieve the authenticated demo account identity.",
+        "description": "Return the deterministic demo account identity.",
+        "operationId": "gateway_get_account",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/credits/balance": {
+      "get": {
+        "tags": [
+          "gateway"
+        ],
+        "summary": "Retrieve the caller credit balance.",
+        "description": "Return available deterministic demo credits.",
+        "operationId": "gateway_get_credit_balance",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditBalanceResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Credit balance is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AccountResponse": {
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "session_status": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "user_id",
+          "display_name",
+          "session_status"
+        ],
+        "description": "Deterministic demo account identity."
+      },
+      "AnalysisPeriodRequest": {
+        "properties": {
+          "start_month": {
+            "type": "string"
+          },
+          "end_month": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "start_month",
+          "end_month"
+        ],
+        "description": "Inclusive analysis period expressed in UTC calendar months."
+      },
+      "AnalysisRequestCreateRequest": {
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "aoi_id": {
+            "type": "string"
+          },
+          "period": {
+            "$ref": "#/components/schemas/AnalysisPeriodRequest"
+          },
+          "spatial_resolution_m": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sources": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SourceMission"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "temporal_frequency": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "monthly",
+                  "semimonthly",
+                  "weekly",
+                  "three_day",
+                  "two_day",
+                  "daily"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "product_id",
+          "aoi_id",
+          "period"
+        ],
+        "description": "Payload used to submit an asynchronous analysis request."
+      },
+      "AnalysisRequestListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AnalysisRequestResponse"
+            },
+            "type": "array"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "description": "Public collection of caller-owned analysis requests."
+      },
+      "AnalysisRequestResponse": {
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "processing",
+              "succeeded",
+              "failed",
+              "cancelled"
+            ]
+          },
+          "product_id": {
+            "type": "string"
+          },
+          "aoi_id": {
+            "type": "string"
+          },
+          "source_aoi_revision": {
+            "type": "integer"
+          },
+          "aoi_name": {
+            "type": "string"
+          },
+          "geometry_snapshot": {
+            "$ref": "#/components/schemas/AoiGeometry"
+          },
+          "start_month": {
+            "type": "string"
+          },
+          "end_month": {
+            "type": "string"
+          },
+          "requested_sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "requested_spatial_resolution_m": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "temporal_frequency": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "monthly",
+                  "semimonthly",
+                  "weekly",
+                  "three_day",
+                  "two_day",
+                  "daily"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provenance": {
+            "type": "string",
+            "const": "SYNTHETIC_DEMO"
+          },
+          "estimated_credits": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "actual_credits": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "result_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FailureResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "request_id",
+          "state",
+          "product_id",
+          "aoi_id",
+          "source_aoi_revision",
+          "aoi_name",
+          "geometry_snapshot",
+          "start_month",
+          "end_month",
+          "requested_sources",
+          "requested_spatial_resolution_m",
+          "temporal_frequency",
+          "provenance",
+          "estimated_credits",
+          "actual_credits",
+          "result_id",
+          "message",
+          "failure",
+          "created_at",
+          "updated_at"
+        ],
+        "description": "Public analysis request lifecycle state and retained spatial snapshot."
+      },
+      "AoiCreateRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "geometry": {
+            "$ref": "#/components/schemas/AoiGeometry"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "geometry"
+        ],
+        "description": "Payload for one new saved AOI."
+      },
+      "AoiGeometry": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "Polygon",
+              "MultiPolygon"
+            ]
+          },
+          "coordinates": {
+            "items": {},
+            "type": "array"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "coordinates"
+        ],
+        "description": "Supported polygonal GeoJSON geometry supplied by the public client."
+      },
+      "AoiListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AoiResponse"
+            },
+            "type": "array"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "description": "Public AOI collection representation."
+      },
+      "AoiResponse": {
+        "properties": {
+          "aoi_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "geometry": {
+            "$ref": "#/components/schemas/AoiGeometry"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "aoi_id",
+          "name",
+          "description",
+          "geometry",
+          "revision",
+          "created_at",
+          "updated_at"
+        ],
+        "description": "Public owner-scoped AOI representation."
+      },
+      "AoiUpdateRequest": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "geometry": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AoiGeometry"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "description": "Partial payload for an existing saved AOI."
+      },
+      "CostEstimateResponse": {
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "aoi_id": {
+            "type": "string"
+          },
+          "start_month": {
+            "type": "string"
+          },
+          "end_month": {
+            "type": "string"
+          },
+          "feasible": {
+            "type": "boolean"
+          },
+          "estimated_credits": {
+            "type": "integer"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "balance": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "balance_available": {
+            "type": "boolean"
+          },
+          "admission": {
+            "type": "string"
+          },
+          "conditions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "product_id",
+          "aoi_id",
+          "start_month",
+          "end_month",
+          "feasible",
+          "estimated_credits",
+          "currency",
+          "balance",
+          "balance_available",
+          "admission",
+          "conditions",
+          "limitations"
+        ],
+        "description": "Deterministic cost estimate and admission decision."
+      },
+      "CreditBalanceResponse": {
+        "properties": {
+          "balance": {
+            "type": "integer"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "balance",
+          "unit",
+          "note"
+        ],
+        "description": "Available deterministic demo credits."
+      },
+      "DeliveryCreateRequest": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "description": "Delivery representation requested for a completed result."
+      },
+      "DeliveryResponse": {
+        "properties": {
+          "delivery_id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "download_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "delivery_id",
+          "kind",
+          "state",
+          "download_url",
+          "message",
+          "created_at",
+          "updated_at"
+        ],
+        "description": "Asynchronous deterministic demo delivery state."
+      },
+      "ErrorResponse": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Machine-readable error code."
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message."
+          },
+          "service": {
+            "type": "string",
+            "description": "Logical service that produced the error."
+          },
+          "operation": {
+            "type": "string",
+            "description": "Operation identifier or request path that failed."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "service",
+          "operation"
+        ],
+        "description": "Stable error envelope returned by every failed MEOGAP REST operation."
+      },
+      "FailureResponse": {
+        "properties": {
+          "stage": {
+            "type": "string"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "stage",
+          "message"
+        ],
+        "description": "Caller-safe request failure details."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Service status; ok when the process answers."
+          },
+          "service": {
+            "type": "string",
+            "description": "Logical service name."
+          },
+          "version": {
+            "type": "string",
+            "description": "Service version."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "service",
+          "version"
+        ],
+        "description": "Liveness payload exposed by every MEOGAP service."
+      },
+      "LegendStop": {
+        "properties": {
+          "value": {
+            "type": "number"
+          },
+          "color": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "value",
+          "color"
+        ],
+        "description": "One value/color break in a display colour map."
+      },
+      "PlaceSuggestion": {
+        "properties": {
+          "place_id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "admin1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "population": {
+            "type": "integer"
+          },
+          "feature_code": {
+            "type": "string"
+          },
+          "match_type": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "place_id",
+          "name",
+          "country",
+          "admin1",
+          "latitude",
+          "longitude",
+          "population",
+          "feature_code",
+          "match_type"
+        ],
+        "description": "One populated place suggestion."
+      },
+      "PlaceSuggestionListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlaceSuggestion"
+            },
+            "type": "array"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "description": "Place suggestion collection."
+      },
+      "ProductAvailability": {
+        "type": "string",
+        "enum": [
+          "DEMO",
+          "AVAILABLE",
+          "UNAVAILABLE"
+        ],
+        "description": "Lifecycle availability of a product definition."
+      },
+      "ProductCategory": {
+        "type": "string",
+        "enum": [
+          "Vegetation",
+          "Water",
+          "Land",
+          "Atmosphere"
+        ],
+        "description": "Broad scientific domain used to group products."
+      },
+      "ProductListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProductResponse"
+            },
+            "type": "array"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "description": "Public product catalogue collection."
+      },
+      "ProductMissionsResponse": {
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SourceMissionInfo"
+            },
+            "type": "array"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "product_id",
+          "items"
+        ],
+        "description": "Compatible source missions for one product."
+      },
+      "ProductPreview": {
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "alt": {
+            "type": "string"
+          },
+          "attribution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "url",
+          "alt",
+          "attribution"
+        ],
+        "description": "Local illustrative preview metadata owned by the product descriptor."
+      },
+      "ProductRequirementsResponse": {
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "inputs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "product_id",
+          "inputs",
+          "limitations",
+          "note"
+        ],
+        "description": "Public deterministic product input requirements."
+      },
+      "ProductResponse": {
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string"
+          },
+          "category": {
+            "$ref": "#/components/schemas/ProductCategory"
+          },
+          "native_resolution": {
+            "type": "string"
+          },
+          "temporal_resolution": {
+            "type": "string"
+          },
+          "units": {
+            "type": "string"
+          },
+          "availability": {
+            "$ref": "#/components/schemas/ProductAvailability"
+          },
+          "provenance": {
+            "type": "string",
+            "const": "SYNTHETIC_DEMO"
+          },
+          "validation_status": {
+            "$ref": "#/components/schemas/ProductValidationStatus"
+          },
+          "inputs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "parameters": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "supported_sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceMission"
+            },
+            "type": "array"
+          },
+          "supported_resolutions_m": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "supported_spatial_inputs": {
+            "items": {
+              "type": "string",
+              "const": "AOI"
+            },
+            "type": "array"
+          },
+          "supported_selection_geometries": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "POINT",
+                "POLYGON",
+                "RESULT_EXTENT"
+              ]
+            },
+            "type": "array"
+          },
+          "supported_frequencies": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "monthly",
+                "semimonthly",
+                "weekly",
+                "three_day",
+                "two_day",
+                "daily"
+              ]
+            },
+            "type": "array"
+          },
+          "max_period_months": {
+            "type": "integer"
+          },
+          "documentation_status": {
+            "type": "string"
+          },
+          "documentation_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "preview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProductPreview"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "product_id",
+          "name",
+          "description",
+          "level",
+          "category",
+          "native_resolution",
+          "temporal_resolution",
+          "units",
+          "availability",
+          "provenance",
+          "validation_status",
+          "inputs",
+          "parameters",
+          "limitations",
+          "supported_sources",
+          "supported_resolutions_m",
+          "supported_spatial_inputs",
+          "supported_selection_geometries",
+          "supported_frequencies",
+          "max_period_months",
+          "documentation_status",
+          "documentation_url",
+          "preview"
+        ],
+        "description": "Public deterministic product descriptor."
+      },
+      "ProductValidationStatus": {
+        "type": "string",
+        "enum": [
+          "NOT_VALIDATED",
+          "VALIDATED"
+        ],
+        "description": "Scientific validation state explicitly declared by the product owner."
+      },
+      "ResultDetailResponse": {
+        "properties": {
+          "result_id": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "product_id": {
+            "type": "string"
+          },
+          "product_name": {
+            "type": "string"
+          },
+          "result_version": {
+            "type": "string"
+          },
+          "aoi_name": {
+            "type": "string"
+          },
+          "geometry_snapshot": {
+            "$ref": "#/components/schemas/AoiGeometry"
+          },
+          "start_month": {
+            "type": "string"
+          },
+          "end_month": {
+            "type": "string"
+          },
+          "units": {
+            "type": "string"
+          },
+          "temporal_frequency": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "monthly",
+                  "semimonthly",
+                  "weekly",
+                  "three_day",
+                  "two_day",
+                  "daily"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provenance": {
+            "type": "string",
+            "const": "SYNTHETIC_DEMO"
+          },
+          "available_parameters": {
+            "items": {
+              "$ref": "#/components/schemas/SeriesParameter"
+            },
+            "type": "array"
+          },
+          "validation_status": {
+            "$ref": "#/components/schemas/ProductValidationStatus"
+          },
+          "quality_status": {
+            "type": "string"
+          },
+          "quality_note": {
+            "type": "string"
+          },
+          "provenance_note": {
+            "type": "string"
+          },
+          "is_demo": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "result_id",
+          "request_id",
+          "product_id",
+          "product_name",
+          "result_version",
+          "aoi_name",
+          "geometry_snapshot",
+          "start_month",
+          "end_month",
+          "units",
+          "temporal_frequency",
+          "provenance",
+          "available_parameters",
+          "validation_status",
+          "quality_status",
+          "quality_note",
+          "provenance_note",
+          "is_demo"
+        ],
+        "description": "Explicit result metadata and retained scope."
+      },
+      "ResultLegend": {
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "units": {
+            "type": "string"
+          },
+          "min": {
+            "type": "number"
+          },
+          "max": {
+            "type": "number"
+          },
+          "stops": {
+            "items": {
+              "$ref": "#/components/schemas/LegendStop"
+            },
+            "type": "array"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "units",
+          "min",
+          "max",
+          "stops"
+        ],
+        "description": "Colour-map metadata required to interpret a display representation."
+      },
+      "ResultLineageResponse": {
+        "properties": {
+          "result_id": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "product_id": {
+            "type": "string"
+          },
+          "aoi_name": {
+            "type": "string"
+          },
+          "geometry_snapshot": {
+            "$ref": "#/components/schemas/AoiGeometry"
+          },
+          "provenance": {
+            "type": "string",
+            "const": "SYNTHETIC_DEMO"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "result_id",
+          "request_id",
+          "product_id",
+          "aoi_name",
+          "geometry_snapshot",
+          "provenance",
+          "note"
+        ],
+        "description": "Minimal reliable M0 provenance for one result."
+      },
+      "ResultMapFrame": {
+        "properties": {
+          "frame_id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "period_start": {
+            "type": "string"
+          },
+          "period_end": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "visual_period_start": {
+            "type": "string"
+          },
+          "visual_period_end": {
+            "type": "string"
+          },
+          "is_reused_visual": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "frame_id",
+          "url",
+          "period_start",
+          "period_end",
+          "label",
+          "visual_period_start",
+          "visual_period_end",
+          "is_reused_visual"
+        ],
+        "description": "One mock display frame with its request-period date and reused visual period."
+      },
+      "ResultMapResponse": {
+        "properties": {
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bounds": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "array"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "provenance": {
+            "type": "string",
+            "const": "SYNTHETIC_DEMO"
+          },
+          "note": {
+            "type": "string"
+          },
+          "result_id": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "product_id": {
+            "type": "string"
+          },
+          "result_version": {
+            "type": "string"
+          },
+          "units": {
+            "type": "string"
+          },
+          "validation_status": {
+            "$ref": "#/components/schemas/ProductValidationStatus"
+          },
+          "quality_status": {
+            "type": "string"
+          },
+          "quality_note": {
+            "type": "string"
+          },
+          "legend": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResultLegend"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "geotiff_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "frames": {
+            "items": {
+              "$ref": "#/components/schemas/ResultMapFrame"
+            },
+            "type": "array"
+          },
+          "is_demo": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "url",
+          "bounds",
+          "kind",
+          "provenance",
+          "note",
+          "result_id",
+          "request_id",
+          "product_id",
+          "result_version",
+          "units",
+          "validation_status",
+          "quality_status",
+          "quality_note",
+          "legend",
+          "geotiff_url",
+          "frames",
+          "is_demo"
+        ],
+        "description": "Map overlay descriptor for a synthetic or bundled completed result."
+      },
+      "ResultSeriesPoint": {
+        "properties": {
+          "parameter": {
+            "type": "string"
+          },
+          "period_start": {
+            "type": "string"
+          },
+          "period_end": {
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "unit": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "quality_status": {
+            "type": "string"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "parameter",
+          "period_start",
+          "period_end",
+          "value",
+          "unit",
+          "state",
+          "quality_status",
+          "coverage",
+          "note"
+        ],
+        "description": "One explicit period value, gap, mask or invalid observation."
+      },
+      "ResultSeriesQueryRequest": {
+        "properties": {
+          "geometry_wkt": {
+            "type": "string",
+            "minLength": 1
+          },
+          "crs": {
+            "type": "string",
+            "minLength": 1
+          },
+          "period": {
+            "$ref": "#/components/schemas/AnalysisPeriodRequest"
+          },
+          "parameters": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "geometry_wkt",
+          "crs",
+          "period"
+        ],
+        "description": "Bounded spatial/temporal series request for one result."
+      },
+      "ResultSeriesQueryResponse": {
+        "properties": {
+          "result_id": {
+            "type": "string"
+          },
+          "product_id": {
+            "type": "string"
+          },
+          "geometry_wkt": {
+            "type": "string"
+          },
+          "crs": {
+            "type": "string"
+          },
+          "selection_type": {
+            "type": "string"
+          },
+          "aggregation_method": {
+            "type": "string"
+          },
+          "selection_area_km2": {
+            "type": "number"
+          },
+          "units": {
+            "type": "string"
+          },
+          "available_parameters": {
+            "items": {
+              "$ref": "#/components/schemas/SeriesParameter"
+            },
+            "type": "array"
+          },
+          "selected_parameters": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "quality_status": {
+            "type": "string"
+          },
+          "quality_note": {
+            "type": "string"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provenance": {
+            "type": "string",
+            "const": "SYNTHETIC_DEMO"
+          },
+          "is_demo": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": "string"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/ResultSeriesPoint"
+            },
+            "type": "array"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "result_id",
+          "product_id",
+          "geometry_wkt",
+          "crs",
+          "selection_type",
+          "aggregation_method",
+          "selection_area_km2",
+          "units",
+          "available_parameters",
+          "selected_parameters",
+          "quality_status",
+          "quality_note",
+          "coverage",
+          "provenance",
+          "is_demo",
+          "note",
+          "points"
+        ],
+        "description": "Structured deterministic series explicitly marked as demonstration data."
+      },
+      "ResultSeriesResponse": {
+        "properties": {
+          "result_id": {
+            "type": "string"
+          },
+          "points": {
+            "items": {},
+            "type": "array"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "result_id",
+          "points",
+          "note"
+        ],
+        "description": "Legacy empty series placeholder retained for compatibility."
+      },
+      "SeriesParameter": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "units": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "label",
+          "units"
+        ],
+        "description": "One available series parameter exposed by a result representation."
+      },
+      "SourceMission": {
+        "type": "string",
+        "enum": [
+          "GOES",
+          "Sentinel",
+          "Landsat",
+          "ECOSTRESS",
+          "MODIS",
+          "VIIRS"
+        ],
+        "description": "Source mission labels a product may declare as a requestable input."
+      },
+      "SourceMissionInfo": {
+        "properties": {
+          "source_id": {
+            "$ref": "#/components/schemas/SourceMission"
+          },
+          "name": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "instrument": {
+            "type": "string"
+          },
+          "native_resolution": {
+            "type": "string"
+          },
+          "temporal_resolution": {
+            "type": "string"
+          },
+          "availability": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source_id",
+          "name",
+          "provider",
+          "instrument",
+          "native_resolution",
+          "temporal_resolution",
+          "availability"
+        ],
+        "description": "Compatible source mission with its declared operational metadata."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "input": {},
+          "ctx": {
+            "type": "object"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ]
+}

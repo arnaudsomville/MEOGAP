@@ -1,0 +1,507 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MEOGAP Contract",
+    "version": "0.1.0",
+    "description": "Internal contract, control and orchestration service."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8001",
+      "description": "Local CON service."
+    }
+  ],
+  "tags": [
+    {
+      "name": "contract",
+      "description": "Internal control and orchestration service."
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/internal/v1/requests": {
+      "post": {
+        "tags": [
+          "contract"
+        ],
+        "summary": "Create a request and prepare a proposal.",
+        "operationId": "contract_create_request",
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "contract",
+                  "operation": "/internal/v1/requests"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "contract",
+                  "operation": "contract_create_request"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "contract"
+        ],
+        "summary": "List caller-visible requests.",
+        "operationId": "contract_list_requests",
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "contract",
+                  "operation": "/internal/v1/requests"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "contract",
+                  "operation": "contract_list_requests"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/requests/{request_id}/confirm": {
+      "post": {
+        "tags": [
+          "contract"
+        ],
+        "summary": "Confirm a proposal and launch computation.",
+        "operationId": "contract_confirm_request",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "description": "Analysis request identifier.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "contract",
+                  "operation": "/internal/v1/requests/{request_id}/confirm"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "contract",
+                  "operation": "contract_confirm_request"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/requests/{request_id}": {
+      "get": {
+        "tags": [
+          "contract"
+        ],
+        "summary": "Retrieve request status.",
+        "operationId": "contract_get_request",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "description": "Analysis request identifier.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "contract",
+                  "operation": "/internal/v1/requests/{request_id}"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "contract",
+                  "operation": "contract_get_request"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/credits/balance": {
+      "get": {
+        "tags": [
+          "contract"
+        ],
+        "summary": "Retrieve the caller credit balance.",
+        "operationId": "contract_get_credit_balance",
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "contract",
+                  "operation": "/internal/v1/credits/balance"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "contract",
+                  "operation": "contract_get_credit_balance"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/authorizations": {
+      "post": {
+        "tags": [
+          "contract"
+        ],
+        "summary": "Decide access to a result or resource.",
+        "operationId": "contract_decide_access",
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "contract",
+                  "operation": "/internal/v1/authorizations"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "contract",
+                  "operation": "contract_decide_access"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/deliveries": {
+      "post": {
+        "tags": [
+          "contract"
+        ],
+        "summary": "Create a delivery resource.",
+        "operationId": "contract_create_delivery",
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "contract",
+                  "operation": "/internal/v1/deliveries"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "contract",
+                  "operation": "contract_create_delivery"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/requests/{request_id}/cancel": {
+      "post": {
+        "tags": [
+          "contract"
+        ],
+        "summary": "Request cancellation of a request.",
+        "operationId": "contract_cancel_request",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "description": "Analysis request identifier.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "contract",
+                  "operation": "/internal/v1/requests/{request_id}/cancel"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "contract",
+                  "operation": "contract_cancel_request"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/health": {
+      "get": {
+        "tags": [
+          "contract"
+        ],
+        "summary": "Report service liveness.",
+        "operationId": "contract_health",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Service is alive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                },
+                "example": {
+                  "status": "ok",
+                  "service": "contract",
+                  "version": "0.1.0"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Bearer token required by every business operation."
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Stable error envelope returned by every failed MEOGAP REST operation.",
+        "required": [
+          "code",
+          "message",
+          "service",
+          "operation"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Machine-readable error code."
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message."
+          },
+          "service": {
+            "type": "string",
+            "description": "Logical service that produced the error."
+          },
+          "operation": {
+            "type": "string",
+            "description": "Operation identifier or request path that failed."
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Liveness payload exposed by every MEOGAP service.",
+        "required": [
+          "status",
+          "service",
+          "version"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Service status; ok when the process answers."
+          },
+          "service": {
+            "type": "string",
+            "description": "Logical service name."
+          },
+          "version": {
+            "type": "string",
+            "description": "Service version."
+          }
+        }
+      }
+    }
+  },
+  "x-meogap-status": {
+    "level": "m0-structural",
+    "requestAndSuccessSchemas": "open",
+    "openDecisionRefs": [
+      "M1-E07-T01",
+      "M1-E07-T02"
+    ]
+  },
+  "x-meogap-transport": "provisional-rest-scaffolding"
+}

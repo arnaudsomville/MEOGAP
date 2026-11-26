@@ -122,6 +122,8 @@ The current request lifecycle decisions are:
 - CON evaluates the persisted dependency plan and dispatches only computations whose required input representations are available. Independent eligible tasks may be dispatched concurrently; workers execute the tasks but do not resolve dependencies or repeatedly requeue blocked tasks.
 - SCI computes each product and writes its result object to storage. SCI sends CAT the computation metadata, initial object location and exact input references actually consumed. CAT registers the product and actual lineage, then confirms registration to SCI.
 - SCI reports the computation and registration outcome to CON, distinguishing scientific execution failure from asset-registration failure. CON owns the authoritative request/task state. CON does not store CAT's canonical asset reference or storage location; when it needs an asset, it queries CAT using the logical product/task identifier from its execution plan.
+
+> **M0 implementation note.** CON and SCI are not integrated in M0. The Gateway mock implements a simplified asynchronous lifecycle `queued → processing → succeeded` (with `failed` and `cancelled`) and creates the deterministic result itself. There is no manual proposal confirmation in M0. The proposal/preparation flow above remains the target architecture; see [ADR-0005](../../architecture/adr/ADR-0005-m0-asynchronous-request-lifecycle.md).
 - After a successful registration, CON records the task outcome and reevaluates the plan. Newly unblocked tasks become eligible for dispatch.
 - If a required task fails, CON marks that task **FAILED** and keeps its dependent tasks **BLOCKED**. Independent tasks that were already **READY** or **RUNNING** when the failure was detected are allowed to finish. CON waits for that work to settle; if a requested output remains impossible to produce, CON marks the overall request **FAILED**.
 - The request enters **COMPLETED** only after all requested outputs are available and registered in CAT. CON verifies completion using the logical output identifiers in its execution plan and CAT's authoritative catalogue state; it does not maintain a duplicate asset-reference/location mapping.
@@ -255,3 +257,30 @@ Workers, NATS, EO data providers and object storage are deliberately excluded fr
 ## 12. Failure and recovery sequence
 
 The validated failure policy and its two distinct scenarios are documented in [Failure and Recovery](../sequence_diagrams/failure-and-recovery.md). It distinguishes scientific computation failure from CAT asset-registration failure, preserves already eligible independent work, and prevents false request completion.
+
+## 12. User-owned AOI library — approved refinement (23 November 2026)
+
+The user-owned AOI library is a deliberate exception to the earlier rule that prohibited direct GAT ↔ CAT interaction.
+
+- CAT owns persistent AOI records and geometries. Each AOI is scoped to the authenticated user; CAT derives ownership from trusted caller context propagated by GAT. A caller-supplied owner/user identifier is not accepted as an authorization input.
+- GAT exposes the AOI library through the public REST API and calls CAT directly for AOI library operations. This direct interface is limited to user-owned AOI CRUD and does not authorize GAT to bypass CON for requests, private result representations, lineage, or delivery.
+- CON remains authoritative for request lifecycle, proposal/cost coordination, user-facing authorization of result access, and orchestration. A submitted request carries a snapshot of the selected AOI geometry and its source AOI identifier/revision; later edits or deletion of the library AOI do not mutate an existing request.
+- The UI can create an AOI independently from a request, browse/reuse saved AOIs, and start a request using an existing AOI. The request wizard may branch into AOI creation and return to the pending request with the newly saved AOI selected.
+- This exception supersedes earlier “no direct GAT ↔ CAT interface” statements only for AOI library operations. All other validated routes remain unchanged.
+
+The public and internal REST operations are specified in the gateway and catalog OpenAPI documents under projects/meogap_interfaces/rest/. The M0 Gateway implementation may use a deterministic in-memory/mock CAT provider, but the public contract must remain stable when CAT becomes persistent.
+
+## 13. Map workspace interaction model — approved UX direction (23 November 2026)
+
+The map occupies the full application viewport. Navigation, toolbars, drawers and inspectors are overlays above the map; opening or closing them must not resize the map container. The UI follows a map-first GIS workbench model inspired by the supplied Carbon Mapper reference.
+
+- A compact top toolbar exposes global actions including Requests, Indicators and Account.
+- A vertical left toolbar opens contextual tools/panels for product discovery, AOI drawing and the AOI library, with POI/LOI tools only where supported by M0 scope.
+- Requests opens an overlay panel that lists the authenticated user's requests and offers request creation. Request creation is also reachable from product details and the spatial-input workflow.
+- Indicators remains a visible, clickable empty view in M0; it has no functional backend operations in this milestone.
+- One primary overlay panel is open at a time. A lower, collapsible inspector may display selected-result metadata, legends, quality/provenance and time-series content when those capabilities exist.
+- AOI drawing is a spatial-editing action, not request submission. Saving creates or updates a library AOI. Creating a request is separate and selects an existing AOI or creates one before returning to the request form.
+- Pointer events inside overlays must not leak to the map. Drawing tools explicitly own map pointer interactions while active. Basemap context is visually distinct from scientific result layers.
+
+These are UI interaction requirements, not a mandate for a specific component library or map SDK.
+

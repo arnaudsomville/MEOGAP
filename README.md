@@ -64,11 +64,33 @@ For more detailed context, see `documentation/project_definition.md`. Agent-spec
 | Project | Role | Runtime |
 | --- | --- | --- |
 | `meogap_core` | Scientific core library (products, dependencies, quality, spatial/temporal analysis). No Docker image. | Python 3.11 |
-| `meogap_api` | REST backend, request lifecycle and result access. | Python 3.11 / FastAPI |
+| `meogap_interfaces` | Language-neutral OpenAPI reference contracts. No executable code. | JSON |
+| `gateway` | Public REST gateway (logical GAT), request lifecycle and result access. | Python 3.11 / FastAPI |
+| `contract` | Internal contract, control and orchestration service (logical CON). | Python 3.11 / FastAPI |
+| `scientific_processing` | Internal scientific processing service (logical SCI). | Python 3.11 / FastAPI |
+| `catalog` | Internal data and asset catalogue service (logical CAT). | Python 3.11 / FastAPI |
 | `meogap_worker` | Background execution worker depending on the core. | Python 3.11 |
 | `meogap_ui` | React frontend (map, AOI selection, Requests view). | Node.js / React / Vite |
 
-`meogap_api` and `meogap_worker` depend on `meogap_core` through a local `uv` path source. Python projects keep their unit tests under `tests/unit/`; the UI keeps its tests under `tests/`.
+`gateway`, `contract`, `scientific_processing`, `catalog` and `meogap_worker` depend on `meogap_core` through a local `uv` path source. `meogap_interfaces` is data-only and is not installed. Python projects keep their unit tests under `tests/unit/` and contract tests under `tests/contract/`; the UI keeps unit tests under `tests/` and contract tests under `tests/contract/`.
+
+Service projects (`gateway`, `contract`, `scientific_processing`, `catalog`, `meogap_worker`) follow the `core` / `infrastructure` / `application` layout, with a thin package-root `main.py` entrypoint. Shared application lifecycle and REST building blocks live in `meogap_core` (`meogap.app` and `meogap.rest`).
+
+### Current M0 boundaries
+
+- The public Gateway provides a deterministic in-memory M0 demo for catalogue, AOI, request, result and delivery journeys. Every response carries `X-MEOGAP-Demo: true`; no EO acquisition, scientific processing, persistent storage, or financial credit ledger is implemented.
+- Business REST operations in the internal services remain contract-compliant `501 Not Implemented` stubs; only their health routes are implemented.
+- Internal REST contracts are provisional M0 scaffolding. The architecture leaves internal physical transports open; no NATS contracts are selected.
+
+The transport decision is recorded as proposed, not approved, in `documentation/architecture/adr/ADR-0001-internal-transports.md`.
+- Bearer authentication is an M0 presence/syntax check, not production authentication. It does not establish a verified business identity.
+- The raw Bearer credential is a mock artefact only; it is not an owner identifier or an authorization decision.
+- Shared REST/application infrastructure currently lives in `meogap_core` as a pragmatic M0 foundation. This is accepted for now; extracting it would require a concrete architectural benefit and a separate decision.
+- The Gateway and UI M0 demo use documented product, request, result and delivery schemas. Their deterministic content is explicitly labelled as demo data and is not a scientific product claim.
+- M0 request submission uses the asynchronous `queued → processing → succeeded` lifecycle (with explicit `failed` and `cancelled` states) and requires no manual confirmation. Queue, processing and delivery delays are configurable environment variables.
+- The bundled georeferenced NDVI-like frames are `SYNTHETIC_DEMO` assets. They are not Sentinel-2 or Landsat observations, and no cloud-cover, masking or observation-quality statistic is computed for them.
+- M0 request inputs are saved AOIs only. Result exploration supports explicit point, polygon and complete-result selections transmitted as WKT with an explicit `EPSG:4326` CRS.
+- Place search uses a local GeoNames SQLite database built from the `allCountries` populated-place features (about 5.2 million places) and exposed through the Gateway. The committed archive is compressed; preparation and caching are documented in `tools/build_places_database.py` and `documentation/architecture/adr/ADR-0007-local-place-database.md`. GeoNames data is licensed under CC BY 4.0.
 
 ---
 
@@ -120,6 +142,21 @@ Install dependencies for all projects:
 make install
 ```
 
+Contract projects are data-only; `make install meogap_interfaces` reports that there is nothing to install.
+
+### 3. Prepare the local place database
+
+The Gateway place search uses a compressed GeoNames archive committed under
+`projects/gateway/src/gateway/assets/places/`. Decompress and index it once before starting the
+stack locally:
+
+```bash
+make prepare-places
+```
+
+The prepared SQLite file is cached in `GATEWAY_PLACES_CACHE_DIR` (default: the system temporary
+directory). It is not committed.
+
 ## Project commands
 
 The following commands operate on a specific project unless otherwise noted.
@@ -153,6 +190,7 @@ The language is detected from the project manifest:
 | --- | --- | --- | --- |
 | `pyproject.toml` | Python | `pytest --cov=src --cov-fail-under` | `coverage.xml` |
 | `package.json` | Node / React | `npm run test:coverage` | `coverage/cobertura-coverage.xml` |
+| `rest/` directory | Contracts | `openapi-spec-validator` | none |
 
 Node projects must expose a `test:coverage` script. The frontend stack is Vitest + React Testing Library + jsdom,
 with V8 coverage; see `agents/UNIT_TEST_GUIDE.md` §18.
@@ -168,6 +206,20 @@ Run tests only for modified projects:
 ```bash
 make test-modified-projects
 ```
+
+Run contract tests for one project, every component, or the affected projects:
+
+```bash
+make test-contract <project>
+make test-contract-all
+make test-contract-modified-projects
+```
+
+Contract projects (`projects/meogap_interfaces`) are validated as OpenAPI documents. Service and UI contract tests compare their live surface with the committed reference. See `projects/meogap_interfaces/README.md`.
+
+Contracts are resolved through `projects/meogap_interfaces/contracts.json`. Each service declares its provider in `[tool.meogap.contracts]`; the UI declares `meogapContracts.provider` in `package.json`. Tests resolve the same manifest without relying on the current working directory.
+
+For the UI, `npm test` runs unit and contract tests, `npm run test:unit` runs only unit tests, and `npm run test:contract` runs only the contract-conformance suite.
 
 ### Code quality
 
@@ -248,11 +300,13 @@ Reference projects live in `project_templates/`:
 | `dummy_ui_project` | React / TypeScript / Vite | Vitest + React Testing Library |
 
 To create a project, copy the relevant template into `projects/<name>`, update the manifest name, regenerate the
-lock with `make sync <name>`, then install it with `make install <name>`.
+lock with `make sync <name>`, then install it with `make install <name>`. Service projects must then be organized
+into the `core`, `infrastructure` and `application` modules described in `agents/CODING_STANDARDS.md`.
 
-The Makefile detects the language from the manifest and dispatches `make tests` to `tests-<lang>`. Adding another
-language means adding a detection branch and the matching `tests-<lang>` / `test-parity-<lang>` targets, each
-applying `MIN_TEST_COVERAGE` with its own toolchain.
+The Makefile detects the language from the manifest or from a `rest/` directory and dispatches `make tests` to
+`tests-<lang>`. A project with `rest/` is treated as `contracts`; it has no install step and is validated with
+`openapi-spec-validator`. Adding another language means adding a detection branch and the matching `tests-<lang>` /
+`test-parity-<lang>` targets, each applying `MIN_TEST_COVERAGE` with its own toolchain.
 
 ## Continuous integration
 
@@ -266,14 +320,24 @@ make ci-modified-projects
 Project selection is based on the changed files:
 
 - a project change selects that project;
-- a `meogap_core` change also selects `meogap_api` and `meogap_worker`;
+- a `meogap_core` change also selects `gateway`, `contract`, `scientific_processing`, `catalog` and `meogap_worker`;
+- a `meogap_interfaces` change also selects `gateway`, `contract`, `scientific_processing`, `catalog` and `meogap_ui`;
 - a root code or tooling change (`Makefile`, `docker-bake.hcl`, root `Dockerfile`, `compose.yaml`, workflows,
   pre-commit configuration, …) selects every project;
 - documentation, `agents/`, `project_templates/`, `.sops.yaml`, `.trivyignore` and Markdown changes do not trigger
   CI.
 
-The default branch (for example `main`) and tags run `make ci-all`, so every project is validated. CI does not
-build Docker images: image builds are reserved for the end-to-end tests introduced by the M0 functional epic.
+CI also runs `make test-contract-modified-projects` on development branches and `make test-contract-all` on the
+default branch and tags before the main CI step. The default branch (for example `main`) and tags run
+`make ci-all`, so every project is validated. Docker image builds and `make docker-smoke` run on the default branch
+and tags; development branches do not build images.
+
+## Open decisions
+
+- Product catalogue, analysis request, result and delivery schemas are not yet approved. They remain explicit open decisions in the M0 contracts and are tracked by the M1-E07 contract tickets (#118, #119, #124–#126).
+- Internal component transports remain unresolved. The current internal REST surfaces are provisional M0 scaffolding; see `documentation/architecture/adr/ADR-0001-internal-transports.md`.
+- The authentication provider, credential format, identity claims and trusted-context representation remain open. Bearer validation is an M0 mock only.
+- A minimal Gateway catalogue response and the corresponding UI catalogue/map slice are deferred until the Product, Request and Result contracts are approved.
 
 ## Notebooks
 
@@ -313,7 +377,13 @@ Build all project images:
 make build-all-images
 ```
 
-Build all images and run the full stack (API, worker and UI):
+Build, start and smoke-test the Compose stack, including every declared REST route:
+
+```bash
+make docker-smoke
+```
+
+Build all images and run the full stack (`gateway`, `contract`, `scientific_processing`, `catalog`, worker and UI):
 
 ```bash
 make run-meogap
@@ -321,10 +391,11 @@ make run-meogap
 
 This decrypts the build secrets, builds all images, starts the stack and prints the service URLs:
 
-- UI: `http://localhost:8080` (proxies `/api` to the API container)
-- API: `http://localhost:8000`
-- API documentation: `http://localhost:8000/docs`
-- API health: `http://localhost:8000/api/v1/health`
+- UI: `http://localhost:8080` (proxies `/api` to the `gateway` container)
+- Gateway: `http://localhost:8000`
+- Gateway documentation: `http://localhost:8000/docs`
+- Gateway health: `http://localhost:8000/api/v1/health`
+- Internal services: `contract`, `scientific_processing` and `catalog` are reachable only inside the Compose network.
 
 Stop the stack with:
 

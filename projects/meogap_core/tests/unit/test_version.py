@@ -1,5 +1,11 @@
+"""Unit tests for the package version."""
+
+import pytest
+
 from meogap import VERSION
 from meogap.version import VERSION as VERSION_MODULE
+
+pytestmark = pytest.mark.unit
 
 
 def test_version_is_exposed() -> None:

@@ -48,6 +48,18 @@ jobs:
           fi
       - name: Validate encrypted secrets
         run: make sops-decrypt-all
+      - name: Contract tests
+        run: |
+          make install-modified-projects
+          if [ "${{ github.ref_type }}" = "tag" ] || \
+             [ "${{ github.ref_name }}" = "${{ github.event.repository.default_branch }}" ]; then
+            make test-contract-all
+          else
+            make test-contract-modified-projects
+          fi
+      - name: Docker smoke
+        if: github.ref_type == 'tag' || github.ref_name == github.event.repository.default_branch
+        run: make docker-smoke
       - name: CI
         run: |
           if [ "${{ github.ref_type }}" = "tag" ] || \

@@ -104,15 +104,63 @@ writing it.
 ## Testing structure and naming
 
 ### Python
+Every Python test module MUST declare at least one pytest tag through `pytestmark` (`unit`, `contract`, ...).
+The shared plugin `meogap.test_utilities.pytest_plugin` fails collection when a test has no tag. See
+`agents/UNIT_TEST_GUIDE.md` §19.
+
 Every Python module under a project's `src/` must have a matching test module under `tests/unit` with the same
 relative path and a `test_` prefix (for example, `src/product/ndvi.py` -> `tests/unit/product/test_ndvi.py` when
 the project layout mirrors it). Keep source and test trees aligned where practical so it is immediately obvious
 where each behavior is tested. `__init__.py` modules do not require a dedicated test.
 
 ### TypeScript / React
+Every Vitest test MUST pass a `{ tags: [...] }` option (`unit`, `contract`, ...), and tags must be declared in
+`vite.config.ts` with `strictTags`. See `agents/UNIT_TEST_GUIDE.md` §19.
+
 Component and module tests live under `tests/` and mirror `src/` (`src/App.tsx` -> `tests/App.test.tsx`,
 `src/api/client.ts` -> `tests/api/client.test.ts`). Bootstrap (`main.tsx`), declaration files and barrel modules
 are exempt. See `agents/UNIT_TEST_GUIDE.md` §18.
+
+### Interface contracts
+- REST contracts live in `projects/meogap_interfaces/rest/` as language-neutral OpenAPI JSON. They are reference
+  documents, not importable packages.
+- Do not generate Python or TypeScript models from the contracts. Define the objects locally in the component and
+  compare them with the reference in `tests/contract/`.
+- Resolve contracts through `projects/meogap_interfaces/contracts.json`; do not hard-code relative paths.
+- Provider tests MUST compare the generated provider OpenAPI document against the reference, including operation IDs,
+  parameters, request bodies, response statuses and response/error schemas. Consumer tests MUST exercise the real
+  runtime parser, not only a manually declared TypeScript type.
+- Shared REST models, routers and bearer authentication belong in `projects/meogap_core` and are imported by
+  services. Do not duplicate them per service.
+- Contract tests MUST cover the operation set, the `401` unauthenticated response, the `501` authenticated
+  response, shared-schema field parity and a negative drift case.
+- A contract change is incomplete until the reference document, the implementation and the contract tests agree.
+  See `agents/REPOSITORY_RULES.md` § **“Interface contracts and generated code”**.
+
+### Service project structure
+- Every project that exposes a service process (`gateway`, `contract`, `scientific_processing`, `catalog`, `meogap_worker`) MUST organize its package into three main modules:
+  - `core/`: business logic and domain models;
+  - `infrastructure/`: concrete outbound interfaces and adapters;
+  - `application/`: application layer, lifecycle subclass and inbound interfaces.
+- The package-root `main.py` stays a thin process entrypoint. It MUST NOT contain business logic or infrastructure
+  wiring.
+- Reusable building blocks stay in `meogap_core`: `meogap.app` for application lifecycle and `meogap.rest` for HTTP
+  contracts, factory, middleware and the REST interface.
+- Tests SHOULD mirror these layers under `tests/unit/application/`, `tests/unit/core/` and
+  `tests/unit/infrastructure/` where practical.
+- Projects without a service process (`meogap_core`, `meogap_interfaces`, `meogap_ui`) are not required to use
+  this three-module layout.
+
+### Application management
+- `meogap.app.base.BaseApplication` is the abstract service application. Subclasses implement `startup` and
+  `shutdown` and provide a sequence of `BaseInterface` objects.
+- `BaseApplication` starts every interface in its own daemon thread, handles SIGINT/SIGTERM when running in the
+  main thread, and stops interfaces before running `shutdown`.
+- The REST interface lives in `meogap.rest.interface.RestInterface`. Its middleware lives in
+  `meogap.rest.middleware`, its factory in `meogap.rest.factory`, and its shared contracts in
+  `meogap.rest.contracts`. The REST interface runs FastAPI through uvicorn in its own thread.
+- Do not duplicate thread lifecycle, signal handling, `uvicorn` wiring or exception-handler registration in a
+  service module. Compose a `BaseApplication` subclass from reusable interfaces instead.
 
 ## Service pattern: Params, Inputs, Response
 Services are the core unit of computation. A service is the smallest independent unit of computation: it
@@ -132,6 +180,25 @@ encapsulates one algorithm or operation and exposes a clear execution entrypoint
 **Do / Don't**
 - **Do:** use a response dataclass for multiple outputs.
 - **Don't:** return tuples or dicts when the output is structured.
+
+### No raw dictionaries as structured service or route return values
+- **Forbidden:** building and returning a raw `dict[str, Any]` (or equivalent) as the structured output of a
+  service, domain method, route handler, or serialization helper. This includes inline literals such as
+  `return {'product_id': ..., 'admission': ...}`.
+- Internal service and domain boundaries must return explicit dataclasses (preferred for construction speed and
+  clarity) or dedicated domain objects. Pydantic models belong at the HTTP/contract boundary, where they provide
+  schema validation and OpenAPI generation; do not use Pydantic as an internal convenience container when a
+  dataclass is sufficient.
+- HTTP route handlers may return a domain dataclass directly when the declared `response_model` is configured with
+  `from_attributes=True`. If a route needs to construct a response model explicitly, construct the Pydantic model
+  or a typed envelope dataclass; never assemble an anonymous dictionary.
+- Dictionary constants are acceptable only for static lookup/config data (for example an enum-to-label map), not
+  for computed operation results. Dictionary-shaped JSON payloads may be produced only by the HTTP serialization
+  layer from typed objects.
+- List endpoints must return a typed collection/envelope dataclass or a Pydantic response model, not
+  `{'items': [...]}` assembled by hand.
+- Tests for a changed service or route must reject the previous raw-dictionary shape by asserting the returned
+  dataclass type (or the typed response model), not only field values.
 
 ### Params base class and validation
 - All Params dataclasses **must** inherit from a shared abstract base (for example, `ParamsBase`) that defines

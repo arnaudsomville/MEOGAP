@@ -14,6 +14,12 @@ dependencies = [
     "pydantic>=2.6.4",
 ]
 
+[project.optional-dependencies]
+http = [
+    "fastapi>=0.115.12",
+    "uvicorn>=0.30",
+]
+
 [dependency-groups]
 dev = [
     "ruff>=0.3.3",
@@ -23,6 +29,9 @@ dev = [
     "pytest-cov>=5.0.0",
     "pytest-mock>=3.14.0",
     "httpx>=0.28.1",
+    "fastapi>=0.115.12",
+    "uvicorn>=0.30",
+    "jsonschema>=4.22.0",
 ]
 
 ## Ruff -------------------------------------------------------------------------------------------- ""
@@ -85,3 +94,13 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 meogap = ["py.typed"]
+
+## Pytest ------------------------------------------------------------------------------------------ ""
+[tool.pytest.ini_options]
+addopts = "-p meogap.test_utilities.pytest_plugin"
+
+## Coverage ---------------------------------------------------------------------------------------- ""
+[tool.coverage.run]
+omit = [
+    "*/meogap/test_utilities/*",
+]

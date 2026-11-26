@@ -1,0 +1,16 @@
+{
+  "source": "GeoNames",
+  "source_url": "https://download.geonames.org/export/dump/allCountries.zip",
+  "source_license": "CC BY 4.0",
+  "feature_class": "P",
+  "place_count": 5235065,
+  "country_count": 252,
+  "admin1_count": 3865,
+  "row_count": 5235065,
+  "indexed": false,
+  "generated_at": "2026-11-26T10:42:34Z",
+  "build_seconds": 33.0,
+  "sqlite_bytes": 295964672,
+  "archive_bytes": 89259436,
+  "archive_path": "places.sqlite.xz"
+}

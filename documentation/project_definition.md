@@ -250,6 +250,8 @@ The request state remains retrievable through REST. Notifications are optional r
 
 Submitting an analysis request starts proposal preparation: CON persists the request, coordinates scientific feasibility and dependency resolution, and calculates the estimated cost. The proposal is returned for explicit user confirmation. Confirmation starts execution; the user may request cancellation in any request state except `COMPLETED`.
 
+> **M0 implementation note.** The target proposal/confirmation flow above depends on CON and SCI, which are not integrated in M0. The accepted M0 decision is a simpler asynchronous lifecycle: `POST → queued → processing → succeeded`, with explicit `failed` and `cancelled` states. A request is visible immediately after submission, REST remains authoritative after reload, and no manual confirmation is required. See [ADR-0005](architecture/adr/ADR-0005-m0-asynchronous-request-lifecycle.md). This is an M0 contract decision, not a replacement of the target architecture.
+
 Any user-facing operation expected to take more than **5 seconds** is exposed asynchronously from the start. GAT returns a request/reference and current state; UI retrieves state and the eventual outcome through REST. This API behavior does not dictate whether internal work uses a worker, NATS or another mechanism.
 
 ### 4.5 Implementation boundary
@@ -289,6 +291,8 @@ These cross-cutting requirements complement the system-level `SYS-*` capabilitie
 ### 5.4 Reference usage scenario
 
 After signing in, a user sees a multi-resolution satellite basemap, selects a supported product (for example, nighttime radiance), defines an AOI, POI or LOI and chooses a range of months. The user submits an **analysis request**. The request appears in the **Requests** view while CON prepares the proposal by evaluating scientific feasibility, resolving dependencies and estimating cost. The estimated cost and feasibility outcome are then displayed to the user, who explicitly confirms or cancels the request. After confirmation, execution begins; the request state remains retrievable through REST, while notifications may refresh the UI. The user can request cancellation in any state except `COMPLETED`. Once the request succeeds, the user can download the **final product only**, or request an on-demand archive containing the product and its actual dependencies. The user selects **Display on map** from the request entry. The final product appears cropped to the spatial input for an available month, and the user selects a **Spatial Analysis Unit** to inspect its time series. If a month contains no valid observations, the plot shows a gap or an explicit unavailable status—not a zero. A successful request can therefore still contain missing observations. The user can also identify the source, method, quality status and scientific validation status behind the result.
+
+> **M0 implementation note.** The M0 demo only accepts saved AOIs as request inputs. POI and LOI request inputs, including server-side buffering, remain future work. Result exploration already supports explicit `POINT`, `POLYGON` and complete-result selections with an explicit CRS. The catalogue must not advertise an input type that the request path cannot use. See [ADR-0006](architecture/adr/ADR-0006-m0-spatial-capability-boundary.md).
 
 **This single journey, together with the minimal indicator placeholder path, is a sufficient first end-to-end demonstration.** Multiple sensors, elaborate monitoring indicators, distributed execution and advanced scientific retrieval algorithms are not needed to prove it.
 
@@ -417,3 +421,14 @@ An agent reading the proposal should distinguish **required capabilities**, **la
 ---
 
 **End of proposal — v0.20.**
+
+
+## 11. User-owned AOI library and map-first workspace — approved refinement (23 November 2026)
+
+The map-first UI uses a full-viewport map with navigation and contextual panels overlaid above it. Opening or closing panels must not resize the map container. Requests and Indicators are exposed from the top toolbar; Indicators is an empty, non-functional view in M0. Spatial tools and the AOI library are available from a vertical toolbar. A collapsible lower inspector may show result details when such results are available.
+
+A persistent AOI library is owned by CAT and scoped to the authenticated user. GAT exposes its public REST operations and uses a narrowly scoped direct GAT → CAT interface for AOI library CRUD only. This is an explicit exception to the earlier blanket prohibition on direct GAT ↔ CAT interaction. CON remains responsible for request lifecycle, cost/proposal coordination, access authorization for private results, and orchestration; result representations, lineage and delivery continue through CON.
+
+AOI drawing/saving and analysis-request submission are separate actions. A request may select an existing saved AOI or invoke AOI creation and resume the request flow. At submission, the request records the source AOI identifier/revision and an immutable geometry snapshot. Later AOI edits or deletion do not alter previously submitted requests.
+
+Detailed logical interactions and REST schemas are maintained in the component interaction matrix, interface contract inventory and the shared OpenAPI documents. This refinement does not claim these operations are already implemented.

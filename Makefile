@@ -41,6 +41,7 @@ TARGET_BASE_BRANCH ?= origin/main
 PROJECTS := $(shell ls -1 projects 2>/dev/null)
 PYTHON_PROJECTS := $(shell for p in $(PROJECTS); do [ -f "projects/$$p/pyproject.toml" ] && echo "$$p"; done)
 NODE_PROJECTS := $(shell for p in $(PROJECTS); do [ -f "projects/$$p/package.json" ] && echo "$$p"; done)
+CONTRACT_PROJECTS := $(shell for p in $(PROJECTS); do [ -d "projects/$$p/rest" ] && echo "$$p"; done)
 PROJECT ?= $(word 2,$(MAKECMDGOALS))
 PROJECT_NAME := $(PROJECT)
 PROJECT_TAG := $(shell echo $(PROJECT_NAME) | tr A-Z a-z)
@@ -50,9 +51,9 @@ NON_CODE_PATTERN ?= ^agents/|^documentation/|^project_templates/|^\.sops\.yaml$$
 
 # Language detection: first matching manifest wins. Add a branch here when
 # introducing a new language, then implement tests-<lang> and test-parity-<lang>.
-lang = $(if $(wildcard projects/$(1)/pyproject.toml),python,$(if $(wildcard projects/$(1)/package.json),node,$(if $(wildcard projects/$(1)/Cargo.toml),rust,unknown)))
+lang = $(if $(wildcard projects/$(1)/pyproject.toml),python,$(if $(wildcard projects/$(1)/package.json),node,$(if $(wildcard projects/$(1)/Cargo.toml),rust,$(if $(wildcard projects/$(1)/rest),contracts,unknown))))
 
-.PHONY: help install install-python install-python-project install-js install-js-project install-modified-projects install-tooling install-dev-tooling ensure-node sync tests tests-python tests-node tests-rust tests-unknown tests-all test-modified-projects ci-modified-projects ci-all code-quality code-quality-format code-quality-lint code-quality-type code-quality-dockerfile code-quality-test-files test-parity-python test-parity-node test-parity-rust test-parity-unknown code-quality-modified-projects code-quality-all build build_and_analyse_cve build-all-images build-all build-and-push build-and-push-all docker-builder-create docker-builder-rm docker-clean docker-clean-ci clean clean-all clean-python-artifacts clean-node-artifacts shell docker-push sops-encrypt-all sops-decrypt-all run-meogap stop-meogap free-ports kill-meogap list-projects list-modified-projects list-affected-projects ensure-target-base-branch ssh-command ensure-git-ssh install-project ensure-project run-post-install
+.PHONY: help install install-python install-python-project install-js install-js-project install-contracts install-modified-projects install-tooling install-dev-tooling ensure-node sync tests tests-python tests-node tests-rust tests-unknown tests-contracts tests-all test-contract test-contract-all test-contract-modified-projects test-modified-projects ci-modified-projects ci-all prepare-places code-quality code-quality-format code-quality-lint code-quality-type code-quality-dockerfile code-quality-test-files test-parity-python test-parity-node test-parity-rust test-parity-contracts test-parity-unknown code-quality-modified-projects code-quality-all build build_and_analyse_cve build-all-images build-all build-and-push docker-smoke build-and-push-all docker-builder-create docker-builder-rm docker-clean docker-clean-ci clean clean-all clean-python-artifacts clean-node-artifacts shell docker-push sops-encrypt-all sops-decrypt-all run-meogap stop-meogap free-ports kill-meogap list-projects list-modified-projects list-affected-projects ensure-target-base-branch ssh-command ensure-git-ssh install-project ensure-project run-post-install
 
 help:
 	@echo "Usage:"
@@ -60,11 +61,16 @@ help:
 	@echo "  make install <proj>                Install one project"
 	@echo "  make install-python                Install all Python projects"
 	@echo "  make install-js                    Install all Node/React projects"
+	@echo "  make install-contracts             Validate data-only contract projects (no install)"
 	@echo "  make install-modified-projects     Install affected projects"
 	@echo "  make sync <proj>                   Sync project lock (uv or npm)"
 	@echo "  make tests <proj>                  Run tests with coverage (pytest or npm test:coverage)"
 	@echo "  make tests-all                     Run tests for all projects"
+	@echo "  make test-contract <proj>          Run one component contract suite"
+	@echo "  make test-contract-all             Validate contracts and run every component contract suite"
+	@echo "  make test-contract-modified-projects Run contract suites for affected projects"
 	@echo "  make test-modified-projects        Run tests only for affected projects"
+	@echo "  make prepare-places                Decompress and index the local GeoNames place database"
 	@echo "  make ci-modified-projects          Install, check and test affected projects"
 	@echo "  make ci-all                        Install, check and test all projects"
 	@echo "  make code-quality <proj>           Run code quality hooks for project"
@@ -85,6 +91,7 @@ help:
 	@echo "       Uses build_secrets_decrypted/env_variables for Harbor auth"
 	@echo "  make build-all-images              Build Docker images for all projects"
 	@echo "  make build-all                     Build Docker images for all projects"
+	@echo "  make docker-smoke                  Build, start and smoke-test the Compose stack"
 	@echo "  make run-meogap                    Build all images and start the MEOGAP stack"
 	@echo "  make stop-meogap                   Stop and remove the MEOGAP stack"
 	@echo "  make free-ports                    Free MEOGAP ports (8000, 8080, 5173)"
@@ -113,6 +120,7 @@ install:
 		$(MAKE) install-project PROJECT=$(PROJECT_NAME); \
 	else \
 		$(MAKE) install-tooling && \
+		$(MAKE) install-contracts && \
 		$(MAKE) install-python && \
 		$(MAKE) install-js; \
 	fi
@@ -125,6 +133,10 @@ install-python:
 install-js:
 	@$(MAKE) ensure-node
 	@set -e; for p in $(NODE_PROJECTS); do $(MAKE) install-js-project PROJECT=$$p || exit $$?; done
+
+# Contract projects are data-only; there is nothing to install.
+install-contracts:
+	@set -e; for p in $(CONTRACT_PROJECTS); do echo "Contracts project $$p has no dependencies to install."; done
 
 # Install projects affected by the current changes
 install-modified-projects:
@@ -300,7 +312,9 @@ docker-clean-ci:
 sync:
 	@set -euo pipefail; \
 	$(MAKE) ensure-project PROJECT=$(PROJECT_NAME); \
-	if [ -f "projects/$(PROJECT_NAME)/pyproject.toml" ]; then \
+	if [ -d "projects/$(PROJECT_NAME)/rest" ]; then \
+		echo "Contracts project $(PROJECT_NAME) is data-only; nothing to sync."; \
+	elif [ -f "projects/$(PROJECT_NAME)/pyproject.toml" ]; then \
 		if [ "$(DOCKER_BUILD)" != "1" ]; then \
 			$(MAKE) ensure-git-ssh; \
 		fi; \
@@ -319,6 +333,12 @@ sync:
 tests:
 	@$(MAKE) ensure-project PROJECT=$(PROJECT_NAME)
 	@$(MAKE) tests-$(call lang,$(PROJECT_NAME)) PROJECT=$(PROJECT_NAME)
+
+# Contract projects contain OpenAPI documents only; validate them as specifications.
+tests-contracts:
+	@$(MAKE) ensure-project PROJECT=$(PROJECT_NAME)
+	@cd "projects/$(PROJECT_NAME)" && \
+		uvx --from openapi-spec-validator openapi-spec-validator rest/*.openapi.json
 
 tests-python:
 	@$(MAKE) ensure-project PROJECT=$(PROJECT_NAME)
@@ -344,7 +364,9 @@ tests-unknown:
 
 code-quality-format:
 	@$(MAKE) ensure-project PROJECT=$(PROJECT_NAME)
-	@if [ -f "projects/$(PROJECT_NAME)/pyproject.toml" ]; then \
+	@if [ -d "projects/$(PROJECT_NAME)/rest" ]; then \
+		cd "projects/$(PROJECT_NAME)" && for f in rest/*.openapi.json; do python3 -m json.tool "$$f" >/dev/null; done; \
+	elif [ -f "projects/$(PROJECT_NAME)/pyproject.toml" ]; then \
 		cd "projects/$(PROJECT_NAME)" && \
 			uv run bash -lc 'ruff format --check --diff . || { rc=$$?; ruff format .; exit $$rc; }'; \
 	elif [ -f "projects/$(PROJECT_NAME)/package.json" ]; then \
@@ -356,7 +378,9 @@ code-quality-format:
 
 code-quality-lint:
 	@$(MAKE) ensure-project PROJECT=$(PROJECT_NAME)
-	@if [ -f "projects/$(PROJECT_NAME)/pyproject.toml" ]; then \
+	@if [ -d "projects/$(PROJECT_NAME)/rest" ]; then \
+		python3 "$(REPO_ROOT)/tools/check_contracts.py"; \
+	elif [ -f "projects/$(PROJECT_NAME)/pyproject.toml" ]; then \
 		cd "projects/$(PROJECT_NAME)" && \
 			uv run bash -lc 'ruff check --fix --diff . || { rc=$$?; ruff check --fix .; exit $$rc; }'; \
 	elif [ -f "projects/$(PROJECT_NAME)/package.json" ]; then \
@@ -368,7 +392,9 @@ code-quality-lint:
 
 code-quality-type:
 	@$(MAKE) ensure-project PROJECT=$(PROJECT_NAME)
-	@if [ -f "projects/$(PROJECT_NAME)/pyproject.toml" ]; then \
+	@if [ -d "projects/$(PROJECT_NAME)/rest" ]; then \
+		echo "No type checking for data-only contracts."; \
+	elif [ -f "projects/$(PROJECT_NAME)/pyproject.toml" ]; then \
 		cd "projects/$(PROJECT_NAME)" && uv run mypy src; \
 	elif [ -f "projects/$(PROJECT_NAME)/package.json" ]; then \
 		cd "projects/$(PROJECT_NAME)" && npm run typecheck; \
@@ -399,6 +425,10 @@ test-parity-node:
 	@$(MAKE) ensure-project PROJECT=$(PROJECT_NAME)
 	@cd "projects/$(PROJECT_NAME)" && bash -lc 'set -euo pipefail; missing=0; while IFS= read -r file; do base="$$(basename "$$file")"; base="$${base%.*}"; case "$$base" in index|main) continue ;; esac; if ! find ./tests -type f \( -name "$$base.test.ts" -o -name "$$base.test.tsx" \) -print -quit | grep -q .; then printf "Warning: tests/**/%s.test.ts(x) not found. Is %s tested?\n" "$$base" "$$base"; missing=1; fi; done < <(find ./src -type f \( -name "*.ts" -o -name "*.tsx" \) ! -name "*.d.ts" ! -name "*.test.ts" ! -name "*.test.tsx"); if (( missing )); then printf "\nWarning: some TS/TSX test files are missing (non-blocking).\n"; else printf "Test parity OK.\n"; fi'
 
+test-parity-contracts:
+	@$(MAKE) ensure-project PROJECT=$(PROJECT_NAME)
+	@python3 "$(REPO_ROOT)/tools/check_contracts.py"
+
 test-parity-rust:
 	@echo "Rust test parity is not wired yet. Implement test-parity-rust when introducing Rust."
 	@exit 1
@@ -428,9 +458,51 @@ shell:
 
 # ---------------------------- Monorepo level command ----------------------------
 
+# Prepare the local GeoNames place database used by the Gateway search.
+prepare-places:
+	@echo "Preparing local place database..."
+	cd projects/gateway && uv run python -m gateway.core.places
+
 # Run all tests
 tests-all:
 	@set -e; for p in $(PROJECTS); do $(MAKE) tests $$p || exit $$?; done
+
+# Run contract tests for one component.
+test-contract:
+	@$(MAKE) ensure-project PROJECT=$(PROJECT_NAME)
+	@if [ -d "projects/$(PROJECT_NAME)/rest" ]; then \
+		$(MAKE) tests-contracts PROJECT=$(PROJECT_NAME); \
+	elif [ -f "projects/$(PROJECT_NAME)/package.json" ] && grep -q '"test:contract"' "projects/$(PROJECT_NAME)/package.json"; then \
+		cd "projects/$(PROJECT_NAME)" && npm run test:contract; \
+	elif [ -d "projects/$(PROJECT_NAME)/tests/contract" ]; then \
+		cd "projects/$(PROJECT_NAME)" && uv run pytest tests/contract -v; \
+	else \
+		echo "No contract tests found for $(PROJECT_NAME)."; \
+	fi
+
+# Validate the reference contracts and run every component contract suite.
+test-contract-all:
+	@set -e; for p in $(CONTRACT_PROJECTS); do $(MAKE) test-contract PROJECT=$$p || exit $$?; done
+	@set -e; for p in $(PROJECTS); do \
+		if [ -d "projects/$$p/tests/contract" ] || grep -q '"test:contract"' "projects/$$p/package.json" 2>/dev/null; then \
+			$(MAKE) test-contract PROJECT=$$p || exit $$?; \
+		fi; \
+	done
+
+# Run contract tests for affected projects compared to the target base branch.
+test-contract-modified-projects:
+	@affected_projects="$$( $(MAKE) -s list-affected-projects )"; \
+	echo "Running contract tests for projects $$affected_projects"; \
+	if [ -z "$$affected_projects" ]; then \
+		echo "No code changes requiring contract tests."; \
+	else \
+		set -e; \
+		for p in $$affected_projects; do \
+			if [ -d "projects/$$p/rest" ] || [ -d "projects/$$p/tests/contract" ] || grep -q '"test:contract"' "projects/$$p/package.json" 2>/dev/null; then \
+				$(MAKE) test-contract PROJECT=$$p || exit $$?; \
+			fi; \
+		done; \
+	fi
 
 # Run tests for affected projects compared to the target base branch
 test-modified-projects:
@@ -496,6 +568,14 @@ build-all-images:
 build-all:
 	@$(MAKE) build-all-images
 
+# Build, start and smoke-test the Compose stack, including every declared route.
+docker-smoke:
+	@$(MAKE) build-all-images
+	@set -e; \
+		TAG_VERSION="$(TAG_VERSION)" docker compose up -d --remove-orphans; \
+		trap 'TAG_VERSION="$(TAG_VERSION)" docker compose down -v --remove-orphans' EXIT; \
+		python3 "$(REPO_ROOT)/tools/smoke_services.py"
+
 # ---------------------------- Full stack ----------------------------
 
 run-meogap: sops-decrypt-all
@@ -505,9 +585,10 @@ run-meogap: sops-decrypt-all
 	@TAG_VERSION="$(TAG_VERSION)" docker compose up -d --remove-orphans
 	@echo ""
 	@echo "MEOGAP stack is up. Services:"
-	@echo "  API:               http://localhost:8000"
-	@echo "  API documentation: http://localhost:8000/docs"
-	@echo "  API health:        http://localhost:8000/api/v1/health"
+	@echo "  Gateway:           http://localhost:8000"
+	@echo "  Gateway docs:      http://localhost:8000/docs"
+	@echo "  Gateway health:    http://localhost:8000/api/v1/health"
+	@echo "  Internal services: contract, scientific_processing, catalog (no host ports)"
 	@echo "  UI:                http://localhost:8080"
 	@echo "  UI health:         http://localhost:8080/healthz"
 	@echo "  Worker logs:       docker compose logs -f worker"
@@ -562,7 +643,9 @@ clean-node-artifacts:
 	@find "$(REPO_ROOT)/projects/$(PROJECT_NAME)" -type f -name "*.tsbuildinfo" -delete
 
 clean:
-	@if [ -f "projects/$(PROJECT_NAME)/pyproject.toml" ]; then \
+	@if [ -d "projects/$(PROJECT_NAME)/rest" ]; then \
+		echo "Contracts project $(PROJECT_NAME) has no generated artifacts."; \
+	elif [ -f "projects/$(PROJECT_NAME)/pyproject.toml" ]; then \
 		$(MAKE) clean-python-artifacts PROJECT=$(PROJECT_NAME); \
 	elif [ -f "projects/$(PROJECT_NAME)/package.json" ]; then \
 		$(MAKE) clean-node-artifacts PROJECT=$(PROJECT_NAME); \
@@ -588,7 +671,9 @@ ssh-command: ensure-git-ssh
 
 install-project:
 	@$(MAKE) ensure-project PROJECT=$(PROJECT_NAME)
-	@if [ -f "projects/$(PROJECT_NAME)/pyproject.toml" ]; then \
+	@if [ -d "projects/$(PROJECT_NAME)/rest" ]; then \
+		echo "Contracts project $(PROJECT_NAME) has no dependencies to install."; \
+	elif [ -f "projects/$(PROJECT_NAME)/pyproject.toml" ]; then \
 		$(MAKE) install-python-project PROJECT=$(PROJECT_NAME); \
 	elif [ -f "projects/$(PROJECT_NAME)/package.json" ]; then \
 		$(MAKE) install-js-project PROJECT=$(PROJECT_NAME); \
@@ -673,7 +758,7 @@ list-modified-projects:
 
 # List projects affected by the current changes:
 # - changed projects;
-# - their dependents (for example meogap_core -> meogap_api, meogap_worker);
+# - their dependents (for example meogap_core -> service projects and meogap_worker);
 # - all projects when a root code/tooling file changes.
 list-affected-projects:
 	@$(MAKE) -s ensure-target-base-branch TARGET_BASE_BRANCH=$(TARGET_BASE_BRANCH)
@@ -694,7 +779,8 @@ list-affected-projects:
 		for project in $$(echo "$$changed" | grep '^projects/' | cut -d/ -f2 | sort -u); do \
 			[ -d "projects/$$project" ] && echo "$$project"; \
 			case "$$project" in \
-				meogap_core) printf '%s\n' meogap_api meogap_worker ;; \
+				meogap_core) printf '%s\n' gateway contract scientific_processing catalog meogap_worker ;; \
+				meogap_interfaces) printf '%s\n' gateway contract scientific_processing catalog meogap_ui ;; \
 			esac; \
 		done; \
 	} | while IFS= read -r project; do \

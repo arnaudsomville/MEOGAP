@@ -1,0 +1,543 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MEOGAP Catalog",
+    "version": "0.2.0",
+    "description": "Internal data and asset catalogue service."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8003",
+      "description": "Local CAT service."
+    }
+  ],
+  "tags": [
+    {
+      "name": "catalog",
+      "description": "Internal data and asset catalogue service."
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/internal/v1/dependencies": {
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Resolve abstract requirements to concrete dependencies.",
+        "operationId": "catalog_resolve_dependencies",
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "catalog",
+                  "operation": "/internal/v1/dependencies"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "catalog",
+                  "operation": "catalog_resolve_dependencies"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/acquisition-costs": {
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Obtain itemized L0 acquisition costs.",
+        "operationId": "catalog_estimate_acquisition_costs",
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "catalog",
+                  "operation": "/internal/v1/acquisition-costs"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "catalog",
+                  "operation": "catalog_estimate_acquisition_costs"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/ingestions": {
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Request and report L0 ingestion.",
+        "operationId": "catalog_ingest_sources",
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "catalog",
+                  "operation": "/internal/v1/ingestions"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "catalog",
+                  "operation": "catalog_ingest_sources"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/references": {
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Resolve canonical asset references.",
+        "operationId": "catalog_resolve_references",
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "catalog",
+                  "operation": "/internal/v1/references"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "catalog",
+                  "operation": "catalog_resolve_references"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/results/{result_id}/lineage": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Retrieve actual result lineage.",
+        "operationId": "catalog_get_result_lineage",
+        "parameters": [
+          {
+            "name": "result_id",
+            "in": "path",
+            "required": true,
+            "description": "Result identifier.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "catalog",
+                  "operation": "/internal/v1/results/{result_id}/lineage"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "catalog",
+                  "operation": "catalog_get_result_lineage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/source-representations": {
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Resolve an original Source Asset representation.",
+        "operationId": "catalog_resolve_source_representation",
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "catalog",
+                  "operation": "/internal/v1/source-representations"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "catalog",
+                  "operation": "catalog_resolve_source_representation"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/representation-availability": {
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Check harmonized representation availability.",
+        "operationId": "catalog_check_representation_availability",
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "catalog",
+                  "operation": "/internal/v1/representation-availability"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "catalog",
+                  "operation": "catalog_check_representation_availability"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/derived-assets": {
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Register a Derived Asset and confirm registration.",
+        "operationId": "catalog_register_derived_asset",
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "catalog",
+                  "operation": "/internal/v1/derived-assets"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "catalog",
+                  "operation": "catalog_register_derived_asset"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/source-assets/{asset_id}/representations": {
+      "post": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Register a harmonized representation against a Source Asset.",
+        "operationId": "catalog_register_source_representation",
+        "parameters": [
+          {
+            "name": "asset_id",
+            "in": "path",
+            "required": true,
+            "description": "Source asset identifier.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "A bearer token is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "UNAUTHORIZED",
+                  "message": "A bearer token is required.",
+                  "service": "catalog",
+                  "operation": "/internal/v1/source-assets/{asset_id}/representations"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Operation is part of the M0 contract but is not implemented yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "code": "NOT_IMPLEMENTED",
+                  "message": "Operation is part of the M0 contract but is not implemented yet.",
+                  "service": "catalog",
+                  "operation": "catalog_register_source_representation"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/health": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Report service liveness.",
+        "operationId": "catalog_health",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Service is alive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                },
+                "example": {
+                  "status": "ok",
+                  "service": "catalog",
+                  "version": "0.1.0"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Bearer token required by every business operation."
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Stable error envelope returned by every failed MEOGAP REST operation.",
+        "required": [
+          "code",
+          "message",
+          "service",
+          "operation"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Machine-readable error code."
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message."
+          },
+          "service": {
+            "type": "string",
+            "description": "Logical service that produced the error."
+          },
+          "operation": {
+            "type": "string",
+            "description": "Operation identifier or request path that failed."
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Liveness payload exposed by every MEOGAP service.",
+        "required": [
+          "status",
+          "service",
+          "version"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Service status; ok when the process answers."
+          },
+          "service": {
+            "type": "string",
+            "description": "Logical service name."
+          },
+          "version": {
+            "type": "string",
+            "description": "Service version."
+          }
+        }
+      }
+    }
+  },
+  "x-meogap-status": {
+    "level": "m0-structural",
+    "requestAndSuccessSchemas": "open",
+    "openDecisionRefs": [
+      "M1-E07-T01",
+      "M1-E07-T02"
+    ]
+  },
+  "x-meogap-transport": "provisional-rest-scaffolding"
+}

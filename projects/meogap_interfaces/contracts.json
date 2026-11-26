@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "contracts": {
+    "gateway": "rest/gateway.openapi.json",
+    "contract": "rest/contract.openapi.json",
+    "scientific_processing": "rest/scientific_processing.openapi.json",
+    "catalog": "rest/catalog.openapi.json"
+  }
+}

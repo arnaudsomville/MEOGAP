@@ -10,6 +10,8 @@ Describe the lifecycle from submission of an analysis request through scientific
 
 **Proposal preparation is asynchronous end-to-end.** It is not conditional on a five-second estimate. Feasibility, complexity estimation, dependency resolution and missing-L0 acquisition pricing are asynchronous internal interactions as well. Submission creates a persistent request; the proposal becomes available later through REST.
 
+> **M0 implementation note.** This target sequence is not implemented in M0. The Gateway mock exposes `POST /analysis-requests → queued → processing → succeeded` without manual confirmation, as decided in [ADR-0005](../../architecture/adr/ADR-0005-m0-asynchronous-request-lifecycle.md). The sequence remains the reference for the CON/SCI integration milestone.
+
 ## Sequence
 
 ```mermaid

@@ -1,0 +1,108 @@
+"""Reusable REST building blocks for MEOGAP services.
+
+The package is split by concern:
+
+- ``contracts``: shared models, API prefixes and route builders;
+- ``factory``: REST application configuration and FastAPI construction;
+- ``interface``: concrete REST interface managed by the application lifecycle;
+- ``middleware``: bearer identity extraction and enforcement.
+"""
+
+from .contracts import (
+    ERROR_CODE_NOT_IMPLEMENTED,
+    HEALTH_SUMMARY,
+    INTERNAL_API_PREFIX,
+    INTERNAL_HEALTH_PATH,
+    NOT_IMPLEMENTED_DESCRIPTION,
+    NOT_IMPLEMENTED_MESSAGE,
+    PUBLIC_API_PREFIX,
+    PUBLIC_HEALTH_PATH,
+    STATUS_OK,
+    ErrorResponse,
+    HealthResponse,
+    Operation,
+    build_base_router,
+    build_not_implemented_router,
+)
+from .factory import (
+    ERROR_CODE_BAD_REQUEST,
+    ERROR_CODE_CONFLICT,
+    ERROR_CODE_FORBIDDEN,
+    ERROR_CODE_HTTP_ERROR,
+    ERROR_CODE_INTERNAL_ERROR,
+    ERROR_CODE_METHOD_NOT_ALLOWED,
+    ERROR_CODE_NOT_FOUND,
+    ERROR_CODE_UNPROCESSABLE_ENTITY,
+    INTERNAL_ERROR_MESSAGE,
+    STATUS_CODE_TO_ERROR_CODE,
+    RestAppConfig,
+    create_rest_app,
+    error_code_for_status,
+    install_exception_handlers,
+)
+from .interface import DEFAULT_REST_HOST, DEFAULT_REST_LOG_LEVEL, DEFAULT_REST_PORT, RestInterface
+from .middleware import (
+    AUTHORIZATION_HEADER,
+    BEARER_PARTS_COUNT,
+    BEARER_SCHEME,
+    DEFAULT_EXEMPT_PATHS,
+    ERROR_CODE_INVALID_AUTHORIZATION,
+    ERROR_CODE_UNAUTHORIZED,
+    EXEMPT_METHODS,
+    IDENTITY_STATE_KEY,
+    INVALID_AUTHORIZATION_MESSAGE,
+    UNAUTHORIZED_MESSAGE,
+    WWW_AUTHENTICATE_VALUE,
+    BearerIdentityMiddleware,
+    Identity,
+    get_identity,
+)
+
+__all__ = [
+    'AUTHORIZATION_HEADER',
+    'BEARER_PARTS_COUNT',
+    'BEARER_SCHEME',
+    'DEFAULT_EXEMPT_PATHS',
+    'DEFAULT_REST_HOST',
+    'DEFAULT_REST_LOG_LEVEL',
+    'DEFAULT_REST_PORT',
+    'ERROR_CODE_BAD_REQUEST',
+    'ERROR_CODE_CONFLICT',
+    'ERROR_CODE_FORBIDDEN',
+    'ERROR_CODE_HTTP_ERROR',
+    'ERROR_CODE_INTERNAL_ERROR',
+    'ERROR_CODE_INVALID_AUTHORIZATION',
+    'ERROR_CODE_METHOD_NOT_ALLOWED',
+    'ERROR_CODE_NOT_FOUND',
+    'ERROR_CODE_NOT_IMPLEMENTED',
+    'ERROR_CODE_UNAUTHORIZED',
+    'ERROR_CODE_UNPROCESSABLE_ENTITY',
+    'EXEMPT_METHODS',
+    'HEALTH_SUMMARY',
+    'IDENTITY_STATE_KEY',
+    'INTERNAL_API_PREFIX',
+    'INTERNAL_ERROR_MESSAGE',
+    'INTERNAL_HEALTH_PATH',
+    'INVALID_AUTHORIZATION_MESSAGE',
+    'NOT_IMPLEMENTED_DESCRIPTION',
+    'NOT_IMPLEMENTED_MESSAGE',
+    'PUBLIC_API_PREFIX',
+    'PUBLIC_HEALTH_PATH',
+    'STATUS_CODE_TO_ERROR_CODE',
+    'STATUS_OK',
+    'UNAUTHORIZED_MESSAGE',
+    'WWW_AUTHENTICATE_VALUE',
+    'BearerIdentityMiddleware',
+    'ErrorResponse',
+    'HealthResponse',
+    'Identity',
+    'Operation',
+    'RestAppConfig',
+    'RestInterface',
+    'build_base_router',
+    'build_not_implemented_router',
+    'create_rest_app',
+    'error_code_for_status',
+    'get_identity',
+    'install_exception_handlers',
+]

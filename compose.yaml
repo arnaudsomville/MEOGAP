@@ -1,11 +1,32 @@
 services:
-  api:
-    image: meogap_api_local:${TAG_VERSION:-latest}
+  gateway:
+    image: gateway_local:${TAG_VERSION:-latest}
     init: true
     environment:
-      MEOGAP_CORS_ORIGINS: http://localhost:5173,http://localhost:8080
+      GATEWAY_CORS_ORIGINS: http://localhost:5173,http://localhost:8080
     ports:
       - "8000:8000"
+    restart: unless-stopped
+
+  contract:
+    image: contract_local:${TAG_VERSION:-latest}
+    init: true
+    environment:
+      CONTRACT_PORT: "8001"
+    restart: unless-stopped
+
+  scientific_processing:
+    image: scientific_processing_local:${TAG_VERSION:-latest}
+    init: true
+    environment:
+      SCIENTIFIC_PROCESSING_PORT: "8002"
+    restart: unless-stopped
+
+  catalog:
+    image: catalog_local:${TAG_VERSION:-latest}
+    init: true
+    environment:
+      CATALOG_PORT: "8003"
     restart: unless-stopped
 
   worker:
@@ -20,5 +41,5 @@ services:
     ports:
       - "8080:80"
     depends_on:
-      - api
+      - gateway
     restart: unless-stopped

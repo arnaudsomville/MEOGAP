@@ -12,7 +12,10 @@ variable "SOPS_KEY" {
 
 group "default" {
   targets = [
-    "meogap_api",
+    "gateway",
+    "contract",
+    "scientific_processing",
+    "catalog",
     "meogap_worker",
     "meogap_ui",
   ]
@@ -43,9 +46,24 @@ target "_python_builder" {
   ]
 }
 
-target "python_builder_meogap_api" {
+target "python_builder_gateway" {
   inherits = ["_python_builder"]
-  args = { PROJECT_NAME = "meogap_api" }
+  args = { PROJECT_NAME = "gateway" }
+}
+
+target "python_builder_contract" {
+  inherits = ["_python_builder"]
+  args = { PROJECT_NAME = "contract" }
+}
+
+target "python_builder_scientific_processing" {
+  inherits = ["_python_builder"]
+  args = { PROJECT_NAME = "scientific_processing" }
+}
+
+target "python_builder_catalog" {
+  inherits = ["_python_builder"]
+  args = { PROJECT_NAME = "catalog" }
 }
 
 target "python_builder_meogap_worker" {
@@ -67,13 +85,40 @@ target "_image" {
   output = ["type=docker"]
 }
 
-target "meogap_api" {
+target "gateway" {
   inherits = ["_image"]
-  dockerfile = "projects/meogap_api/Dockerfile"
+  dockerfile = "projects/gateway/Dockerfile"
   contexts = {
-    python_builder = "target:python_builder_meogap_api"
+    python_builder = "target:python_builder_gateway"
   }
-  tags = ["meogap_api_local:${TAG_VERSION}"]
+  tags = ["gateway_local:${TAG_VERSION}"]
+}
+
+target "contract" {
+  inherits = ["_image"]
+  dockerfile = "projects/contract/Dockerfile"
+  contexts = {
+    python_builder = "target:python_builder_contract"
+  }
+  tags = ["contract_local:${TAG_VERSION}"]
+}
+
+target "scientific_processing" {
+  inherits = ["_image"]
+  dockerfile = "projects/scientific_processing/Dockerfile"
+  contexts = {
+    python_builder = "target:python_builder_scientific_processing"
+  }
+  tags = ["scientific_processing_local:${TAG_VERSION}"]
+}
+
+target "catalog" {
+  inherits = ["_image"]
+  dockerfile = "projects/catalog/Dockerfile"
+  contexts = {
+    python_builder = "target:python_builder_catalog"
+  }
+  tags = ["catalog_local:${TAG_VERSION}"]
 }
 
 target "meogap_worker" {

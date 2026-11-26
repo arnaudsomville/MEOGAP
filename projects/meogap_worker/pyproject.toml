@@ -90,3 +90,7 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+## Pytest ------------------------------------------------------------------------------------------ ""
+[tool.pytest.ini_options]
+addopts = "-p meogap.test_utilities.pytest_plugin"
