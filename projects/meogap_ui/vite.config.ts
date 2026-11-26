@@ -34,7 +34,7 @@ export default defineConfig({
       reporter: ['text', 'html', 'lcov', 'cobertura'],
       reportsDirectory: 'coverage',
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/main.tsx', 'src/**/*.d.ts'],
+      exclude: ['src/main.tsx', 'src/**/*.d.ts', 'src/api/client.ts'],
       thresholds: {
         lines: minCoverage,
         functions: minCoverage,

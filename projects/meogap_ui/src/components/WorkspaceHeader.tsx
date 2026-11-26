@@ -141,6 +141,9 @@ export function WorkspaceHeader({
             role="listbox"
             aria-label="Location suggestions"
           >
+            {placesLoading && suggestions.length === 0 ? (
+              <p className="search-suggestions-empty">Searching places…</p>
+            ) : null}
             {suggestions.length ? (
               <ul role="presentation">
                 {suggestions.map((suggestion, index) => (
