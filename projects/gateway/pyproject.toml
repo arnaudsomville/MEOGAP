@@ -95,7 +95,12 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-gateway = ["assets/demo/ndvi/*.png", "assets/demo/ndvi/geotiff/*.tif"]
+gateway = [
+    "assets/demo/ndvi/*.png",
+    "assets/demo/ndvi/geotiff/*.tif",
+    "assets/places/*.json",
+    "assets/places/*.xz",
+]
 
 ## Pytest ------------------------------------------------------------------------------------------ ""
 [tool.pytest.ini_options]

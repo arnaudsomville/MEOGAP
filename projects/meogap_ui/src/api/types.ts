@@ -86,6 +86,22 @@ export type Product = {
   preview: ProductPreview | null
 }
 
+export type PlaceSuggestion = {
+  placeId: number
+  name: string
+  country: string
+  admin1: string | null
+  latitude: number
+  longitude: number
+  population: number
+  featureCode: string
+  matchType: string
+}
+
+export type PlaceSuggestionList = {
+  items: PlaceSuggestion[]
+}
+
 export type SourceMissionInfo = {
   id: string
   name: string

@@ -90,6 +90,7 @@ The transport decision is recorded as proposed, not approved, in `documentation/
 - M0 request submission uses the asynchronous `queued → processing → succeeded` lifecycle (with explicit `failed` and `cancelled` states) and requires no manual confirmation. Queue, processing and delivery delays are configurable environment variables.
 - The bundled georeferenced NDVI-like frames are `SYNTHETIC_DEMO` assets. They are not Sentinel-2 or Landsat observations, and no cloud-cover, masking or observation-quality statistic is computed for them.
 - M0 request inputs are saved AOIs only. Result exploration supports explicit point, polygon and complete-result selections transmitted as WKT with an explicit `EPSG:4326` CRS.
+- Place search uses a local GeoNames SQLite database built from the `allCountries` populated-place features (about 5.2 million places) and exposed through the Gateway. The committed archive is compressed; preparation and caching are documented in `tools/build_places_database.py` and `documentation/architecture/adr/ADR-0007-local-place-database.md`. GeoNames data is licensed under CC BY 4.0.
 
 ---
 
@@ -142,6 +143,19 @@ make install
 ```
 
 Contract projects are data-only; `make install meogap_interfaces` reports that there is nothing to install.
+
+### 3. Prepare the local place database
+
+The Gateway place search uses a compressed GeoNames archive committed under
+`projects/gateway/src/gateway/assets/places/`. Decompress and index it once before starting the
+stack locally:
+
+```bash
+make prepare-places
+```
+
+The prepared SQLite file is cached in `GATEWAY_PLACES_CACHE_DIR` (default: the system temporary
+directory). It is not committed.
 
 ## Project commands
 

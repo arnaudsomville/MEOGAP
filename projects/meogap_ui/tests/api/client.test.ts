@@ -11,6 +11,7 @@ import {
   getDelivery,
   getAccount,
   getHealth,
+  getPlaceSuggestions,
   getProduct,
   getProductMissions,
   getProductRequirements,
@@ -683,5 +684,36 @@ describe('result map legend metadata', () => {
         legend: { title: 'NDVI', units: 'unitless', min: 0, max: 1, stops: [] },
       }),
     ).toThrow('legend stops')
+  })
+  it('fetches and parses populated-place suggestions', { tags: ['unit'] }, async () => {
+    const fetchMock = vi.fn(async () =>
+      response({
+        items: [
+          {
+            place_id: 2972315,
+            name: 'Toulouse',
+            country: 'France',
+            admin1: 'Occitanie',
+            latitude: 43.6045,
+            longitude: 1.4442,
+            population: 511684,
+            feature_code: 'PPLA',
+            match_type: 'exact',
+          },
+        ],
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const result = await getPlaceSuggestions({ query: 'toulouse', lat: 43.6, lng: 1.44, limit: 5 })
+    expect(result.data.items[0]).toMatchObject({
+      placeId: 2972315,
+      name: 'Toulouse',
+      country: 'France',
+      admin1: 'Occitanie',
+    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/places/suggestions?q=toulouse&lat=43.6&lng=1.44&limit=5',
+      expect.any(Object),
+    )
   })
 })

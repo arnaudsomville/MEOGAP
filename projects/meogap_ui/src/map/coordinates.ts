@@ -33,6 +33,62 @@ export function parseCoordinates(value: string): MapFocus | null {
   return { type: 'point', lat, lng, zoom: 12 }
 }
 
+const COORDINATE_TOKEN =
+  /([NSEW])?\s*([+-]?\d+(?:\.\d+)?)(?:\s*[°º]\s*(\d+(?:\.\d+)?))?(?:\s*['′]\s*(\d+(?:\.\d+)?))?(?:\s*["″])?\s*([NSEW])?/gi
+
+type ParsedCoordinate = {
+  value: number
+  hemisphere: 'N' | 'S' | 'E' | 'W' | null
+}
+
+function parseCoordinateToken(text: string): ParsedCoordinate | null {
+  COORDINATE_TOKEN.lastIndex = 0
+  const match = COORDINATE_TOKEN.exec(text)
+  if (!match) return null
+  const prefix = (match[1] ?? '').toUpperCase()
+  const suffix = (match[5] ?? '').toUpperCase()
+  const hemisphere = (prefix || suffix) as ParsedCoordinate['hemisphere']
+  const degrees = Number(match[2])
+  const minutes = match[3] ? Number(match[3]) : 0
+  const seconds = match[4] ? Number(match[4]) : 0
+  if (!Number.isFinite(degrees) || !Number.isFinite(minutes) || !Number.isFinite(seconds)) {
+    return null
+  }
+  if (minutes >= 60 || seconds >= 60) return null
+  const magnitude = Math.abs(degrees) + minutes / 60 + seconds / 3600
+  const negative = degrees < 0 || hemisphere === 'S' || hemisphere === 'W'
+  return { value: negative ? -magnitude : magnitude, hemisphere }
+}
+
+/**
+ * Parse a user coordinate query with decimal, hemisphere or DMS notation.
+ * The supported order is latitude then longitude, except when explicit
+ * E/W and N/S hemispheres make the order unambiguous.
+ */
+export function parseCoordinateQuery(value: string): MapFocus | null {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  const parts =
+    trimmed.includes(',') || trimmed.includes(';') || trimmed.includes('/')
+      ? trimmed
+          .split(/[,;/]/)
+          .map((part) => part.trim())
+          .filter(Boolean)
+      : (trimmed.match(COORDINATE_TOKEN) ?? []).map((part) => part.trim())
+  if (parts.length < 2) return null
+  const parsed = parts.slice(0, 2).map(parseCoordinateToken)
+  if (parsed.some((item) => item === null)) return null
+  let [first, second] = parsed as [ParsedCoordinate, ParsedCoordinate]
+  if (
+    (first.hemisphere === 'E' || first.hemisphere === 'W') &&
+    (second.hemisphere === 'N' || second.hemisphere === 'S')
+  ) {
+    ;[first, second] = [second, first]
+  }
+  if (Math.abs(first.value) > 90 || Math.abs(second.value) > 180) return null
+  return { type: 'point', lat: first.value, lng: second.value, zoom: 13 }
+}
+
 export function positionToCoordinates(position: Position): number[] {
   return [position.lng, position.lat]
 }

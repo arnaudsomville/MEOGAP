@@ -53,7 +53,7 @@ NON_CODE_PATTERN ?= ^agents/|^documentation/|^project_templates/|^\.sops\.yaml$$
 # introducing a new language, then implement tests-<lang> and test-parity-<lang>.
 lang = $(if $(wildcard projects/$(1)/pyproject.toml),python,$(if $(wildcard projects/$(1)/package.json),node,$(if $(wildcard projects/$(1)/Cargo.toml),rust,$(if $(wildcard projects/$(1)/rest),contracts,unknown))))
 
-.PHONY: help install install-python install-python-project install-js install-js-project install-contracts install-modified-projects install-tooling install-dev-tooling ensure-node sync tests tests-python tests-node tests-rust tests-unknown tests-contracts tests-all test-contract test-contract-all test-contract-modified-projects test-modified-projects ci-modified-projects ci-all code-quality code-quality-format code-quality-lint code-quality-type code-quality-dockerfile code-quality-test-files test-parity-python test-parity-node test-parity-rust test-parity-contracts test-parity-unknown code-quality-modified-projects code-quality-all build build_and_analyse_cve build-all-images build-all build-and-push docker-smoke build-and-push-all docker-builder-create docker-builder-rm docker-clean docker-clean-ci clean clean-all clean-python-artifacts clean-node-artifacts shell docker-push sops-encrypt-all sops-decrypt-all run-meogap stop-meogap free-ports kill-meogap list-projects list-modified-projects list-affected-projects ensure-target-base-branch ssh-command ensure-git-ssh install-project ensure-project run-post-install
+.PHONY: help install install-python install-python-project install-js install-js-project install-contracts install-modified-projects install-tooling install-dev-tooling ensure-node sync tests tests-python tests-node tests-rust tests-unknown tests-contracts tests-all test-contract test-contract-all test-contract-modified-projects test-modified-projects ci-modified-projects ci-all prepare-places code-quality code-quality-format code-quality-lint code-quality-type code-quality-dockerfile code-quality-test-files test-parity-python test-parity-node test-parity-rust test-parity-contracts test-parity-unknown code-quality-modified-projects code-quality-all build build_and_analyse_cve build-all-images build-all build-and-push docker-smoke build-and-push-all docker-builder-create docker-builder-rm docker-clean docker-clean-ci clean clean-all clean-python-artifacts clean-node-artifacts shell docker-push sops-encrypt-all sops-decrypt-all run-meogap stop-meogap free-ports kill-meogap list-projects list-modified-projects list-affected-projects ensure-target-base-branch ssh-command ensure-git-ssh install-project ensure-project run-post-install
 
 help:
 	@echo "Usage:"
@@ -70,6 +70,7 @@ help:
 	@echo "  make test-contract-all             Validate contracts and run every component contract suite"
 	@echo "  make test-contract-modified-projects Run contract suites for affected projects"
 	@echo "  make test-modified-projects        Run tests only for affected projects"
+	@echo "  make prepare-places                Decompress and index the local GeoNames place database"
 	@echo "  make ci-modified-projects          Install, check and test affected projects"
 	@echo "  make ci-all                        Install, check and test all projects"
 	@echo "  make code-quality <proj>           Run code quality hooks for project"
@@ -456,6 +457,11 @@ shell:
 		$$SHELL
 
 # ---------------------------- Monorepo level command ----------------------------
+
+# Prepare the local GeoNames place database used by the Gateway search.
+prepare-places:
+	@echo "Preparing local place database..."
+	cd projects/gateway && uv run python -m gateway.core.places
 
 # Run all tests
 tests-all:

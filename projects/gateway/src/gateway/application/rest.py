@@ -141,4 +141,10 @@ OPERATIONS: tuple[Operation, ...] = (
         'gateway_get_credit_balance',
         'Retrieve the caller credit balance.',
     ),
+    Operation(
+        'GET',
+        f'{PUBLIC_API_PREFIX}/places/suggestions',
+        'gateway_list_place_suggestions',
+        'Search populated places or recommend places near a map position.',
+    ),
 )

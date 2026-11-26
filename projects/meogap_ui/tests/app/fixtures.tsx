@@ -303,6 +303,35 @@ export function stubGateway(options: StubOptions = {}) {
   const fetchMock = vi.fn(async (path: string, init?: RequestInit) => {
     if (path === '/api/v1/health')
       return gatewayResponse({ status: 'ok', service: 'gateway', version: '0.2.0' }, options.demo)
+    if (path.startsWith('/api/v1/places/suggestions')) {
+      const url = new URL(path, 'http://local.test')
+      const query = (url.searchParams.get('q') ?? '').toLowerCase()
+      const items = [
+        {
+          place_id: 1,
+          name: 'Toulouse',
+          country: 'France',
+          admin1: 'Occitanie',
+          latitude: 43.6045,
+          longitude: 1.4442,
+          population: 511684,
+          feature_code: 'PPLA',
+          match_type: 'exact',
+        },
+        {
+          place_id: 2,
+          name: 'London',
+          country: 'United Kingdom',
+          admin1: 'England',
+          latitude: 51.5072,
+          longitude: -0.1276,
+          population: 8961989,
+          feature_code: 'PPLC',
+          match_type: 'exact',
+        },
+      ].filter((place) => !query || place.name.toLowerCase().startsWith(query))
+      return gatewayResponse({ items })
+    }
     if (path === '/api/v1/account')
       return gatewayResponse({
         user_id: 'demo-user',

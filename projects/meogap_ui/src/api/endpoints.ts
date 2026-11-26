@@ -12,6 +12,7 @@ import {
   parseProduct,
   parseProductList,
   parseProductMissions,
+  parsePlaceSuggestionList,
   parseProductRequirements,
   parseResultDetail,
   parseResultMap,
@@ -28,6 +29,7 @@ import type {
   CreditBalance,
   Delivery,
   DeliveryKind,
+  PlaceSuggestionList,
   Product,
   ProductMissions,
   ProductRequirements,
@@ -78,6 +80,28 @@ export function getProductRequirements(id: string): Promise<ApiResponse<ProductR
   return requestJson(
     `${API_PREFIX}/catalogue/products/${idPathSegment(id)}/input-requirements`,
     parseProductRequirements,
+  )
+}
+
+export function getPlaceSuggestions(
+  input: {
+    query?: string
+    lat?: number | null
+    lng?: number | null
+    limit?: number
+  } = {},
+): Promise<ApiResponse<PlaceSuggestionList>> {
+  const params = new URLSearchParams()
+  if (input.query?.trim()) params.set('q', input.query.trim())
+  if (input.lat != null && input.lng != null) {
+    params.set('lat', String(input.lat))
+    params.set('lng', String(input.lng))
+  }
+  if (input.limit != null) params.set('limit', String(input.limit))
+  const suffix = params.toString()
+  return requestJson(
+    `${API_PREFIX}/places/suggestions${suffix ? `?${suffix}` : ''}`,
+    parsePlaceSuggestionList,
   )
 }
 

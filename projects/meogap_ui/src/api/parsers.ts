@@ -31,6 +31,8 @@ import type {
   Product,
   ProductMissions,
   ProductPreview,
+  PlaceSuggestion,
+  PlaceSuggestionList,
   ProductRequirements,
   ResultDetail,
   ResultLegend,
@@ -197,6 +199,38 @@ export function parseProductMissions(payload: unknown): ProductMissions {
   return {
     productId: requireStringFrom(record, ['product_id', 'id']),
     items,
+  }
+}
+
+export function parsePlaceSuggestion(payload: unknown): PlaceSuggestion {
+  const place = requireRecord(payload, 'place suggestion must be an object')
+  const latitude = optionalNumberFrom(place, ['latitude'])
+  const longitude = optionalNumberFrom(place, ['longitude'])
+  const population = optionalNumberFrom(place, ['population'])
+  if (latitude === null || longitude === null || population === null) {
+    throw new Error('Invalid payload: place suggestion coordinates and population are required')
+  }
+  const placeId = optionalNumberFrom(place, ['place_id', 'placeId'])
+  if (placeId === null) {
+    throw new Error('Invalid payload: place suggestion place_id is required')
+  }
+  return {
+    placeId,
+    name: requireString(place, 'name'),
+    country: requireString(place, 'country'),
+    admin1: optionalStringFrom(place, ['admin1']),
+    latitude,
+    longitude,
+    population,
+    featureCode: requireStringFrom(place, ['feature_code', 'featureCode']),
+    matchType: requireStringFrom(place, ['match_type', 'matchType']),
+  }
+}
+
+export function parsePlaceSuggestionList(payload: unknown): PlaceSuggestionList {
+  const record = requireRecord(payload, 'place suggestions must be an object')
+  return {
+    items: parseEnvelopeList(record.items, ['items']).map(parsePlaceSuggestion),
   }
 }
 

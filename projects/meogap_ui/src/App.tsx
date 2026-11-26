@@ -272,6 +272,8 @@ export default function App({
         searchQuery={search.searchQuery}
         searchOpen={search.searchOpen}
         suggestions={search.suggestions}
+        placesLoading={search.placesLoading}
+        placesFallback={search.placesFallback}
         highlightedSuggestion={search.highlightedSuggestion}
         searchInputRef={search.searchInputRef}
         searchContainerRef={search.searchContainerRef}

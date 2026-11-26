@@ -23,6 +23,8 @@ __all__ = [
     'LegacySeriesView',
     'LegendStop',
     'LineageView',
+    'PlaceListView',
+    'PlaceView',
     'ProductListView',
     'ProductMissionsView',
     'ProductRequirementsView',
@@ -316,6 +318,28 @@ class LineageView:
     geometry_snapshot: Geometry
     provenance: str
     note: str
+
+
+@dataclass(frozen=True)
+class PlaceView:
+    """One populated place returned by the local place search."""
+
+    place_id: int
+    name: str
+    country: str
+    admin1: str | None
+    latitude: float
+    longitude: float
+    population: int
+    feature_code: str
+    match_type: str
+
+
+@dataclass(frozen=True)
+class PlaceListView:
+    """Place search or recommendation collection."""
+
+    items: list[PlaceView]
 
 
 @dataclass(frozen=True)

@@ -5,7 +5,8 @@ import {
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react'
-import type { Aoi } from '../api/client'
+import { getPlaceSuggestions, type Aoi, type PlaceSuggestion } from '../api/client'
+import { searchPlaces } from '../map/places'
 import type { MapFocus } from '../map/coordinates'
 import { buildSearchSuggestions, type SearchSuggestion } from './search'
 
@@ -16,12 +17,60 @@ type SearchOptions = {
   openAoisPanel: () => void
 }
 
+const SEARCH_DEBOUNCE_MS = 180
+const SEARCH_RESULT_LIMIT = 10
+
+function fallbackPlaces(query: string): PlaceSuggestion[] {
+  const places = query.trim() ? searchPlaces(query, SEARCH_RESULT_LIMIT) : []
+  return places.map((place, index) => ({
+    placeId: -(index + 1),
+    name: place.name,
+    country: place.region,
+    admin1: null,
+    latitude: place.lat,
+    longitude: place.lng,
+    population: 0,
+    featureCode: 'PPL',
+    matchType: 'local',
+  }))
+}
+
 export function useSearch({ aois, applyFocus, selectAoi, openAoisPanel }: SearchOptions) {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [activeSuggestion, setActiveSuggestion] = useState(0)
+  const [places, setPlaces] = useState<PlaceSuggestion[]>([])
+  const [placesLoading, setPlacesLoading] = useState(false)
+  const [placesFallback, setPlacesFallback] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const searchContainerRef = useRef<HTMLFormElement>(null)
+
+  useEffect(() => {
+    if (!searchOpen) return
+    let active = true
+    const timer = window.setTimeout(() => {
+      setPlacesLoading(true)
+      const query = searchQuery.trim()
+      void getPlaceSuggestions({ query: query || undefined, limit: SEARCH_RESULT_LIMIT })
+        .then((response) => {
+          if (!active) return
+          setPlaces(response.data.items)
+          setPlacesFallback(false)
+        })
+        .catch(() => {
+          if (!active) return
+          setPlaces(fallbackPlaces(query))
+          setPlacesFallback(true)
+        })
+        .finally(() => {
+          if (active) setPlacesLoading(false)
+        })
+    }, SEARCH_DEBOUNCE_MS)
+    return () => {
+      active = false
+      window.clearTimeout(timer)
+    }
+  }, [searchQuery, searchOpen])
 
   useEffect(() => {
     const focusSearch = (event: KeyboardEvent) => {
@@ -57,7 +106,7 @@ export function useSearch({ aois, applyFocus, selectAoi, openAoisPanel }: Search
     }
   }, [searchOpen])
 
-  const suggestions = buildSearchSuggestions(searchQuery, aois)
+  const suggestions = buildSearchSuggestions(searchQuery, aois, places, SEARCH_RESULT_LIMIT)
   const highlightedSuggestion = suggestions.length
     ? Math.min(activeSuggestion, suggestions.length - 1)
     : -1
@@ -131,6 +180,8 @@ export function useSearch({ aois, applyFocus, selectAoi, openAoisPanel }: Search
     activeSuggestion,
     suggestions,
     highlightedSuggestion,
+    placesLoading,
+    placesFallback,
     searchInputRef,
     searchContainerRef,
     setSearchOpen,

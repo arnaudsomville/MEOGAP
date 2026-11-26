@@ -4,6 +4,7 @@ import {
   ANALYSIS_STATES,
   getHealth,
   parseAnalysisRequest,
+  parsePlaceSuggestionList,
   parseApiError,
   parseHealth,
   parseSeries,
@@ -42,6 +43,9 @@ const validateAccount = ajv.getSchema('gateway#/components/schemas/AccountRespon
 const validateDelivery = ajv.getSchema('gateway#/components/schemas/DeliveryResponse')
 const validateResultMap = ajv.getSchema('gateway#/components/schemas/ResultMapResponse')
 const validateAnalysisRequest = ajv.getSchema('gateway#/components/schemas/AnalysisRequestResponse')
+const validatePlaceSuggestions = ajv.getSchema(
+  'gateway#/components/schemas/PlaceSuggestionListResponse',
+)
 
 if (
   !validateHealth ||
@@ -56,7 +60,8 @@ if (
   !validateAccount ||
   !validateDelivery ||
   !validateResultMap ||
-  !validateAnalysisRequest
+  !validateAnalysisRequest ||
+  !validatePlaceSuggestions
 ) {
   throw new Error('The reference contract is missing a shared schema.')
 }
@@ -507,6 +512,44 @@ describe('REST reference contract', () => {
       const { parameter: _parameter, ...pointWithoutParameter } = series.points[0]
       void _parameter
       expect(() => parseSeries({ ...series, points: [pointWithoutParameter] })).toThrow('parameter')
+    },
+  )
+  it(
+    'keeps populated-place suggestions aligned with the Gateway schema',
+    { tags: ['contract'] },
+    () => {
+      const payload = {
+        items: [
+          {
+            place_id: 2972315,
+            name: 'Toulouse',
+            country: 'France',
+            admin1: 'Occitanie',
+            latitude: 43.6045,
+            longitude: 1.4442,
+            population: 511684,
+            feature_code: 'PPLA',
+            match_type: 'exact',
+          },
+        ],
+      }
+      expect(validatePlaceSuggestions(payload)).toBe(true)
+      expect(
+        validatePlaceSuggestions({ items: [{ ...payload.items[0], latitude: 'north' }] }),
+      ).toBe(false)
+      expect(() =>
+        validatePlaceSuggestions({ items: [{ ...payload.items[0], country: undefined }] }),
+      ).not.toThrow()
+      // Ajv returns false rather than throwing for a missing required field.
+      expect(
+        validatePlaceSuggestions({ items: [{ ...payload.items[0], country: undefined }] }),
+      ).toBe(false)
+      expect(parsePlaceSuggestionList(payload).items[0]).toMatchObject({
+        placeId: 2972315,
+        name: 'Toulouse',
+        country: 'France',
+        admin1: 'Occitanie',
+      })
     },
   )
 })

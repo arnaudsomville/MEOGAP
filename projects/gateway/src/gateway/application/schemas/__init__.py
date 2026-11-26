@@ -30,6 +30,7 @@ from gateway.application.schemas.common import (
     FailureResponse,
     TemporalFrequency,
 )
+from gateway.application.schemas.places import PlaceSuggestion, PlaceSuggestionListResponse
 from gateway.application.schemas.requests import (
     AnalysisRequestCreateRequest,
     AnalysisRequestListResponse,
@@ -77,6 +78,8 @@ __all__ = [
     'DeliveryResponse',
     'FailureResponse',
     'LegendStop',
+    'PlaceSuggestion',
+    'PlaceSuggestionListResponse',
     'ProductListResponse',
     'ProductMissionsResponse',
     'ProductPreview',

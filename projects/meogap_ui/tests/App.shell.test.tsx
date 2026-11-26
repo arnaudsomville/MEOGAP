@@ -137,6 +137,26 @@ describe('App shell and request lifecycle', () => {
     },
   )
 
+  it('zooms to an explicit coordinate query', { tags: ['unit'] }, async () => {
+    renderApp()
+    const user = userEvent.setup()
+    await user.type(screen.getByLabelText('Search location'), '48.8566, 2.3522')
+    await user.click(await screen.findByRole('option', { name: /48.8566, 2.3522/ }))
+    expect(screen.getByLabelText('Map focus')).toHaveTextContent('48.8566,2.3522')
+  })
+
+  it(
+    'shows populated-place recommendations on an empty focused search',
+    { tags: ['unit'] },
+    async () => {
+      renderApp()
+      const user = userEvent.setup()
+      await user.click(screen.getByLabelText('Search location'))
+      expect(await screen.findByRole('option', { name: /London/ })).toBeInTheDocument()
+      expect(screen.getByText(/Places © GeoNames/)).toBeInTheDocument()
+    },
+  )
+
   it(
     'supports geographic search, credits, indicators and account panels',
     { tags: ['unit'] },

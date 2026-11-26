@@ -6,6 +6,7 @@ import {
   geometryToPositions,
   geometryToVertices,
   geometryToWkt,
+  parseCoordinateQuery,
   parseCoordinates,
   pointInBounds,
   pointInGeometry,
@@ -26,6 +27,29 @@ describe('map coordinates', () => {
     })
     expect(parseCoordinates('91, 2')).toBeNull()
     expect(parseCoordinates('paris')).toBeNull()
+  })
+
+  it('parses decimal, hemisphere and DMS coordinate queries', { tags: ['unit'] }, () => {
+    expect(parseCoordinateQuery('48.8566, 2.3522')).toMatchObject({
+      type: 'point',
+      lat: 48.8566,
+      lng: 2.3522,
+      zoom: 13,
+    })
+    expect(parseCoordinateQuery('48.8566N 2.3522E')).toMatchObject({
+      lat: 48.8566,
+      lng: 2.3522,
+    })
+    expect(parseCoordinateQuery('48°51\'24"N 2°21\'08"E')).toMatchObject({
+      lat: 48.85666666666667,
+      lng: 2.352222222222222,
+    })
+    expect(parseCoordinateQuery('2.3522E, 48.8566N')).toMatchObject({
+      lat: 48.8566,
+      lng: 2.3522,
+    })
+    expect(parseCoordinateQuery('91N 2E')).toBeNull()
+    expect(parseCoordinateQuery('paris')).toBeNull()
   })
 
   it('converts drawn vertices into a closed GeoJSON polygon', { tags: ['unit'] }, () => {

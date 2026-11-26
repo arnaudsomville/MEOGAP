@@ -13,6 +13,8 @@ type WorkspaceHeaderProps = {
   searchQuery: string
   searchOpen: boolean
   suggestions: SearchSuggestion[]
+  placesLoading: boolean
+  placesFallback: boolean
   highlightedSuggestion: number
   searchInputRef: RefObject<HTMLInputElement | null>
   searchContainerRef: RefObject<HTMLFormElement | null>
@@ -40,6 +42,8 @@ export function WorkspaceHeader({
   searchQuery,
   searchOpen,
   suggestions,
+  placesLoading,
+  placesFallback,
   highlightedSuggestion,
   searchInputRef,
   searchContainerRef,
@@ -116,9 +120,7 @@ export function WorkspaceHeader({
           placeholder="Search location (place, coordinates...)"
           value={searchQuery}
           onChange={(event) => changeSearch(event.target.value)}
-          onFocus={() => {
-            if (searchQuery.trim()) setSearchOpen(true)
-          }}
+          onFocus={() => setSearchOpen(true)}
           onKeyDown={handleSearchKeyDown}
         />
         {searchQuery ? (
@@ -163,11 +165,15 @@ export function WorkspaceHeader({
                   </li>
                 ))}
               </ul>
-            ) : (
+            ) : placesLoading ? null : (
               <p className="search-suggestions-empty">
                 No matching place, coordinates, or saved AOI.
               </p>
             )}
+            <p className="search-attribution">
+              Places © GeoNames · CC BY 4.0
+              {placesFallback ? ' · limited offline fallback' : ''}
+            </p>
           </div>
         ) : null}
       </form>

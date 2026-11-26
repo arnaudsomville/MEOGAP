@@ -2187,3 +2187,12 @@ textarea {
     top: calc(var(--topbar-height) + 8px);
   }
 }
+
+.search-attribution {
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 9.5px;
+  margin: 4px 0 0;
+  padding: 7px 10px 2px;
+  text-align: right;
+}
