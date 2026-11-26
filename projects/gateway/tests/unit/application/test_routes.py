@@ -35,7 +35,7 @@ def build_client() -> TestClient:
     """
     # Use the shared REST factory so bearer enforcement stays part of the route test.
     store = DemoStore(
-        DemoSettings(preparation_delay_seconds=0, execution_delay_seconds=0, delivery_delay_seconds=0),
+        DemoSettings(queue_delay_seconds=0, processing_delay_seconds=0, delivery_delay_seconds=0),
         clock=lambda: NOW,
     )
     config = RestAppConfig(
@@ -125,8 +125,6 @@ def test_all_public_demo_routes_complete_the_documented_happy_path() -> None:
     )
     request_id = created_request.json()['request_id']
     requests = client.get('/api/v1/analysis-requests', headers=AUTH_HEADERS)
-    proposed = client.get(f'/api/v1/analysis-requests/{request_id}', headers=AUTH_HEADERS)
-    executing = client.post(f'/api/v1/analysis-requests/{request_id}/confirm', headers=AUTH_HEADERS)
     completed = client.get(f'/api/v1/analysis-requests/{request_id}', headers=AUTH_HEADERS)
     result_id = completed.json()['result_id']
     result_map = client.get(f'/api/v1/results/{result_id}/map?frames=1', headers=AUTH_HEADERS)
@@ -168,12 +166,14 @@ def test_all_public_demo_routes_complete_the_documented_happy_path() -> None:
     assert updated_aoi.json()['revision'] == UPDATED_AOI_REVISION
     assert estimate.json()['admission'] == 'ADMITTED'
     assert created_request.status_code == status.HTTP_201_CREATED
+    assert created_request.json()['state'] == 'queued'
     assert created_request.json()['temporal_frequency'] == 'monthly'
+    assert created_request.json()['provenance'] == 'SYNTHETIC_DEMO'
     assert requests.status_code == status.HTTP_200_OK
-    assert proposed.json()['state'] == 'PROPOSED'
-    assert executing.json()['state'] == 'IN_EXECUTION'
-    assert completed.json()['state'] == 'COMPLETED'
-    assert result_map.json()['kind'] == 'DEMO_NDVI_STATIC'
+    assert completed.json()['state'] == 'succeeded'
+    assert completed.json()['result_id'] == result_id
+    assert result_map.json()['kind'] == 'SYNTHETIC_DEMO_NDVI'
+    assert result_map.json()['provenance'] == 'SYNTHETIC_DEMO'
     assert result_map.json()['is_demo'] is True
     assert result_map.json()['legend']['title'] == 'NDVI'
     assert result_map.json()['geotiff_url'].endswith('.tif')
@@ -186,6 +186,9 @@ def test_all_public_demo_routes_complete_the_documented_happy_path() -> None:
     assert series_query.status_code == status.HTTP_200_OK
     assert series_query.json()['selection_type'] == 'Point'
     assert series_query.json()['crs'] == 'EPSG:4326'
+    assert series_query.json()['provenance'] == 'SYNTHETIC_DEMO'
+    assert series_query.json()['available_parameters'] == [{'name': 'ndvi', 'label': 'NDVI', 'units': 'unitless'}]
+    assert series_query.json()['points'][0]['parameter'] == 'ndvi'
     assert series_query.json()['points'][0]['state'] in {'VALID', 'MISSING', 'MASKED'}
     assert lineage.json()['request_id'] == request_id
     assert delivery.status_code == status.HTTP_202_ACCEPTED
@@ -195,6 +198,32 @@ def test_all_public_demo_routes_complete_the_documented_happy_path() -> None:
     assert account.json()['user_id'] == 'demo-user'
     assert balance.json()['unit'] == 'credits'
     assert deleted_aoi.status_code == status.HTTP_204_NO_CONTENT
+
+
+def test_created_request_is_immediately_visible_and_retrievable_via_rest() -> None:
+    """POST returns queued at once; subsequent REST reads expose the authoritative state."""
+    # Arrange
+    client = build_client()
+    # Act
+    created = client.post(
+        '/api/v1/analysis-requests',
+        headers=AUTH_HEADERS,
+        json={
+            'product_id': 'ndvi',
+            'aoi_id': 'aoi-1',
+            'period': {'start_month': '2026-01', 'end_month': '2026-02'},
+            'temporal_frequency': 'monthly',
+        },
+    )
+    request_id = created.json()['request_id']
+    listed = client.get('/api/v1/analysis-requests', headers=AUTH_HEADERS)
+    retrieved = client.get(f'/api/v1/analysis-requests/{request_id}', headers=AUTH_HEADERS)
+    # Assert
+    assert created.status_code == status.HTTP_201_CREATED
+    assert created.json()['state'] == 'queued'
+    assert request_id in [item['request_id'] for item in listed.json()['items']]
+    assert retrieved.json()['state'] == 'succeeded'
+    assert retrieved.json()['result_id'] is not None
 
 
 def test_routes_require_a_bearer_and_use_the_shared_validation_envelope() -> None:
@@ -247,3 +276,43 @@ def test_routes_require_a_bearer_and_use_the_shared_validation_envelope() -> Non
     assert oversized_aoi.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     assert oversized_aoi.json()['code'] == 'AOI_AREA_EXCEEDED'
     assert unsupported_frequency.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+def test_series_query_rejects_an_implicit_or_unsupported_crs() -> None:
+    """Result selections require an explicit supported CRS."""
+    # Arrange
+    client = build_client()
+    created = client.post(
+        '/api/v1/analysis-requests',
+        headers=AUTH_HEADERS,
+        json={
+            'product_id': 'ndvi',
+            'aoi_id': 'aoi-1',
+            'period': {'start_month': '2026-01', 'end_month': '2026-02'},
+        },
+    )
+    result_id = client.get(f'/api/v1/analysis-requests/{created.json()["request_id"]}', headers=AUTH_HEADERS).json()[
+        'result_id'
+    ]
+    # Act
+    unsupported = client.post(
+        f'/api/v1/results/{result_id}/series',
+        headers=AUTH_HEADERS,
+        json={
+            'geometry_wkt': 'POINT(1.44 43.60)',
+            'crs': 'EPSG:3857',
+            'period': {'start_month': '2026-01', 'end_month': '2026-02'},
+        },
+    )
+    missing = client.post(
+        f'/api/v1/results/{result_id}/series',
+        headers=AUTH_HEADERS,
+        json={
+            'geometry_wkt': 'POINT(1.44 43.60)',
+            'period': {'start_month': '2026-01', 'end_month': '2026-02'},
+        },
+    )
+    # Assert
+    assert unsupported.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert unsupported.json()['code'] == 'UNSUPPORTED_CRS'
+    assert missing.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY

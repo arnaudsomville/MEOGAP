@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef } from 'react'
-import type { SeriesPoint, SeriesResponse } from '../api/client'
+import type { SeriesParameter, SeriesPoint, SeriesResponse } from '../api/client'
 import type { Hemisphere, TemporalFilters } from '../temporal'
+import { SeriesParameterSelector } from './SeriesParameterSelector'
 import { TemporalFilters as TemporalFiltersPanel } from './TemporalFilters'
 import { TimeSeriesChart } from './TimeSeriesChart'
 
@@ -14,6 +15,9 @@ type ChartWorkspaceProps = {
   selectionLabel: string
   series: SeriesResponse
   points: SeriesPoint[]
+  availableParameters: SeriesParameter[]
+  selectedParameters: string[]
+  onToggleParameter: (name: string) => void
   filters: TemporalFilters
   hemisphere: Hemisphere
   onFiltersChange: (filters: TemporalFilters) => void
@@ -37,6 +41,9 @@ export function ChartWorkspace({
   selectionLabel,
   series,
   points,
+  availableParameters,
+  selectedParameters,
+  onToggleParameter,
   filters,
   hemisphere,
   onFiltersChange,
@@ -92,6 +99,9 @@ export function ChartWorkspace({
   const missing = countState(series.points, 'MISSING')
   const masked = countState(series.points, 'MASKED')
   const invalid = countState(series.points, 'INVALID')
+  const displayedParameters = availableParameters.filter((parameter) =>
+    selectedParameters.includes(parameter.name),
+  )
   return (
     <div
       className="chart-workspace-backdrop"
@@ -131,29 +141,49 @@ export function ChartWorkspace({
 
         <div className="chart-workspace-body">
           <section className="chart-summary" aria-label="Series summary">
-            <span>{`Showing ${points.length} of ${series.points.length} periods`}</span>
+            <span>{`Showing ${points.length} of ${series.points.length} period values`}</span>
             <span>Valid: {valid}</span>
             <span>Missing: {missing}</span>
             <span>Masked: {masked}</span>
             {invalid ? <span>Invalid: {invalid}</span> : null}
             <span>Units: {series.units}</span>
             <span>Quality: {series.qualityStatus}</span>
-            {series.coverage !== null ? (
-              <span>Coverage: {Math.round(series.coverage * 100)}%</span>
-            ) : null}
+            <span>Provenance: {series.provenance ?? 'Unavailable'}</span>
           </section>
 
           <div className="chart-workspace-grid">
             <div className="chart-workspace-chart">
-              <TimeSeriesChart
-                points={points}
-                units={series.units}
-                qualityStatus={series.qualityStatus}
-                coverage={series.coverage}
-                emptyMessage="No observation matches the selected temporal display filters."
+              <SeriesParameterSelector
+                parameters={availableParameters}
+                selected={selectedParameters}
+                onToggle={onToggleParameter}
               />
+              {displayedParameters.length === 0 ? (
+                <div className="state-notice">
+                  Select at least one available parameter to display its time series.
+                </div>
+              ) : (
+                displayedParameters.map((parameter) => {
+                  const parameterPoints = points.filter(
+                    (point) => point.parameter === parameter.name,
+                  )
+                  return (
+                    <section key={parameter.name} aria-label={`${parameter.label} series`}>
+                      <h3>{parameter.label}</h3>
+                      <TimeSeriesChart
+                        points={parameterPoints}
+                        units={parameter.units}
+                        qualityStatus={series.qualityStatus}
+                        coverage={series.coverage}
+                        emptyMessage="No observation matches the selected temporal display filters."
+                      />
+                    </section>
+                  )
+                })
+              )}
               <p className="muted">
-                {series.note} Aggregation: {series.aggregationMethod}. {series.qualityNote}
+                {series.note} Aggregation: {series.aggregationMethod}. {series.qualityNote} Missing
+                periods remain gaps, never zero values.
               </p>
             </div>
             <TemporalFiltersPanel

@@ -14,6 +14,7 @@ import {
 
 function point(periodStart: string, value: number | null = 0.5): SeriesPoint {
   return {
+    parameter: 'ndvi',
     periodStart,
     periodEnd: periodStart,
     value,

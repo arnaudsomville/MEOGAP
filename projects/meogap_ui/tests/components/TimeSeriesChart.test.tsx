@@ -9,6 +9,7 @@ function point(
   state: SeriesPoint['state'] = value === null ? 'MISSING' : 'VALID',
 ): SeriesPoint {
   return {
+    parameter: 'ndvi',
     periodStart,
     periodEnd: periodStart,
     value,
@@ -86,6 +87,6 @@ describe('TimeSeriesChart', () => {
     expect(screen.getByText('MISSING')).toBeInTheDocument()
     expect(screen.getByText('MASKED')).toBeInTheDocument()
     expect(screen.getByText(/5 periods, 3 valid/)).toBeInTheDocument()
-    expect(screen.getByText(/Coverage: 72%/)).toBeInTheDocument()
+    expect(screen.getByText(/Demo coverage: 72%/)).toBeInTheDocument()
   })
 })

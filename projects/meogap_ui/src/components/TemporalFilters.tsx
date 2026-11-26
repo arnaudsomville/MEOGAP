@@ -45,7 +45,8 @@ export function TemporalFilters({
       </header>
       <p className="field-help">
         {describeTemporalFilters(filters)}. Filters only change the displayed subset; they do not
-        alter the scientific result or aggregate seasons.
+        alter the scientific result or aggregate seasons. Years narrow the subset; selected months
+        and seasons combine as a union of calendar criteria. Missing periods remain missing.
       </p>
       {years.length ? (
         <fieldset className="choice-group">

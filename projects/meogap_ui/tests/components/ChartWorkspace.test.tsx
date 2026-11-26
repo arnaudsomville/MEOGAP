@@ -8,6 +8,7 @@ import { EMPTY_TEMPORAL_FILTERS } from '../../src/temporal'
 
 const POINTS: SeriesPoint[] = [
   {
+    parameter: 'ndvi',
     periodStart: '2026-01-01',
     periodEnd: '2026-01-31',
     value: 0,
@@ -18,6 +19,7 @@ const POINTS: SeriesPoint[] = [
     note: null,
   },
   {
+    parameter: 'ndvi',
     periodStart: '2026-02-01',
     periodEnd: '2026-02-28',
     value: null,
@@ -28,6 +30,7 @@ const POINTS: SeriesPoint[] = [
     note: 'No observation.',
   },
   {
+    parameter: 'ndvi',
     periodStart: '2026-03-01',
     periodEnd: '2026-03-31',
     value: null,
@@ -38,6 +41,7 @@ const POINTS: SeriesPoint[] = [
     note: 'Masked.',
   },
   {
+    parameter: 'ndvi',
     periodStart: '2026-04-01',
     periodEnd: '2026-04-30',
     value: null,
@@ -56,7 +60,11 @@ const SERIES: SeriesResponse = {
   crs: 'EPSG:4326',
   selectionType: 'Point',
   aggregationMethod: 'point_sample',
+  selectionAreaKm2: 0,
   units: 'unitless',
+  availableParameters: [{ name: 'ndvi', label: 'NDVI', units: 'unitless' }],
+  selectedParameters: ['ndvi'],
+  provenance: 'SYNTHETIC_DEMO',
   qualityStatus: 'PARTIAL',
   qualityNote: 'Demo.',
   coverage: 0.72,
@@ -77,6 +85,9 @@ function renderWorkspace(open = true, onClose = vi.fn()) {
       selectionLabel="Point selection · POINT(1.44 43.6) · EPSG:4326"
       series={SERIES}
       points={POINTS}
+      availableParameters={SERIES.availableParameters}
+      selectedParameters={SERIES.selectedParameters}
+      onToggleParameter={vi.fn()}
       filters={EMPTY_TEMPORAL_FILTERS}
       hemisphere="northern"
       onFiltersChange={vi.fn()}
@@ -97,7 +108,7 @@ describe('ChartWorkspace', () => {
     renderWorkspace(true, onClose)
     const dialog = screen.getByRole('dialog', { name: 'NDVI time series' })
     expect(within(dialog).getByText(/version 1/)).toBeInTheDocument()
-    expect(within(dialog).getByText(/Showing 4 of 4 periods/)).toBeInTheDocument()
+    expect(within(dialog).getByText(/Showing 4 of 4 period values/)).toBeInTheDocument()
     expect(within(dialog).getByText('Valid: 1')).toBeInTheDocument()
     expect(within(dialog).getByText('Missing: 1')).toBeInTheDocument()
     expect(within(dialog).getByText('Masked: 1')).toBeInTheDocument()
@@ -140,6 +151,9 @@ describe('ChartWorkspace', () => {
             selectionLabel="Point selection"
             series={SERIES}
             points={POINTS}
+            availableParameters={SERIES.availableParameters}
+            selectedParameters={SERIES.selectedParameters}
+            onToggleParameter={vi.fn()}
             filters={EMPTY_TEMPORAL_FILTERS}
             hemisphere="northern"
             onFiltersChange={vi.fn()}
@@ -185,6 +199,9 @@ describe('ChartWorkspace', () => {
           selectionLabel="Point selection"
           series={SERIES}
           points={POINTS}
+          availableParameters={SERIES.availableParameters}
+          selectedParameters={SERIES.selectedParameters}
+          onToggleParameter={vi.fn()}
           filters={EMPTY_TEMPORAL_FILTERS}
           hemisphere="northern"
           onFiltersChange={vi.fn()}
@@ -209,6 +226,9 @@ describe('ChartWorkspace', () => {
           selectionLabel="Point selection"
           series={SERIES}
           points={POINTS}
+          availableParameters={SERIES.availableParameters}
+          selectedParameters={SERIES.selectedParameters}
+          onToggleParameter={vi.fn()}
           filters={EMPTY_TEMPORAL_FILTERS}
           hemisphere="northern"
           onFiltersChange={vi.fn()}
@@ -230,4 +250,43 @@ describe('ChartWorkspace', () => {
     spy.mockRestore()
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
+  it(
+    'offers available series parameters independently of the result',
+    { tags: ['unit'] },
+    async () => {
+      const user = userEvent.setup()
+      const onToggleParameter = vi.fn()
+      const series: SeriesResponse = {
+        ...SERIES,
+        availableParameters: [
+          { name: 'ndvi', label: 'NDVI', units: 'unitless' },
+          { name: 'coverage', label: 'COVERAGE', units: 'fraction' },
+        ],
+        selectedParameters: ['ndvi'],
+      }
+      render(
+        <ChartWorkspace
+          open
+          onClose={vi.fn()}
+          productName="NDVI"
+          resultId="result-1"
+          resultVersion="1"
+          periodLabel="2026-01 to 2026-04 UTC"
+          selectionLabel="Point selection"
+          series={series}
+          points={POINTS}
+          availableParameters={series.availableParameters}
+          selectedParameters={series.selectedParameters}
+          onToggleParameter={onToggleParameter}
+          filters={EMPTY_TEMPORAL_FILTERS}
+          hemisphere="northern"
+          onFiltersChange={vi.fn()}
+          onResetFilters={vi.fn()}
+        />,
+      )
+      expect(screen.getByText('Displayed parameters')).toBeInTheDocument()
+      await user.click(screen.getByRole('checkbox', { name: 'COVERAGE (fraction)' }))
+      expect(onToggleParameter).toHaveBeenCalledWith('coverage')
+    },
+  )
 })

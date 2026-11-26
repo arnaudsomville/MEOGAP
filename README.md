@@ -87,6 +87,9 @@ The transport decision is recorded as proposed, not approved, in `documentation/
 - The raw Bearer credential is a mock artefact only; it is not an owner identifier or an authorization decision.
 - Shared REST/application infrastructure currently lives in `meogap_core` as a pragmatic M0 foundation. This is accepted for now; extracting it would require a concrete architectural benefit and a separate decision.
 - The Gateway and UI M0 demo use documented product, request, result and delivery schemas. Their deterministic content is explicitly labelled as demo data and is not a scientific product claim.
+- M0 request submission uses the asynchronous `queued → processing → succeeded` lifecycle (with explicit `failed` and `cancelled` states) and requires no manual confirmation. Queue, processing and delivery delays are configurable environment variables.
+- The bundled georeferenced NDVI-like frames are `SYNTHETIC_DEMO` assets. They are not Sentinel-2 or Landsat observations, and no cloud-cover, masking or observation-quality statistic is computed for them.
+- M0 request inputs are saved AOIs only. Result exploration supports explicit point, polygon and complete-result selections transmitted as WKT with an explicit `EPSG:4326` CRS.
 
 ---
 

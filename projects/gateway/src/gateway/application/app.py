@@ -40,7 +40,12 @@ CONFIG = RestAppConfig(
     extra_exempt_prefixes=('/demo-assets/',),
 )
 DEMO_STORE = DemoStore(
-    DemoSettings(failure_mode=os.getenv('GATEWAY_DEMO_FAILURE_MODE') or None),
+    DemoSettings(
+        queue_delay_seconds=float(os.getenv('GATEWAY_DEMO_QUEUE_DELAY_SECONDS', '1')),
+        processing_delay_seconds=float(os.getenv('GATEWAY_DEMO_PROCESSING_DELAY_SECONDS', '2')),
+        delivery_delay_seconds=float(os.getenv('GATEWAY_DEMO_DELIVERY_DELAY_SECONDS', '1')),
+        failure_mode=os.getenv('GATEWAY_DEMO_FAILURE_MODE') or None,
+    ),
 )
 REST_INTERFACE = RestInterface(
     CONFIG,
@@ -168,7 +173,7 @@ def demo_ndvi_png(asset_name: str) -> FileResponse:
     )
 
 
-@app.get('/')
+@app.get('/', include_in_schema=False)
 def root() -> str:
     """Return a stable placeholder for the public gateway root.
 

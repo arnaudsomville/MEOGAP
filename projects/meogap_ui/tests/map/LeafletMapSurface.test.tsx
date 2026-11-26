@@ -117,6 +117,7 @@ describe('LeafletMapSurface', () => {
             productId: 'ndvi',
             resultVersion: '1',
             units: 'unitless',
+            provenance: 'SYNTHETIC_DEMO',
             validationStatus: 'NOT_VALIDATED',
             qualityStatus: 'PARTIAL',
             qualityNote: 'Synthetic demo quality.',

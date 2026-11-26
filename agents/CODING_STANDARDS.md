@@ -181,6 +181,25 @@ encapsulates one algorithm or operation and exposes a clear execution entrypoint
 - **Do:** use a response dataclass for multiple outputs.
 - **Don't:** return tuples or dicts when the output is structured.
 
+### No raw dictionaries as structured service or route return values
+- **Forbidden:** building and returning a raw `dict[str, Any]` (or equivalent) as the structured output of a
+  service, domain method, route handler, or serialization helper. This includes inline literals such as
+  `return {'product_id': ..., 'admission': ...}`.
+- Internal service and domain boundaries must return explicit dataclasses (preferred for construction speed and
+  clarity) or dedicated domain objects. Pydantic models belong at the HTTP/contract boundary, where they provide
+  schema validation and OpenAPI generation; do not use Pydantic as an internal convenience container when a
+  dataclass is sufficient.
+- HTTP route handlers may return a domain dataclass directly when the declared `response_model` is configured with
+  `from_attributes=True`. If a route needs to construct a response model explicitly, construct the Pydantic model
+  or a typed envelope dataclass; never assemble an anonymous dictionary.
+- Dictionary constants are acceptable only for static lookup/config data (for example an enum-to-label map), not
+  for computed operation results. Dictionary-shaped JSON payloads may be produced only by the HTTP serialization
+  layer from typed objects.
+- List endpoints must return a typed collection/envelope dataclass or a Pydantic response model, not
+  `{'items': [...]}` assembled by hand.
+- Tests for a changed service or route must reject the previous raw-dictionary shape by asserting the returned
+  dataclass type (or the typed response model), not only field values.
+
 ### Params base class and validation
 - All Params dataclasses **must** inherit from a shared abstract base (for example, `ParamsBase`) that defines
   `check()`.

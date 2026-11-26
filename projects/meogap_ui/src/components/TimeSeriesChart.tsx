@@ -98,7 +98,7 @@ export function TimeSeriesChart({
         <strong>{summary}</strong>
         <span>
           Units: {units} · Quality: {qualityStatus}
-          {coverage !== null ? ` · Coverage: ${Math.round(coverage * 100)}%` : ''}
+          {coverage !== null ? ` · Demo coverage: ${Math.round(coverage * 100)}%` : ''}
         </span>
       </figcaption>
       <svg
@@ -181,7 +181,7 @@ export function TimeSeriesChart({
             <th scope="col">Period</th>
             <th scope="col">Value</th>
             <th scope="col">State</th>
-            <th scope="col">Coverage</th>
+            <th scope="col">Demo coverage</th>
             <th scope="col">Note</th>
           </tr>
         </thead>

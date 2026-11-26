@@ -1,9 +1,12 @@
 import Ajv2020 from 'ajv/dist/2020.js'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  ANALYSIS_STATES,
   getHealth,
+  parseAnalysisRequest,
   parseApiError,
   parseHealth,
+  parseSeries,
   type ApiError,
   type Health,
 } from '../../src/api/client'
@@ -38,6 +41,7 @@ const validateResult = ajv.getSchema('gateway#/components/schemas/ResultDetailRe
 const validateAccount = ajv.getSchema('gateway#/components/schemas/AccountResponse')
 const validateDelivery = ajv.getSchema('gateway#/components/schemas/DeliveryResponse')
 const validateResultMap = ajv.getSchema('gateway#/components/schemas/ResultMapResponse')
+const validateAnalysisRequest = ajv.getSchema('gateway#/components/schemas/AnalysisRequestResponse')
 
 if (
   !validateHealth ||
@@ -51,7 +55,8 @@ if (
   !validateResult ||
   !validateAccount ||
   !validateDelivery ||
-  !validateResultMap
+  !validateResultMap ||
+  !validateAnalysisRequest
 ) {
   throw new Error('The reference contract is missing a shared schema.')
 }
@@ -155,13 +160,15 @@ describe('REST reference contract', () => {
       temporal_resolution: '5 days',
       units: 'unitless',
       availability: 'DEMO',
+      provenance: 'SYNTHETIC_DEMO',
       validation_status: 'NOT_VALIDATED',
       inputs: ['Red reflectance'],
       parameters: [],
       limitations: ['Deterministic M0 descriptor.'],
       supported_sources: ['Sentinel', 'Landsat'],
       supported_resolutions_m: [10, 20],
-      supported_spatial_inputs: ['AOI', 'POI', 'LOI'],
+      supported_spatial_inputs: ['AOI'],
+      supported_selection_geometries: ['POINT', 'POLYGON', 'RESULT_EXTENT'],
       supported_frequencies: ['monthly', 'semimonthly', 'weekly', 'three_day', 'two_day', 'daily'],
       max_period_months: 120,
       documentation_status: 'PLACEHOLDER',
@@ -259,14 +266,19 @@ describe('REST reference contract', () => {
           crs: 'EPSG:4326',
           selection_type: 'Point',
           aggregation_method: 'point_sample',
+          selection_area_km2: 0,
           units: 'unitless',
+          available_parameters: [{ name: 'ndvi', label: 'NDVI', units: 'unitless' }],
+          selected_parameters: ['ndvi'],
           quality_status: 'PARTIAL',
           quality_note: 'Demo.',
           coverage: null,
+          provenance: 'SYNTHETIC_DEMO',
           is_demo: true,
           note: 'Demo.',
           points: [
             {
+              parameter: 'ndvi',
               period_start: '2026-01-01',
               period_end: '2026-01-31',
               value: 0,
@@ -302,6 +314,8 @@ describe('REST reference contract', () => {
           end_month: '2026-02',
           units: 'unitless',
           temporal_frequency: 'monthly',
+          provenance: 'SYNTHETIC_DEMO',
+          available_parameters: [{ name: 'ndvi', label: 'NDVI', units: 'unitless' }],
           validation_status: 'NOT_VALIDATED',
           quality_status: 'PARTIAL',
           quality_note: 'Demo.',
@@ -361,16 +375,17 @@ describe('REST reference contract', () => {
           [43.56, 1.38],
           [43.66, 1.49],
         ],
-        kind: 'DEMO_NDVI_STATIC',
-        note: 'Static georeferenced demonstration NDVI.',
+        kind: 'SYNTHETIC_DEMO_NDVI',
+        provenance: 'SYNTHETIC_DEMO',
+        note: 'Synthetic georeferenced NDVI-like demonstration raster.',
         result_id: 'result-1',
         request_id: 'request-1',
         product_id: 'ndvi',
         result_version: '1',
         units: 'unitless',
         validation_status: 'NOT_VALIDATED',
-        quality_status: 'PARTIAL',
-        quality_note: 'Cloud-masked demo raster.',
+        quality_status: 'UNKNOWN',
+        quality_note: 'No observation quality is computed.',
         legend: {
           title: 'NDVI',
           units: 'unitless',
@@ -398,4 +413,100 @@ describe('REST reference contract', () => {
       }),
     ).toBe(true)
   })
+  it(
+    'keeps the lifecycle state vocabulary aligned with the UI parser',
+    { tags: ['contract'] },
+    () => {
+      const stateSchema = (
+        contract.components.schemas.AnalysisRequestResponse as {
+          properties: { state: { enum: string[] } }
+        }
+      ).properties.state
+      expect(stateSchema.enum).toEqual([...ANALYSIS_STATES])
+      const payload = {
+        request_id: 'request-1',
+        state: 'queued',
+        product_id: 'ndvi',
+        aoi_id: 'aoi-1',
+        source_aoi_revision: 1,
+        aoi_name: 'Toulouse',
+        geometry_snapshot: {
+          type: 'Polygon',
+          coordinates: [
+            [
+              [1.38, 43.56],
+              [1.49, 43.56],
+              [1.49, 43.66],
+              [1.38, 43.56],
+            ],
+          ],
+        },
+        start_month: '2026-01',
+        end_month: '2026-02',
+        requested_sources: [],
+        requested_spatial_resolution_m: null,
+        temporal_frequency: null,
+        provenance: 'SYNTHETIC_DEMO',
+        estimated_credits: 3,
+        actual_credits: null,
+        result_id: null,
+        message: null,
+        failure: null,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      }
+      expect(validateAnalysisRequest(payload)).toBe(true)
+      expect(validateAnalysisRequest({ ...payload, state: 'COMPLETED' })).toBe(false)
+      expect(parseAnalysisRequest(payload).state).toBe('queued')
+      expect(() => parseAnalysisRequest({ ...payload, state: 'COMPLETED' })).toThrow(
+        'unsupported analysis request state',
+      )
+    },
+  )
+
+  it(
+    'requires explicit series parameters and synthetic provenance in result schemas',
+    { tags: ['contract'] },
+    () => {
+      const series = {
+        result_id: 'result-1',
+        product_id: 'ndvi',
+        geometry_wkt: 'POINT(1.44 43.6)',
+        crs: 'EPSG:4326',
+        selection_type: 'Point',
+        aggregation_method: 'point_sample',
+        selection_area_km2: 0,
+        units: 'unitless',
+        available_parameters: [{ name: 'ndvi', label: 'NDVI', units: 'unitless' }],
+        selected_parameters: ['ndvi'],
+        quality_status: 'PARTIAL',
+        quality_note: 'Demo.',
+        coverage: null,
+        provenance: 'SYNTHETIC_DEMO',
+        is_demo: true,
+        note: 'Demo.',
+        points: [
+          {
+            parameter: 'ndvi',
+            period_start: '2026-01-01',
+            period_end: '2026-01-31',
+            value: 0,
+            unit: 'unitless',
+            state: 'VALID',
+            quality_status: 'VALID',
+            coverage: null,
+            note: null,
+          },
+        ],
+      }
+      expect(validateSeries(series)).toBe(true)
+      expect(validateSeries({ ...series, provenance: 'SENTINEL_2' })).toBe(false)
+      expect(
+        validateSeries({ ...series, points: [{ ...series.points[0], parameter: undefined }] }),
+      ).toBe(false)
+      const { parameter: _parameter, ...pointWithoutParameter } = series.points[0]
+      void _parameter
+      expect(() => parseSeries({ ...series, points: [pointWithoutParameter] })).toThrow('parameter')
+    },
+  )
 })

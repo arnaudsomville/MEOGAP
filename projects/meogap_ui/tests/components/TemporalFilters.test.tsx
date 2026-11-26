@@ -7,6 +7,7 @@ import { EMPTY_TEMPORAL_FILTERS } from '../../src/temporal'
 
 const POINTS: SeriesPoint[] = [
   {
+    parameter: 'ndvi',
     periodStart: '2025-01-01',
     periodEnd: '2025-01-31',
     value: 0.2,
@@ -17,6 +18,7 @@ const POINTS: SeriesPoint[] = [
     note: null,
   },
   {
+    parameter: 'ndvi',
     periodStart: '2026-07-01',
     periodEnd: '2026-07-31',
     value: 0.4,

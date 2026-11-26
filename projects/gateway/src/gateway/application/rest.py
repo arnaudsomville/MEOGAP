@@ -67,13 +67,7 @@ OPERATIONS: tuple[Operation, ...] = (
         'POST',
         f'{PUBLIC_API_PREFIX}/analysis-requests',
         'gateway_create_analysis_request',
-        'Submit an analysis request.',
-    ),
-    Operation(
-        'POST',
-        f'{PUBLIC_API_PREFIX}/analysis-requests/{{request_id}}/confirm',
-        'gateway_confirm_analysis_request',
-        'Confirm a proposed analysis request.',
+        'Submit an analysis request and return its queued state.',
     ),
     Operation(
         'GET',

@@ -51,3 +51,10 @@ GTW is MEOGAP's unique public REST entry point. It validates external/UI request
 2. Which identity transport contract should M0 use (e.g. bearer token), while keeping the demo identity deterministic and clearly distinct from production authentication?
 3. Are downloads served/streamed by GTW or provided through short-lived object references? Public behavior can be defined before choosing the mechanism?
 4. Which representation delivery pattern best fits the first UI map/chart use cases (e.g. bounded dataset response, image/tile service or another format)? Keep this open until contract and consumer analysis; SCI generates the representation, GTW exposes it.
+
+## M0 implementation notes
+
+- The public Gateway currently owns a deterministic in-memory demo and does not yet route requests to CON or SCI. M0 request submission follows `queued → processing → succeeded` without manual confirmation; see `documentation/architecture/adr/ADR-0005-m0-asynchronous-request-lifecycle.md`.
+- Product descriptors expose `provenance: "SYNTHETIC_DEMO"`; the bundled georeferenced NDVI-like frames are not real mission observations.
+- Result-series queries require an explicit WKT geometry and an explicit `EPSG:4326` CRS, expose available/selected parameters, and preserve `VALID`, `MISSING`, `MASKED` and `INVALID` period states.
+- M0 request inputs are saved AOIs only. Product descriptors must not advertise POI/LOI request inputs until the request-geometry and buffering contract exists.

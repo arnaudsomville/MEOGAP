@@ -7,8 +7,18 @@ satellite observations or validated scientific results.
 
 from __future__ import annotations
 
-from typing import Any
+from dataclasses import dataclass
 from urllib.parse import quote
+
+
+@dataclass(frozen=True)
+class ProductPreview:
+    """Illustrative preview metadata owned by a product descriptor."""
+
+    url: str
+    alt: str
+    attribution: str
+
 
 WIDTH = 320
 HEIGHT = 180
@@ -204,7 +214,7 @@ BUILDERS = {
 }
 
 
-def build_product_preview(product_id: str, name: str) -> dict[str, Any]:
+def build_product_preview(product_id: str, name: str) -> ProductPreview:
     """Return a local illustrative preview descriptor for one demo product.
 
     Args:
@@ -214,13 +224,13 @@ def build_product_preview(product_id: str, name: str) -> dict[str, Any]:
 
     Returns:
     -------
-        dict[str, Any]: data URL, alternative text and attribution.
+        ProductPreview: data URL, alternative text and attribution.
 
     """
     builder = BUILDERS.get(product_id, _ndvi)
     svg = builder(name)
-    return {
-        'url': f'data:image/svg+xml,{quote(svg)}',
-        'alt': f'Illustrative preview for the {name} demo product',
-        'attribution': 'MEOGAP synthetic illustration, not a scientific result',
-    }
+    return ProductPreview(
+        url=f'data:image/svg+xml,{quote(svg)}',
+        alt=f'Illustrative preview for the {name} demo product',
+        attribution='MEOGAP synthetic illustration, not a scientific result',
+    )

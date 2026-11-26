@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   cancelAnalysisRequest,
-  confirmAnalysisRequest,
   createAnalysisRequest,
   createAoi,
   createDelivery,
@@ -67,12 +66,12 @@ const PRODUCT = {
 
 const REQUEST = {
   request_id: 'request-1',
-  state: 'PROPOSED',
+  state: 'queued',
   product_id: 'ndvi',
   aoi_id: 'aoi-1',
   start_month: '2026-01',
   end_month: '2026-02',
-  proposal: { estimated_credits: 3 },
+  estimated_credits: 3,
   result_id: 'result-1',
 }
 
@@ -111,7 +110,6 @@ describe('Gateway client', () => {
           note: 'Deterministic M0 descriptor.',
         }),
         response({ items: [REQUEST] }),
-        response(REQUEST),
         response(REQUEST),
         response(REQUEST),
         response(REQUEST),
@@ -154,7 +152,7 @@ describe('Gateway client', () => {
       await expect(getProductRequirements('ndvi')).resolves.toMatchObject({
         data: { inputs: ['Sentinel-2'] },
       })
-      await expect(listAnalysisRequests()).resolves.toMatchObject({ data: [{ state: 'PROPOSED' }] })
+      await expect(listAnalysisRequests()).resolves.toMatchObject({ data: [{ state: 'queued' }] })
       await expect(getAnalysisRequest('request-1')).resolves.toMatchObject({
         data: { id: 'request-1' },
       })
@@ -166,11 +164,8 @@ describe('Gateway client', () => {
           endMonth: '2026-02',
         }),
       ).resolves.toMatchObject({ data: { id: 'request-1' } })
-      await expect(confirmAnalysisRequest('request-1')).resolves.toMatchObject({
-        data: { state: 'PROPOSED' },
-      })
       await expect(cancelAnalysisRequest('request-1')).resolves.toMatchObject({
-        data: { state: 'PROPOSED' },
+        data: { state: 'queued' },
       })
       await expect(getCreditBalance()).resolves.toMatchObject({ data: { balance: 12 } })
       await expect(getResultMap('result-1')).resolves.toMatchObject({
@@ -199,7 +194,6 @@ describe('Gateway client', () => {
         '/api/v1/analysis-requests',
         '/api/v1/analysis-requests/request-1',
         '/api/v1/analysis-requests',
-        '/api/v1/analysis-requests/request-1/confirm',
         '/api/v1/analysis-requests/request-1/cancel',
         '/api/v1/credits/balance',
         '/api/v1/results/result-1/map',
@@ -232,7 +226,7 @@ describe('Gateway client', () => {
         'unsupported delivery state',
       )
       expect(() => parseCreditBalance({ balance: '12' })).toThrow('balance must be a finite number')
-      expect(() => parseResultMap({ map_url: 4 })).toThrow('expected a string field')
+      expect(() => parseResultMap({ map_url: 4 })).toThrow('must be a string or null')
     },
   )
 
@@ -265,7 +259,7 @@ describe('Gateway client', () => {
       expect(
         parseAnalysisRequest({
           id: 'request-alias',
-          state: 'COMPLETED',
+          state: 'succeeded',
           productId: 'product-alias',
           aoiId: 'aoi-alias',
           period_start: '2026-01',
@@ -289,7 +283,7 @@ describe('Gateway client', () => {
           reason: 'Ready',
         }),
       ).toMatchObject({ id: 'delivery-alias', downloadUrl: 'https://example.test/file.zip' })
-      expect(parseCreditBalance({ credits: 0, currency: 'points' })).toEqual({
+      expect(parseCreditBalance({ balance: 0, unit: 'points' })).toEqual({
         balance: 0,
         unit: 'points',
       })
@@ -351,6 +345,7 @@ describe('extended Gateway client', () => {
       native_resolution: '10 m',
       units: 'unitless',
       supported_spatial_inputs: ['AOI', 'POI', 'LOI', 'UNKNOWN'],
+      supported_selection_geometries: ['POINT', 'POLYGON', 'RESULT_EXTENT', 'UNKNOWN'],
       supported_frequencies: [
         'monthly',
         'semimonthly',
@@ -367,7 +362,8 @@ describe('extended Gateway client', () => {
       supported_resolutions_m: [10, 20],
     })
     expect(product.units).toBe('unitless')
-    expect(product.supportedSpatialInputs).toEqual(['AOI', 'POI', 'LOI'])
+    expect(product.supportedSpatialInputs).toEqual(['AOI'])
+    expect(product.supportedSelectionGeometries).toEqual(['POINT', 'POLYGON', 'RESULT_EXTENT'])
     expect(product.supportedFrequencies).toEqual([
       'monthly',
       'semimonthly',
@@ -453,6 +449,7 @@ describe('extended Gateway client', () => {
       note: 'Demo.',
       points: [
         {
+          parameter: 'ndvi',
           period_start: '2026-01-01',
           period_end: '2026-01-31',
           value: 0,
@@ -463,6 +460,7 @@ describe('extended Gateway client', () => {
           note: null,
         },
         {
+          parameter: 'ndvi',
           period_start: '2026-02-01',
           period_end: '2026-02-28',
           value: null,

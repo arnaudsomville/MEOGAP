@@ -1,9 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "MEOGAP Gateway",
     "description": "Public REST gateway for the MEOGAP platform.",
-    "version": "0.1.0"
+    "version": "0.1.0",
+    "title": "MEOGAP Gateway"
   },
   "paths": {
     "/api/v1/health": {
@@ -35,7 +35,7 @@
           "gateway"
         ],
         "summary": "Browse the scientific product catalogue.",
-        "description": "Return deterministic public product descriptors.\n\nReturns\n-------\n    dict[str, list[dict[str, Any]]]: public product collection.",
+        "description": "Return deterministic public product descriptors.",
         "operationId": "gateway_list_products",
         "responses": {
           "200": {
@@ -72,7 +72,7 @@
           "gateway"
         ],
         "summary": "Retrieve a product definition.",
-        "description": "Return one deterministic public product descriptor.\n\nArgs:\n----\n    product_id(str): requested product identifier.\n\nReturns:\n-------\n    dict[str, Any]: product descriptor.",
+        "description": "Return one deterministic public product descriptor.",
         "operationId": "gateway_get_product",
         "security": [
           {
@@ -85,8 +85,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Product Id"
+              "type": "string"
             }
           }
         ],
@@ -140,7 +139,7 @@
           "gateway"
         ],
         "summary": "Inspect abstract scientific input requirements.",
-        "description": "Return one deterministic product requirement descriptor.\n\nArgs:\n----\n    product_id(str): requested product identifier.\n\nReturns:\n-------\n    dict[str, Any]: product requirements.",
+        "description": "Return one deterministic product requirement descriptor.",
         "operationId": "gateway_get_product_input_requirements",
         "security": [
           {
@@ -153,8 +152,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Product Id"
+              "type": "string"
             }
           }
         ],
@@ -208,7 +206,7 @@
           "gateway"
         ],
         "summary": "List compatible source missions for a product.",
-        "description": "Return product-compatible missions and their declared metadata.\n\nArgs:\n----\n    product_id(str): requested product identifier.\n\nReturns:\n-------\n    dict[str, Any]: compatible mission descriptors.",
+        "description": "Return product-compatible missions and their declared metadata.",
         "operationId": "gateway_list_product_missions",
         "security": [
           {
@@ -221,8 +219,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Product Id"
+              "type": "string"
             }
           }
         ],
@@ -276,7 +273,7 @@
           "gateway"
         ],
         "summary": "List AOIs owned by the authenticated user.",
-        "description": "Return all caller-owned saved AOIs.\n\nArgs:\n----\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, list[dict[str, Any]]]: saved AOIs.",
+        "description": "Return all caller-owned saved AOIs.",
         "operationId": "gateway_list_user_aois",
         "responses": {
           "200": {
@@ -311,7 +308,7 @@
           "gateway"
         ],
         "summary": "Create an AOI owned by the authenticated user.",
-        "description": "Create one caller-owned AOI.\n\nArgs:\n----\n    payload(AoiCreateRequest): AOI content and geometry.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: created AOI.",
+        "description": "Create one caller-owned AOI.",
         "operationId": "gateway_create_user_aoi",
         "requestBody": {
           "content": {
@@ -368,7 +365,7 @@
           "gateway"
         ],
         "summary": "Retrieve an AOI owned by the authenticated user.",
-        "description": "Return one caller-owned AOI.\n\nArgs:\n----\n    aoi_id(str): saved AOI identifier.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: saved AOI.",
+        "description": "Return one caller-owned AOI.",
         "operationId": "gateway_get_user_aoi",
         "security": [
           {
@@ -381,8 +378,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Aoi Id"
+              "type": "string"
             }
           }
         ],
@@ -434,7 +430,7 @@
           "gateway"
         ],
         "summary": "Update an owned AOI and increment its revision.",
-        "description": "Update one caller-owned AOI.\n\nArgs:\n----\n    aoi_id(str): saved AOI identifier.\n    payload(AoiUpdateRequest): requested AOI changes.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: updated AOI.",
+        "description": "Update one caller-owned AOI.",
         "operationId": "gateway_update_user_aoi",
         "security": [
           {
@@ -447,8 +443,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Aoi Id"
+              "type": "string"
             }
           }
         ],
@@ -500,7 +495,7 @@
           "gateway"
         ],
         "summary": "Delete an owned AOI. Existing request snapshots are unaffected.",
-        "description": "Delete one caller-owned AOI.\n\nArgs:\n----\n    aoi_id(str): saved AOI identifier.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    Response: empty successful deletion response.",
+        "description": "Delete one caller-owned AOI.",
         "operationId": "gateway_delete_user_aoi",
         "security": [
           {
@@ -513,8 +508,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Aoi Id"
+              "type": "string"
             }
           }
         ],
@@ -561,7 +555,7 @@
           "gateway"
         ],
         "summary": "Estimate cost and admission for an analysis request.",
-        "description": "Return the deterministic estimate and admission decision.\n\nArgs:\n----\n    payload(AnalysisRequestCreateRequest): candidate request constraints.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: estimate, balance and admission decision.",
+        "description": "Return the deterministic estimate and admission decision.",
         "operationId": "gateway_estimate_analysis_request",
         "requestBody": {
           "content": {
@@ -628,7 +622,7 @@
           "gateway"
         ],
         "summary": "List analysis requests.",
-        "description": "Return all caller-owned analysis requests.\n\nArgs:\n----\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, list[dict[str, Any]]]: current request collection.",
+        "description": "Return all caller-owned analysis requests in their current state.",
         "operationId": "gateway_list_analysis_requests",
         "responses": {
           "200": {
@@ -662,8 +656,8 @@
         "tags": [
           "gateway"
         ],
-        "summary": "Submit an analysis request.",
-        "description": "Begin deterministic proposal preparation for an analysis request.\n\nArgs:\n----\n    payload(AnalysisRequestCreateRequest): product, AOI and month range.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: newly created PREPARING request.",
+        "summary": "Submit an analysis request and return its queued state.",
+        "description": "Create a queued request immediately; no manual confirmation is required.",
         "operationId": "gateway_create_analysis_request",
         "requestBody": {
           "content": {
@@ -730,7 +724,7 @@
           "gateway"
         ],
         "summary": "Retrieve the authoritative request state.",
-        "description": "Return the authoritative lifecycle state for one request.\n\nArgs:\n----\n    request_id(str): request identifier.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: current request state.",
+        "description": "Return the authoritative lifecycle state for one request.",
         "operationId": "gateway_get_analysis_request",
         "security": [
           {
@@ -743,8 +737,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Request Id"
+              "type": "string"
             }
           }
         ],
@@ -792,81 +785,13 @@
         }
       }
     },
-    "/api/v1/analysis-requests/{request_id}/confirm": {
-      "post": {
-        "tags": [
-          "gateway"
-        ],
-        "summary": "Confirm a proposed analysis request.",
-        "description": "Atomically debit demo credits and begin deterministic execution.\n\nArgs:\n----\n    request_id(str): request identifier.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: request now in execution.",
-        "operationId": "gateway_confirm_analysis_request",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "request_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Request Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AnalysisRequestResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or invalid authentication.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Request payload was invalid.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Request state prevents this operation.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/analysis-requests/{request_id}/cancel": {
       "post": {
         "tags": [
           "gateway"
         ],
         "summary": "Request analysis cancellation.",
-        "description": "Cancel a request unless it already completed.\n\nArgs:\n----\n    request_id(str): request identifier.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: cancelled request state.",
+        "description": "Cancel a queued or processing request.",
         "operationId": "gateway_cancel_analysis_request",
         "security": [
           {
@@ -879,8 +804,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Request Id"
+              "type": "string"
             }
           }
         ],
@@ -934,7 +858,7 @@
           "gateway"
         ],
         "summary": "Request a map representation.",
-        "description": "Return an explicit map representation with mock display frames.\n\nArgs:\n----\n    result_id(str): result identifier.\n    frames(int | None): optional number of mock display frames.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: map overlay descriptor.",
+        "description": "Return an explicit synthetic map representation with mock display frames.",
         "operationId": "gateway_get_result_map",
         "security": [
           {
@@ -947,8 +871,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Result Id"
+              "type": "string"
             }
           },
           {
@@ -966,8 +889,7 @@
                   "type": "null"
                 }
               ],
-              "description": "Optional mock frame count.",
-              "title": "Frames"
+              "description": "Optional mock frame count."
             },
             "description": "Optional mock frame count."
           }
@@ -1022,7 +944,7 @@
           "gateway"
         ],
         "summary": "Retrieve result metadata and retained scope.",
-        "description": "Return explicit metadata for one completed result.\n\nArgs:\n----\n    result_id(str): result identifier.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: result metadata and retained scope.",
+        "description": "Return explicit metadata for one completed result.",
         "operationId": "gateway_get_result",
         "security": [
           {
@@ -1035,8 +957,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Result Id"
+              "type": "string"
             }
           }
         ],
@@ -1090,7 +1011,7 @@
           "gateway"
         ],
         "summary": "Request an analytical series.",
-        "description": "Return the non-fabricated M0 series placeholder.\n\nArgs:\n----\n    result_id(str): result identifier.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: empty analytical series representation.",
+        "description": "Return the non-fabricated legacy series placeholder.",
         "operationId": "gateway_get_result_series",
         "security": [
           {
@@ -1103,8 +1024,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Result Id"
+              "type": "string"
             }
           }
         ],
@@ -1156,7 +1076,7 @@
           "gateway"
         ],
         "summary": "Query a bounded spatial and temporal series.",
-        "description": "Return a deterministic series for one explicit selection.\n\nArgs:\n----\n    result_id(str): result identifier.\n    payload(ResultSeriesQueryRequest): WKT selection, CRS and period.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: structured demonstration series.",
+        "description": "Return a deterministic series for one explicit selection and CRS.",
         "operationId": "gateway_query_result_series",
         "security": [
           {
@@ -1169,8 +1089,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Result Id"
+              "type": "string"
             }
           }
         ],
@@ -1234,7 +1153,7 @@
           "gateway"
         ],
         "summary": "Inspect result lineage.",
-        "description": "Return retained demo request provenance.\n\nArgs:\n----\n    result_id(str): result identifier.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: minimal retained lineage.",
+        "description": "Return retained synthetic request provenance.",
         "operationId": "gateway_get_result_lineage",
         "security": [
           {
@@ -1247,8 +1166,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Result Id"
+              "type": "string"
             }
           }
         ],
@@ -1302,7 +1220,7 @@
           "gateway"
         ],
         "summary": "Request final-product or dependency-archive delivery.",
-        "description": "Start deterministic delivery preparation.\n\nArgs:\n----\n    result_id(str): completed result identifier.\n    payload(DeliveryCreateRequest): requested delivery kind.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: newly preparing delivery.",
+        "description": "Start deterministic delivery preparation.",
         "operationId": "gateway_create_delivery",
         "security": [
           {
@@ -1315,8 +1233,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Result Id"
+              "type": "string"
             }
           }
         ],
@@ -1380,7 +1297,7 @@
           "gateway"
         ],
         "summary": "Retrieve delivery state and access.",
-        "description": "Return the current delivery state and access URL when ready.\n\nArgs:\n----\n    delivery_id(str): delivery identifier.\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: current delivery state.",
+        "description": "Return the current delivery state and access URL when ready.",
         "operationId": "gateway_get_delivery",
         "security": [
           {
@@ -1393,8 +1310,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Delivery Id"
+              "type": "string"
             }
           }
         ],
@@ -1448,7 +1364,7 @@
           "gateway"
         ],
         "summary": "Retrieve the authenticated demo account identity.",
-        "description": "Return the deterministic demo account identity.\n\nArgs:\n----\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: public account identity.",
+        "description": "Return the deterministic demo account identity.",
         "operationId": "gateway_get_account",
         "responses": {
           "200": {
@@ -1485,7 +1401,7 @@
           "gateway"
         ],
         "summary": "Retrieve the caller credit balance.",
-        "description": "Return available deterministic demo credits.\n\nArgs:\n----\n    owner_id(str): deterministic authenticated owner.\n\nReturns:\n-------\n    dict[str, Any]: balance and demo disclosure.",
+        "description": "Return available deterministic demo credits.",
         "operationId": "gateway_get_credit_balance",
         "responses": {
           "200": {
@@ -1532,16 +1448,13 @@
       "AccountResponse": {
         "properties": {
           "user_id": {
-            "type": "string",
-            "title": "User Id"
+            "type": "string"
           },
           "display_name": {
-            "type": "string",
-            "title": "Display Name"
+            "type": "string"
           },
           "session_status": {
-            "type": "string",
-            "title": "Session Status"
+            "type": "string"
           }
         },
         "additionalProperties": false,
@@ -1551,18 +1464,15 @@
           "display_name",
           "session_status"
         ],
-        "title": "AccountResponse",
         "description": "Deterministic demo account identity."
       },
       "AnalysisPeriodRequest": {
         "properties": {
           "start_month": {
-            "type": "string",
-            "title": "Start Month"
+            "type": "string"
           },
           "end_month": {
-            "type": "string",
-            "title": "End Month"
+            "type": "string"
           }
         },
         "additionalProperties": false,
@@ -1571,18 +1481,15 @@
           "start_month",
           "end_month"
         ],
-        "title": "AnalysisPeriodRequest",
         "description": "Inclusive analysis period expressed in UTC calendar months."
       },
       "AnalysisRequestCreateRequest": {
         "properties": {
           "product_id": {
-            "type": "string",
-            "title": "Product Id"
+            "type": "string"
           },
           "aoi_id": {
-            "type": "string",
-            "title": "Aoi Id"
+            "type": "string"
           },
           "period": {
             "$ref": "#/components/schemas/AnalysisPeriodRequest"
@@ -1596,8 +1503,7 @@
               {
                 "type": "null"
               }
-            ],
-            "title": "Spatial Resolution M"
+            ]
           },
           "sources": {
             "anyOf": [
@@ -1610,8 +1516,7 @@
               {
                 "type": "null"
               }
-            ],
-            "title": "Sources"
+            ]
           },
           "temporal_frequency": {
             "anyOf": [
@@ -1629,8 +1534,7 @@
               {
                 "type": "null"
               }
-            ],
-            "title": "Temporal Frequency"
+            ]
           }
         },
         "additionalProperties": false,
@@ -1640,8 +1544,7 @@
           "aoi_id",
           "period"
         ],
-        "title": "AnalysisRequestCreateRequest",
-        "description": "Payload used to begin deterministic proposal preparation."
+        "description": "Payload used to submit an asynchronous analysis request."
       },
       "AnalysisRequestListResponse": {
         "properties": {
@@ -1649,8 +1552,7 @@
             "items": {
               "$ref": "#/components/schemas/AnalysisRequestResponse"
             },
-            "type": "array",
-            "title": "Items"
+            "type": "array"
           }
         },
         "additionalProperties": false,
@@ -1658,52 +1560,49 @@
         "required": [
           "items"
         ],
-        "title": "AnalysisRequestListResponse",
         "description": "Public collection of caller-owned analysis requests."
       },
       "AnalysisRequestResponse": {
         "properties": {
           "request_id": {
-            "type": "string",
-            "title": "Request Id"
+            "type": "string"
           },
           "state": {
             "type": "string",
-            "title": "State"
+            "enum": [
+              "queued",
+              "processing",
+              "succeeded",
+              "failed",
+              "cancelled"
+            ]
           },
           "product_id": {
-            "type": "string",
-            "title": "Product Id"
+            "type": "string"
           },
           "aoi_id": {
-            "type": "string",
-            "title": "Aoi Id"
+            "type": "string"
           },
           "source_aoi_revision": {
-            "type": "integer",
-            "title": "Source Aoi Revision"
+            "type": "integer"
           },
           "aoi_name": {
-            "type": "string",
-            "title": "Aoi Name"
+            "type": "string"
           },
           "geometry_snapshot": {
             "$ref": "#/components/schemas/AoiGeometry"
           },
           "start_month": {
-            "type": "string",
-            "title": "Start Month"
+            "type": "string"
           },
           "end_month": {
-            "type": "string",
-            "title": "End Month"
+            "type": "string"
           },
           "requested_sources": {
             "items": {
               "type": "string"
             },
-            "type": "array",
-            "title": "Requested Sources"
+            "type": "array"
           },
           "requested_spatial_resolution_m": {
             "anyOf": [
@@ -1713,8 +1612,7 @@
               {
                 "type": "null"
               }
-            ],
-            "title": "Requested Spatial Resolution M"
+            ]
           },
           "temporal_frequency": {
             "anyOf": [
@@ -1732,13 +1630,16 @@
               {
                 "type": "null"
               }
-            ],
-            "title": "Temporal Frequency"
+            ]
           },
-          "proposal": {
+          "provenance": {
+            "type": "string",
+            "const": "SYNTHETIC_DEMO"
+          },
+          "estimated_credits": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/ProposalResponse"
+                "type": "integer"
               },
               {
                 "type": "null"
@@ -1753,8 +1654,7 @@
               {
                 "type": "null"
               }
-            ],
-            "title": "Actual Credits"
+            ]
           },
           "result_id": {
             "anyOf": [
@@ -1764,8 +1664,7 @@
               {
                 "type": "null"
               }
-            ],
-            "title": "Result Id"
+            ]
           },
           "message": {
             "anyOf": [
@@ -1775,8 +1674,7 @@
               {
                 "type": "null"
               }
-            ],
-            "title": "Message"
+            ]
           },
           "failure": {
             "anyOf": [
@@ -1789,12 +1687,10 @@
             ]
           },
           "created_at": {
-            "type": "string",
-            "title": "Created At"
+            "type": "string"
           },
           "updated_at": {
-            "type": "string",
-            "title": "Updated At"
+            "type": "string"
           }
         },
         "additionalProperties": false,
@@ -1812,7 +1708,8 @@
           "requested_sources",
           "requested_spatial_resolution_m",
           "temporal_frequency",
-          "proposal",
+          "provenance",
+          "estimated_credits",
           "actual_credits",
           "result_id",
           "message",
@@ -1820,7 +1717,6 @@
           "created_at",
           "updated_at"
         ],
-        "title": "AnalysisRequestResponse",
         "description": "Public analysis request lifecycle state and retained spatial snapshot."
       },
       "AoiCreateRequest": {
@@ -1828,8 +1724,7 @@
           "name": {
             "type": "string",
             "maxLength": 120,
-            "minLength": 1,
-            "title": "Name"
+            "minLength": 1
           },
           "description": {
             "anyOf": [
@@ -1840,8 +1735,7 @@
               {
                 "type": "null"
               }
-            ],
-            "title": "Description"
+            ]
           },
           "geometry": {
             "$ref": "#/components/schemas/AoiGeometry"
@@ -1853,7 +1747,6 @@
           "name",
           "geometry"
         ],
-        "title": "AoiCreateRequest",
         "description": "Payload for one new saved AOI."
       },
       "AoiGeometry": {
@@ -1863,13 +1756,11 @@
             "enum": [
               "Polygon",
               "MultiPolygon"
-            ],
-            "title": "Type"
+            ]
           },
           "coordinates": {
             "items": {},
-            "type": "array",
-            "title": "Coordinates"
+            "type": "array"
           }
         },
         "additionalProperties": false,
@@ -1878,7 +1769,6 @@
           "type",
           "coordinates"
         ],
-        "title": "AoiGeometry",
         "description": "Supported polygonal GeoJSON geometry supplied by the public client."
       },
       "AoiListResponse": {
@@ -1887,8 +1777,7 @@
             "items": {
               "$ref": "#/components/schemas/AoiResponse"
             },
-            "type": "array",
-            "title": "Items"
+            "type": "array"
           }
         },
         "additionalProperties": false,
@@ -1896,18 +1785,15 @@
         "required": [
           "items"
         ],
-        "title": "AoiListResponse",
         "description": "Public AOI collection representation."
       },
       "AoiResponse": {
         "properties": {
           "aoi_id": {
-            "type": "string",
-            "title": "Aoi Id"
+            "type": "string"
           },
           "name": {
-            "type": "string",
-            "title": "Name"
+            "type": "string"
           },
           "description": {
             "anyOf": [
@@ -1917,23 +1803,19 @@
               {
                 "type": "null"
               }
-            ],
-            "title": "Description"
+            ]
           },
           "geometry": {
             "$ref": "#/components/schemas/AoiGeometry"
           },
           "revision": {
-            "type": "integer",
-            "title": "Revision"
+            "type": "integer"
           },
           "created_at": {
-            "type": "string",
-            "title": "Created At"
+            "type": "string"
           },
           "updated_at": {
-            "type": "string",
-            "title": "Updated At"
+            "type": "string"
           }
         },
         "additionalProperties": false,
@@ -1947,7 +1829,6 @@
           "created_at",
           "updated_at"
         ],
-        "title": "AoiResponse",
         "description": "Public owner-scoped AOI representation."
       },
       "AoiUpdateRequest": {
@@ -1962,8 +1843,7 @@
               {
                 "type": "null"
               }
-            ],
-            "title": "Name"
+            ]
           },
           "description": {
             "anyOf": [
@@ -1974,8 +1854,7 @@
               {
                 "type": "null"
               }
-            ],
-            "title": "Description"
+            ]
           },
           "geometry": {
             "anyOf": [
@@ -1990,38 +1869,30 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "AoiUpdateRequest",
         "description": "Partial payload for an existing saved AOI."
       },
       "CostEstimateResponse": {
         "properties": {
           "product_id": {
-            "type": "string",
-            "title": "Product Id"
+            "type": "string"
           },
           "aoi_id": {
-            "type": "string",
-            "title": "Aoi Id"
+            "type": "string"
           },
           "start_month": {
-            "type": "string",
-            "title": "Start Month"
+            "type": "string"
           },
           "end_month": {
-            "type": "string",
-            "title": "End Month"
+            "type": "string"
           },
           "feasible": {
-            "type": "boolean",
-            "title": "Feasible"
+            "type": "boolean"
           },
           "estimated_credits": {
-            "type": "integer",
-            "title": "Estimated Credits"
+            "type": "integer"
           },
           "currency": {
-            "type": "string",
-            "title": "Currency"
+            "type": "string"
           },
           "balance": {
             "anyOf": [
@@ -2031,30 +1902,25 @@
               {
                 "type": "null"
               }
-            ],
-            "title": "Balance"
+            ]
           },
           "balance_available": {
-            "type": "boolean",
-            "title": "Balance Available"
+            "type": "boolean"
           },
           "admission": {
-            "type": "string",
-            "title": "Admission"
+            "type": "string"
           },
           "conditions": {
             "items": {
               "type": "string"
             },
-            "type": "array",
-            "title": "Conditions"
+            "type": "array"
           },
           "limitations": {
             "items": {
               "type": "string"
             },
-            "type": "array",
-            "title": "Limitations"
+            "type": "array"
           }
         },
         "additionalProperties": false,
@@ -2073,22 +1939,18 @@
           "conditions",
           "limitations"
         ],
-        "title": "CostEstimateResponse",
         "description": "Deterministic cost estimate and admission decision."
       },
       "CreditBalanceResponse": {
         "properties": {
           "balance": {
-            "type": "integer",
-            "title": "Balance"
+            "type": "integer"
           },
           "unit": {
-            "type": "string",
-            "title": "Unit"
+            "type": "string"
           },
           "note": {
-            "type": "string",
-            "title": "Note"
+            "type": "string"
           }
         },
         "additionalProperties": false,
@@ -2098,15 +1960,13 @@
           "unit",
           "note"
         ],
-        "title": "CreditBalanceResponse",
         "description": "Available deterministic demo credits."
       },
       "DeliveryCreateRequest": {
         "properties": {
           "kind": {
             "type": "string",
-            "minLength": 1,
-            "title": "Kind"
+            "minLength": 1
           }
         },
         "additionalProperties": false,
@@ -2114,22 +1974,18 @@
         "required": [
           "kind"
         ],
-        "title": "DeliveryCreateRequest",
         "description": "Delivery representation requested for a completed result."
       },
       "DeliveryResponse": {
         "properties": {
           "delivery_id": {
-            "type": "string",
-            "title": "Delivery Id"
+            "type": "string"
           },
           "kind": {
-            "type": "string",
-            "title": "Kind"
+            "type": "string"
           },
           "state": {
-            "type": "string",
-            "title": "State"
+            "type": "string"
           },
           "download_url": {
             "anyOf": [
@@ -2139,8 +1995,7 @@
               {
                 "type": "null"
               }
-            ],
-            "title": "Download Url"
+            ]
           },
           "message": {
             "anyOf": [
@@ -2150,16 +2005,13 @@
               {
                 "type": "null"
               }
-            ],
-            "title": "Message"
+            ]
           },
           "created_at": {
-            "type": "string",
-            "title": "Created At"
+            "type": "string"
           },
           "updated_at": {
-            "type": "string",
-            "title": "Updated At"
+            "type": "string"
           }
         },
         "additionalProperties": false,
@@ -2173,7 +2025,6 @@
           "created_at",
           "updated_at"
         ],
-        "title": "DeliveryResponse",
         "description": "Asynchronous deterministic demo delivery state."
       },
       "ErrorResponse": {
@@ -2208,8 +2059,7 @@
       "FailureResponse": {
         "properties": {
           "stage": {
-            "type": "string",
-            "title": "Stage"
+            "type": "string"
           },
           "message": {
             "anyOf": [
@@ -2219,8 +2069,7 @@
               {
                 "type": "null"
               }
-            ],
-            "title": "Message"
+            ]
           }
         },
         "additionalProperties": false,
@@ -2229,7 +2078,6 @@
           "stage",
           "message"
         ],
-        "title": "FailureResponse",
         "description": "Caller-safe request failure details."
       },
       "HealthResponse": {
@@ -2259,12 +2107,10 @@
       "LegendStop": {
         "properties": {
           "value": {
-            "type": "number",
-            "title": "Value"
+            "type": "number"
           },
           "color": {
-            "type": "string",
-            "title": "Color"
+            "type": "string"
           }
         },
         "additionalProperties": false,
@@ -2273,7 +2119,6 @@
           "value",
           "color"
         ],
-        "title": "LegendStop",
         "description": "One value/color break in a display colour map."
       },
       "ProductAvailability": {
@@ -2283,7 +2128,6 @@
           "AVAILABLE",
           "UNAVAILABLE"
         ],
-        "title": "ProductAvailability",
         "description": "Lifecycle availability of a product definition."
       },
       "ProductCategory": {
@@ -2294,7 +2138,6 @@
           "Land",
           "Atmosphere"
         ],
-        "title": "ProductCategory",
         "description": "Broad scientific domain used to group products."
       },
       "ProductListResponse": {
@@ -2303,8 +2146,7 @@
             "items": {
               "$ref": "#/components/schemas/ProductResponse"
             },
-            "type": "array",
-            "title": "Items"
+            "type": "array"
           }
         },
         "additionalProperties": false,
@@ -2312,21 +2154,18 @@
         "required": [
           "items"
         ],
-        "title": "ProductListResponse",
         "description": "Public product catalogue collection."
       },
       "ProductMissionsResponse": {
         "properties": {
           "product_id": {
-            "type": "string",
-            "title": "Product Id"
+            "type": "string"
           },
           "items": {
             "items": {
               "$ref": "#/components/schemas/SourceMissionInfo"
             },
-            "type": "array",
-            "title": "Items"
+            "type": "array"
           }
         },
         "additionalProperties": false,
@@ -2335,18 +2174,15 @@
           "product_id",
           "items"
         ],
-        "title": "ProductMissionsResponse",
         "description": "Compatible source missions for one product."
       },
       "ProductPreview": {
         "properties": {
           "url": {
-            "type": "string",
-            "title": "Url"
+            "type": "string"
           },
           "alt": {
-            "type": "string",
-            "title": "Alt"
+            "type": "string"
           },
           "attribution": {
             "anyOf": [
@@ -2356,8 +2192,7 @@
               {
                 "type": "null"
               }
-            ],
-            "title": "Attribution"
+            ]
           }
         },
         "additionalProperties": false,
@@ -2367,32 +2202,27 @@
           "alt",
           "attribution"
         ],
-        "title": "ProductPreview",
         "description": "Local illustrative preview metadata owned by the product descriptor."
       },
       "ProductRequirementsResponse": {
         "properties": {
           "product_id": {
-            "type": "string",
-            "title": "Product Id"
+            "type": "string"
           },
           "inputs": {
             "items": {
               "type": "string"
             },
-            "type": "array",
-            "title": "Inputs"
+            "type": "array"
           },
           "limitations": {
             "items": {
               "type": "string"
             },
-            "type": "array",
-            "title": "Limitations"
+            "type": "array"
           },
           "note": {
-            "type": "string",
-            "title": "Note"
+            "type": "string"
           }
         },
         "additionalProperties": false,
@@ -2403,44 +2233,40 @@
           "limitations",
           "note"
         ],
-        "title": "ProductRequirementsResponse",
         "description": "Public deterministic product input requirements."
       },
       "ProductResponse": {
         "properties": {
           "product_id": {
-            "type": "string",
-            "title": "Product Id"
+            "type": "string"
           },
           "name": {
-            "type": "string",
-            "title": "Name"
+            "type": "string"
           },
           "description": {
-            "type": "string",
-            "title": "Description"
+            "type": "string"
           },
           "level": {
-            "type": "string",
-            "title": "Level"
+            "type": "string"
           },
           "category": {
             "$ref": "#/components/schemas/ProductCategory"
           },
           "native_resolution": {
-            "type": "string",
-            "title": "Native Resolution"
+            "type": "string"
           },
           "temporal_resolution": {
-            "type": "string",
-            "title": "Temporal Resolution"
+            "type": "string"
           },
           "units": {
-            "type": "string",
-            "title": "Units"
+            "type": "string"
           },
           "availability": {
             "$ref": "#/components/schemas/ProductAvailability"
+          },
+          "provenance": {
+            "type": "string",
+            "const": "SYNTHETIC_DEMO"
           },
           "validation_status": {
             "$ref": "#/components/schemas/ProductValidationStatus"
@@ -2449,48 +2275,49 @@
             "items": {
               "type": "string"
             },
-            "type": "array",
-            "title": "Inputs"
+            "type": "array"
           },
           "parameters": {
             "items": {
               "type": "string"
             },
-            "type": "array",
-            "title": "Parameters"
+            "type": "array"
           },
           "limitations": {
             "items": {
               "type": "string"
             },
-            "type": "array",
-            "title": "Limitations"
+            "type": "array"
           },
           "supported_sources": {
             "items": {
               "$ref": "#/components/schemas/SourceMission"
             },
-            "type": "array",
-            "title": "Supported Sources"
+            "type": "array"
           },
           "supported_resolutions_m": {
             "items": {
               "type": "integer"
             },
-            "type": "array",
-            "title": "Supported Resolutions M"
+            "type": "array"
           },
           "supported_spatial_inputs": {
             "items": {
               "type": "string",
+              "const": "AOI"
+            },
+            "type": "array"
+          },
+          "supported_selection_geometries": {
+            "items": {
+              "type": "string",
               "enum": [
-                "AOI",
-                "POI",
-                "LOI"
+                "POINT",
+                "POLYGON",
+                "RESULT_EXTENT"
               ]
             },
-            "type": "array",
-            "title": "Supported Spatial Inputs"
+            "type": "array"
           },
           "supported_frequencies": {
             "items": {
@@ -2504,16 +2331,13 @@
                 "daily"
               ]
             },
-            "type": "array",
-            "title": "Supported Frequencies"
+            "type": "array"
           },
           "max_period_months": {
-            "type": "integer",
-            "title": "Max Period Months"
+            "type": "integer"
           },
           "documentation_status": {
-            "type": "string",
-            "title": "Documentation Status"
+            "type": "string"
           },
           "documentation_url": {
             "anyOf": [
@@ -2523,8 +2347,7 @@
               {
                 "type": "null"
               }
-            ],
-            "title": "Documentation Url"
+            ]
           },
           "preview": {
             "anyOf": [
@@ -2549,6 +2372,7 @@
           "temporal_resolution",
           "units",
           "availability",
+          "provenance",
           "validation_status",
           "inputs",
           "parameters",
@@ -2556,13 +2380,13 @@
           "supported_sources",
           "supported_resolutions_m",
           "supported_spatial_inputs",
+          "supported_selection_geometries",
           "supported_frequencies",
           "max_period_months",
           "documentation_status",
           "documentation_url",
           "preview"
         ],
-        "title": "ProductResponse",
         "description": "Public deterministic product descriptor."
       },
       "ProductValidationStatus": {
@@ -2571,90 +2395,39 @@
           "NOT_VALIDATED",
           "VALIDATED"
         ],
-        "title": "ProductValidationStatus",
         "description": "Scientific validation state explicitly declared by the product owner."
-      },
-      "ProposalResponse": {
-        "properties": {
-          "feasible": {
-            "type": "boolean",
-            "title": "Feasible"
-          },
-          "estimated_credits": {
-            "type": "integer",
-            "title": "Estimated Credits"
-          },
-          "currency": {
-            "type": "string",
-            "title": "Currency"
-          },
-          "conditions": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Conditions"
-          },
-          "limitations": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Limitations"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "feasible",
-          "estimated_credits",
-          "currency",
-          "conditions",
-          "limitations"
-        ],
-        "title": "ProposalResponse",
-        "description": "Explicit estimate and limitations available for a proposed request."
       },
       "ResultDetailResponse": {
         "properties": {
           "result_id": {
-            "type": "string",
-            "title": "Result Id"
+            "type": "string"
           },
           "request_id": {
-            "type": "string",
-            "title": "Request Id"
+            "type": "string"
           },
           "product_id": {
-            "type": "string",
-            "title": "Product Id"
+            "type": "string"
           },
           "product_name": {
-            "type": "string",
-            "title": "Product Name"
+            "type": "string"
           },
           "result_version": {
-            "type": "string",
-            "title": "Result Version"
+            "type": "string"
           },
           "aoi_name": {
-            "type": "string",
-            "title": "Aoi Name"
+            "type": "string"
           },
           "geometry_snapshot": {
             "$ref": "#/components/schemas/AoiGeometry"
           },
           "start_month": {
-            "type": "string",
-            "title": "Start Month"
+            "type": "string"
           },
           "end_month": {
-            "type": "string",
-            "title": "End Month"
+            "type": "string"
           },
           "units": {
-            "type": "string",
-            "title": "Units"
+            "type": "string"
           },
           "temporal_frequency": {
             "anyOf": [
@@ -2672,27 +2445,32 @@
               {
                 "type": "null"
               }
-            ],
-            "title": "Temporal Frequency"
+            ]
+          },
+          "provenance": {
+            "type": "string",
+            "const": "SYNTHETIC_DEMO"
+          },
+          "available_parameters": {
+            "items": {
+              "$ref": "#/components/schemas/SeriesParameter"
+            },
+            "type": "array"
           },
           "validation_status": {
             "$ref": "#/components/schemas/ProductValidationStatus"
           },
           "quality_status": {
-            "type": "string",
-            "title": "Quality Status"
+            "type": "string"
           },
           "quality_note": {
-            "type": "string",
-            "title": "Quality Note"
+            "type": "string"
           },
           "provenance_note": {
-            "type": "string",
-            "title": "Provenance Note"
+            "type": "string"
           },
           "is_demo": {
-            "type": "boolean",
-            "title": "Is Demo"
+            "type": "boolean"
           }
         },
         "additionalProperties": false,
@@ -2709,39 +2487,35 @@
           "end_month",
           "units",
           "temporal_frequency",
+          "provenance",
+          "available_parameters",
           "validation_status",
           "quality_status",
           "quality_note",
           "provenance_note",
           "is_demo"
         ],
-        "title": "ResultDetailResponse",
         "description": "Explicit result metadata and retained scope."
       },
       "ResultLegend": {
         "properties": {
           "title": {
-            "type": "string",
-            "title": "Title"
+            "type": "string"
           },
           "units": {
-            "type": "string",
-            "title": "Units"
+            "type": "string"
           },
           "min": {
-            "type": "number",
-            "title": "Min"
+            "type": "number"
           },
           "max": {
-            "type": "number",
-            "title": "Max"
+            "type": "number"
           },
           "stops": {
             "items": {
               "$ref": "#/components/schemas/LegendStop"
             },
-            "type": "array",
-            "title": "Stops"
+            "type": "array"
           }
         },
         "additionalProperties": false,
@@ -2753,33 +2527,31 @@
           "max",
           "stops"
         ],
-        "title": "ResultLegend",
         "description": "Colour-map metadata required to interpret a display representation."
       },
       "ResultLineageResponse": {
         "properties": {
           "result_id": {
-            "type": "string",
-            "title": "Result Id"
+            "type": "string"
           },
           "request_id": {
-            "type": "string",
-            "title": "Request Id"
+            "type": "string"
           },
           "product_id": {
-            "type": "string",
-            "title": "Product Id"
+            "type": "string"
           },
           "aoi_name": {
-            "type": "string",
-            "title": "Aoi Name"
+            "type": "string"
           },
           "geometry_snapshot": {
             "$ref": "#/components/schemas/AoiGeometry"
           },
-          "note": {
+          "provenance": {
             "type": "string",
-            "title": "Note"
+            "const": "SYNTHETIC_DEMO"
+          },
+          "note": {
+            "type": "string"
           }
         },
         "additionalProperties": false,
@@ -2790,44 +2562,36 @@
           "product_id",
           "aoi_name",
           "geometry_snapshot",
+          "provenance",
           "note"
         ],
-        "title": "ResultLineageResponse",
         "description": "Minimal reliable M0 provenance for one result."
       },
       "ResultMapFrame": {
         "properties": {
           "frame_id": {
-            "type": "string",
-            "title": "Frame Id"
+            "type": "string"
           },
           "url": {
-            "type": "string",
-            "title": "Url"
+            "type": "string"
           },
           "period_start": {
-            "type": "string",
-            "title": "Period Start"
+            "type": "string"
           },
           "period_end": {
-            "type": "string",
-            "title": "Period End"
+            "type": "string"
           },
           "label": {
-            "type": "string",
-            "title": "Label"
+            "type": "string"
           },
           "visual_period_start": {
-            "type": "string",
-            "title": "Visual Period Start"
+            "type": "string"
           },
           "visual_period_end": {
-            "type": "string",
-            "title": "Visual Period End"
+            "type": "string"
           },
           "is_reused_visual": {
-            "type": "boolean",
-            "title": "Is Reused Visual"
+            "type": "boolean"
           }
         },
         "additionalProperties": false,
@@ -2842,14 +2606,19 @@
           "visual_period_end",
           "is_reused_visual"
         ],
-        "title": "ResultMapFrame",
         "description": "One mock display frame with its request-period date and reused visual period."
       },
       "ResultMapResponse": {
         "properties": {
           "url": {
-            "type": "string",
-            "title": "Url"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "bounds": {
             "items": {
@@ -2858,47 +2627,41 @@
               },
               "type": "array"
             },
-            "type": "array",
-            "title": "Bounds"
+            "type": "array"
           },
           "kind": {
+            "type": "string"
+          },
+          "provenance": {
             "type": "string",
-            "title": "Kind"
+            "const": "SYNTHETIC_DEMO"
           },
           "note": {
-            "type": "string",
-            "title": "Note"
+            "type": "string"
           },
           "result_id": {
-            "type": "string",
-            "title": "Result Id"
+            "type": "string"
           },
           "request_id": {
-            "type": "string",
-            "title": "Request Id"
+            "type": "string"
           },
           "product_id": {
-            "type": "string",
-            "title": "Product Id"
+            "type": "string"
           },
           "result_version": {
-            "type": "string",
-            "title": "Result Version"
+            "type": "string"
           },
           "units": {
-            "type": "string",
-            "title": "Units"
+            "type": "string"
           },
           "validation_status": {
             "$ref": "#/components/schemas/ProductValidationStatus"
           },
           "quality_status": {
-            "type": "string",
-            "title": "Quality Status"
+            "type": "string"
           },
           "quality_note": {
-            "type": "string",
-            "title": "Quality Note"
+            "type": "string"
           },
           "legend": {
             "anyOf": [
@@ -2918,19 +2681,16 @@
               {
                 "type": "null"
               }
-            ],
-            "title": "Geotiff Url"
+            ]
           },
           "frames": {
             "items": {
               "$ref": "#/components/schemas/ResultMapFrame"
             },
-            "type": "array",
-            "title": "Frames"
+            "type": "array"
           },
           "is_demo": {
-            "type": "boolean",
-            "title": "Is Demo"
+            "type": "boolean"
           }
         },
         "additionalProperties": false,
@@ -2939,6 +2699,7 @@
           "url",
           "bounds",
           "kind",
+          "provenance",
           "note",
           "result_id",
           "request_id",
@@ -2953,18 +2714,18 @@
           "frames",
           "is_demo"
         ],
-        "title": "ResultMapResponse",
         "description": "Map overlay descriptor for a synthetic or bundled completed result."
       },
       "ResultSeriesPoint": {
         "properties": {
+          "parameter": {
+            "type": "string"
+          },
           "period_start": {
-            "type": "string",
-            "title": "Period Start"
+            "type": "string"
           },
           "period_end": {
-            "type": "string",
-            "title": "Period End"
+            "type": "string"
           },
           "value": {
             "anyOf": [
@@ -2974,20 +2735,16 @@
               {
                 "type": "null"
               }
-            ],
-            "title": "Value"
+            ]
           },
           "unit": {
-            "type": "string",
-            "title": "Unit"
+            "type": "string"
           },
           "state": {
-            "type": "string",
-            "title": "State"
+            "type": "string"
           },
           "quality_status": {
-            "type": "string",
-            "title": "Quality Status"
+            "type": "string"
           },
           "coverage": {
             "anyOf": [
@@ -2997,8 +2754,7 @@
               {
                 "type": "null"
               }
-            ],
-            "title": "Coverage"
+            ]
           },
           "note": {
             "anyOf": [
@@ -3008,13 +2764,13 @@
               {
                 "type": "null"
               }
-            ],
-            "title": "Note"
+            ]
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
+          "parameter",
           "period_start",
           "period_end",
           "value",
@@ -3024,20 +2780,17 @@
           "coverage",
           "note"
         ],
-        "title": "ResultSeriesPoint",
         "description": "One explicit period value, gap, mask or invalid observation."
       },
       "ResultSeriesQueryRequest": {
         "properties": {
           "geometry_wkt": {
             "type": "string",
-            "minLength": 1,
-            "title": "Geometry Wkt"
+            "minLength": 1
           },
           "crs": {
             "type": "string",
-            "minLength": 1,
-            "title": "Crs"
+            "minLength": 1
           },
           "period": {
             "$ref": "#/components/schemas/AnalysisPeriodRequest"
@@ -3053,8 +2806,7 @@
               {
                 "type": "null"
               }
-            ],
-            "title": "Parameters"
+            ]
           }
         },
         "additionalProperties": false,
@@ -3064,46 +2816,51 @@
           "crs",
           "period"
         ],
-        "title": "ResultSeriesQueryRequest",
         "description": "Bounded spatial/temporal series request for one result."
       },
       "ResultSeriesQueryResponse": {
         "properties": {
           "result_id": {
-            "type": "string",
-            "title": "Result Id"
+            "type": "string"
           },
           "product_id": {
-            "type": "string",
-            "title": "Product Id"
+            "type": "string"
           },
           "geometry_wkt": {
-            "type": "string",
-            "title": "Geometry Wkt"
+            "type": "string"
           },
           "crs": {
-            "type": "string",
-            "title": "Crs"
+            "type": "string"
           },
           "selection_type": {
-            "type": "string",
-            "title": "Selection Type"
+            "type": "string"
           },
           "aggregation_method": {
-            "type": "string",
-            "title": "Aggregation Method"
+            "type": "string"
+          },
+          "selection_area_km2": {
+            "type": "number"
           },
           "units": {
-            "type": "string",
-            "title": "Units"
+            "type": "string"
+          },
+          "available_parameters": {
+            "items": {
+              "$ref": "#/components/schemas/SeriesParameter"
+            },
+            "type": "array"
+          },
+          "selected_parameters": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
           "quality_status": {
-            "type": "string",
-            "title": "Quality Status"
+            "type": "string"
           },
           "quality_note": {
-            "type": "string",
-            "title": "Quality Note"
+            "type": "string"
           },
           "coverage": {
             "anyOf": [
@@ -3113,23 +2870,23 @@
               {
                 "type": "null"
               }
-            ],
-            "title": "Coverage"
+            ]
+          },
+          "provenance": {
+            "type": "string",
+            "const": "SYNTHETIC_DEMO"
           },
           "is_demo": {
-            "type": "boolean",
-            "title": "Is Demo"
+            "type": "boolean"
           },
           "note": {
-            "type": "string",
-            "title": "Note"
+            "type": "string"
           },
           "points": {
             "items": {
               "$ref": "#/components/schemas/ResultSeriesPoint"
             },
-            "type": "array",
-            "title": "Points"
+            "type": "array"
           }
         },
         "additionalProperties": false,
@@ -3141,31 +2898,31 @@
           "crs",
           "selection_type",
           "aggregation_method",
+          "selection_area_km2",
           "units",
+          "available_parameters",
+          "selected_parameters",
           "quality_status",
           "quality_note",
           "coverage",
+          "provenance",
           "is_demo",
           "note",
           "points"
         ],
-        "title": "ResultSeriesQueryResponse",
         "description": "Structured deterministic series explicitly marked as demonstration data."
       },
       "ResultSeriesResponse": {
         "properties": {
           "result_id": {
-            "type": "string",
-            "title": "Result Id"
+            "type": "string"
           },
           "points": {
             "items": {},
-            "type": "array",
-            "title": "Points"
+            "type": "array"
           },
           "note": {
-            "type": "string",
-            "title": "Note"
+            "type": "string"
           }
         },
         "additionalProperties": false,
@@ -3175,8 +2932,28 @@
           "points",
           "note"
         ],
-        "title": "ResultSeriesResponse",
         "description": "Legacy empty series placeholder retained for compatibility."
+      },
+      "SeriesParameter": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "units": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "label",
+          "units"
+        ],
+        "description": "One available series parameter exposed by a result representation."
       },
       "SourceMission": {
         "type": "string",
@@ -3188,7 +2965,6 @@
           "MODIS",
           "VIIRS"
         ],
-        "title": "SourceMission",
         "description": "Source mission labels a product may declare as a requestable input."
       },
       "SourceMissionInfo": {
@@ -3197,28 +2973,22 @@
             "$ref": "#/components/schemas/SourceMission"
           },
           "name": {
-            "type": "string",
-            "title": "Name"
+            "type": "string"
           },
           "provider": {
-            "type": "string",
-            "title": "Provider"
+            "type": "string"
           },
           "instrument": {
-            "type": "string",
-            "title": "Instrument"
+            "type": "string"
           },
           "native_resolution": {
-            "type": "string",
-            "title": "Native Resolution"
+            "type": "string"
           },
           "temporal_resolution": {
-            "type": "string",
-            "title": "Temporal Resolution"
+            "type": "string"
           },
           "availability": {
-            "type": "string",
-            "title": "Availability"
+            "type": "string"
           }
         },
         "additionalProperties": false,
@@ -3232,7 +3002,6 @@
           "temporal_resolution",
           "availability"
         ],
-        "title": "SourceMissionInfo",
         "description": "Compatible source mission with its declared operational metadata."
       }
     },
@@ -3243,30 +3012,9 @@
       }
     }
   },
-  "servers": [
-    {
-      "url": "http://localhost:8000",
-      "description": "Local GAT service."
-    }
-  ],
-  "tags": [
-    {
-      "name": "gateway",
-      "description": "Public REST gateway for the MEOGAP platform."
-    }
-  ],
   "security": [
     {
       "bearerAuth": []
     }
-  ],
-  "x-meogap-status": {
-    "level": "m0-demo",
-    "requestAndSuccessSchemas": "defined",
-    "limitations": [
-      "Deterministic in-memory demo responses only.",
-      "No EO acquisition, scientific processing, or financial credit ledger is implemented."
-    ]
-  },
-  "x-meogap-transport": "public-rest"
+  ]
 }
